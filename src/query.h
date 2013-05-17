@@ -32,8 +32,10 @@
 #include <unistd.h>
 #include "net.h"
 
-#define MAX_QUERY_KEY_SIZE   512
-#define MAX_QUERY_VALUE_SIZE 4096
+#define GB_DEFAULT_MAX_ITEM_TTL 2592000
+
+#define GB_MAX_QUERY_KEY_SIZE   512
+#define GB_MAX_QUERY_VALUE_SIZE 4096
 
 /*
  * Query

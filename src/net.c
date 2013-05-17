@@ -283,12 +283,6 @@ int gbDeleteTimeEvent(gbEventLoop *eventLoop, long long id)
  * This operation is useful to know how many time the select can be
  * put in sleep without to delay any event.
  * If there are no timers NULL is returned.
- *
- * Note that's O(N) since time events are unsorted.
- * Possible optimizations (not needed by Redis so far, but...):
- * 1) Insert the event in order, so that the nearest is just the head.
- *    Much better but still insertion or deletion of timers is O(N).
- * 2) Use a skiplist to have this operation as O(1) and insertion as O(log(N)).
  */
 static gbTimeEvent *aeSearchNearestTimer(gbEventLoop *eventLoop)
 {
@@ -355,7 +349,7 @@ static int processTimeEvents(gbEventLoop *eventLoop) {
              * To do so we saved the max ID we want to handle.
              *
              * FUTURE OPTIMIZATIONS:
-             * Note that this is NOT great algorithmically. Redis uses
+             * Note that this is NOT great algorithmically. Gibson uses
              * a single time event so it's not a problem but the right
              * way to do this is to add the new elements on head, and
              * to flag deleted elements in a special way for later
@@ -644,8 +638,8 @@ static int gbNetCreateSocket(char *err, int domain) {
         return GBNET_ERR;
     }
 
-    /* Make sure connection-intensive things like the redis benchmark
-     * will be able to close/open sockets a zillion of times */
+    /* Make sure connection-intensive things will be able to close/open
+       sockets a zillion of times */
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
         gbNetSetError(err, "setsockopt SO_REUSEADDR: %s", strerror(errno));
         return GBNET_ERR;

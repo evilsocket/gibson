@@ -100,7 +100,7 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 				   end;
 
 	if( server->memused <= server->maxmem ) {
-		end = min( limit, MAX_QUERY_KEY_SIZE );
+		end = min( limit, GB_MAX_QUERY_KEY_SIZE );
 		while( *p != ' ' && i++ < end )
 		{
 			++p;
@@ -109,7 +109,7 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 		klen = p++ - k;
 		v    = p;
 		vlen = limit - klen - 1;
-		vlen = min( vlen, MAX_QUERY_VALUE_SIZE );
+		vlen = min( vlen, GB_MAX_QUERY_VALUE_SIZE );
 
 		item = gbCreateItem( server, gbMemDup( v, vlen ), vlen, PLAIN, -1 );
 		gbItem * old = at_insert( &server->tree, k, klen, item );
@@ -131,7 +131,7 @@ int gbQueryTtlHandler( gbClient *client, byte_t *p ){
 	size_t limit = client->buffer_size - sizeof(short),
 				   end;
 
-	end = min( limit, MAX_QUERY_KEY_SIZE );
+	end = min( limit, GB_MAX_QUERY_KEY_SIZE );
 	while( *p != ' ' && i++ < end )
 	{
 		++p;
@@ -140,7 +140,7 @@ int gbQueryTtlHandler( gbClient *client, byte_t *p ){
 	klen = p++ - k;
 	v    = p;
 	vlen = limit - klen - 1;
-	vlen = min( vlen, MAX_QUERY_VALUE_SIZE );
+	vlen = min( vlen, GB_MAX_QUERY_VALUE_SIZE );
 
 	item = at_find( &server->tree, k, klen );
 	if( item )
@@ -171,7 +171,7 @@ int gbQueryGetHandler( gbClient *client, byte_t *p ){
 	size_t limit = client->buffer_size - sizeof(short),
 				   end;
 
-	end = min( limit, MAX_QUERY_KEY_SIZE );
+	end = min( limit, GB_MAX_QUERY_KEY_SIZE );
 	while( i++ < end ) ++p;
 
 	klen = p - k;
@@ -192,7 +192,7 @@ int gbQueryDelHandler( gbClient *client, byte_t *p ){
 	size_t limit = client->buffer_size - sizeof(short),
 				   end;
 
-	end = min( limit, MAX_QUERY_KEY_SIZE );
+	end = min( limit, GB_MAX_QUERY_KEY_SIZE );
 	while( i++ < end ) ++p;
 
 	klen = p - k;
@@ -222,7 +222,7 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 				   end;
 	long num = 0;
 
-	end = min( limit, MAX_QUERY_KEY_SIZE );
+	end = min( limit, GB_MAX_QUERY_KEY_SIZE );
 	while( i++ < end ) ++p;
 
 	klen = p - k;

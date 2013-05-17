@@ -38,6 +38,8 @@
 #include "query.h"
 #include "config.h"
 
+#define GB_DEFAULT_MAX_MEMORY 2147483648
+
 static gbServer server;
 static atree_t  config;
 
@@ -297,8 +299,34 @@ static void gbSigTermHandler(int sig) {
     server.shutdown = 1;
 }
 
+void gbProcessInit(){
+	if( server.daemon )
+		gbDaemonize();
+
+	// ignore SIGHUP and SIGPIPE since we're gonna handle dead clients
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
+
+	// set SIGTERM custom handler
+	struct sigaction act;
+
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	act.sa_handler = gbSigTermHandler;
+	sigaction(SIGTERM, &act, NULL);
+
+	FILE *fp = fopen(server.pidfile,"w+t");
+	if (fp) {
+		fprintf(fp,"%d\n",(int)getpid());
+		fclose(fp);
+	}
+	else
+		gbLog( WARNING, "Error creating pid file %s.", server.pidfile );
+}
+
 int main( int argc, char **argv)
 {
+	// TODO: Read from configuration
 	gbConfigLoad( &config, "gibson.conf" );
 
 	gbLogInit
@@ -338,16 +366,16 @@ int main( int argc, char **argv)
 		exit(1);
 	}
 
-	server.maxidletime    = gbConfigReadInt( &config, "max_idletime",      1 );
-	server.maxclients     = gbConfigReadInt( &config, "max_clients",       1024 );
-	server.maxrequestsize = gbConfigReadInt( &config, "max_request_size",  MAX_REQUEST_BUFFER_SIZE );
-	server.maxitemttl	  = gbConfigReadInt( &config, "max_item_ttl",      2592000 );
-	server.maxmem		  = gbConfigReadSize( &config, "max_memory",       2147483648 );
+	server.maxidletime    = gbConfigReadInt( &config, "max_idletime",      GBNET_DEFAULT_MAX_IDLE_TIME );
+	server.maxclients     = gbConfigReadInt( &config, "max_clients",       GBNET_DEFAULT_MAX_CLIENTS );
+	server.maxrequestsize = gbConfigReadInt( &config, "max_request_size",  GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE );
+	server.maxitemttl	  = gbConfigReadInt( &config, "max_item_ttl",      GB_DEFAULT_MAX_ITEM_TTL );
+	server.maxmem		  = gbConfigReadSize( &config, "max_memory",       GB_DEFAULT_MAX_MEMORY );
 	server.daemon		  = gbConfigReadInt( &config, "daemonize", 		   0 );
 	server.pidfile		  = gbConfigReadString( &config, "pidfile", "/var/run/gibson.pid" );
 	server.events 	      = gbCreateEventLoop( server.maxclients + 1024 );
 	server.clients 	      = ll_prealloc( server.maxclients );
-	server.cronperiod	  = 100;
+	server.cronperiod	  = 100; // TODO: Put in configuration
 	server.memused		  =
 	server.firstin		  =
 	server.lastin		  =
@@ -355,6 +383,8 @@ int main( int argc, char **argv)
 	server.nclients	      =
 	server.nitems	      =
 	server.shutdown		  = 0;
+
+	at_init_tree( server.tree );
 
 	char reqsize[0xFF] = {0},
 		 maxmem[0xFF] = {0};
@@ -369,30 +399,7 @@ int main( int argc, char **argv)
 	gbLog( INFO, "Max memory       : %s", maxmem );
 	gbLog( INFO, "Cron period      : %dms", server.cronperiod );
 
-	at_init_tree( server.tree );
-
-	if( server.daemon )
-		gbDaemonize();
-
-	// ignore SIGHUP and SIGPIPE since we're gonna handle dead clients
-    signal(SIGHUP, SIG_IGN);
-    signal(SIGPIPE, SIG_IGN);
-
-	// set SIGTERM custom handler
-    struct sigaction act;
-
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = 0;
-	act.sa_handler = gbSigTermHandler;
-	sigaction(SIGTERM, &act, NULL);
-
-	FILE *fp = fopen(server.pidfile,"w+t");
-	if (fp) {
-		fprintf(fp,"%d\n",(int)getpid());
-		fclose(fp);
-	}
-	else
-		gbLog( WARNING, "Error creating pid file %s.", server.pidfile );
+	gbProcessInit();
 
 	gbCreateTimeEvent( server.events, 1, gbServerCronHandler, &server, NULL );
 	gbCreateFileEvent( server.events, server.fd, GB_READABLE, gbAcceptHandler, &server );
