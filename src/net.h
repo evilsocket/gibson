@@ -37,6 +37,7 @@
 #include "atree.h"
 #include "llist.h"
 #include "mem.h"
+#include "default.h"
 
 #if defined(__sun)
 #define AF_LOCAL AF_UNIX
@@ -62,10 +63,6 @@
 #define GBNET_OK 0
 #define GBNET_ERR -1
 #define GBNET_ERR_LEN 256
-
-#define GBNET_DEFAULT_MAX_CLIENTS			  1024
-#define GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE 4096 * 1024
-#define GBNET_DEFAULT_MAX_IDLE_TIME			  1
 
 typedef unsigned char byte_t;
 

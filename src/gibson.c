@@ -37,8 +37,7 @@
 #include "atree.h"
 #include "query.h"
 #include "config.h"
-
-#define GB_DEFAULT_MAX_MEMORY 2147483648
+#include "default.h"
 
 static gbServer server;
 static atree_t  config;
@@ -326,14 +325,16 @@ void gbProcessInit(){
 
 int main( int argc, char **argv)
 {
-	// TODO: Read from configuration
-	gbConfigLoad( &config, "gibson.conf" );
+	// TODO: getopt --config && --help
+
+	// TODO: Read from command line or use default
+	gbConfigLoad( &config, GB_DEFAULT_CONFIGURATION );
 
 	gbLogInit
 	(
-	  gbConfigReadString( &config, "logfile", "/dev/stdout" ),
-	  gbConfigReadInt( &config, "loglevel", INFO ),
-	  gbConfigReadInt( &config, "logflushrate", INFO )
+	  gbConfigReadString( &config, "logfile", GB_DEAFULT_LOG_FILE ),
+	  gbConfigReadInt( &config, "loglevel", GB_DEFAULT_LOG_LEVEL ),
+	  gbConfigReadInt( &config, "logflushrate", GB_DEFAULT_LOG_FLUSH_LEVEL )
 	);
 
 	memset( &server, 0x00, sizeof(gbServer) );
@@ -349,8 +350,8 @@ int main( int argc, char **argv)
 		server.fd   = gbNetUnixServer( server.error, server.address, 0 );
 	}
 	else {
-		const char *address = gbConfigReadString( &config, "address", "127.0.0.1" );
-		int port = gbConfigReadInt( &config, "port", 10128 );
+		const char *address = gbConfigReadString( &config, "address", GB_DEFAULT_ADDRESS );
+		int port = gbConfigReadInt( &config, "port", GB_DEFAULT_PORT );
 
 		gbLog( INFO, "Creating tcp server socket on %s:%d ...", address, port );
 
@@ -368,14 +369,14 @@ int main( int argc, char **argv)
 
 	server.maxidletime    = gbConfigReadInt( &config, "max_idletime",      GBNET_DEFAULT_MAX_IDLE_TIME );
 	server.maxclients     = gbConfigReadInt( &config, "max_clients",       GBNET_DEFAULT_MAX_CLIENTS );
-	server.maxrequestsize = gbConfigReadInt( &config, "max_request_size",  GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE );
+	server.maxrequestsize = gbConfigReadSize( &config, "max_request_size", GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE );
 	server.maxitemttl	  = gbConfigReadInt( &config, "max_item_ttl",      GB_DEFAULT_MAX_ITEM_TTL );
 	server.maxmem		  = gbConfigReadSize( &config, "max_memory",       GB_DEFAULT_MAX_MEMORY );
 	server.daemon		  = gbConfigReadInt( &config, "daemonize", 		   0 );
-	server.pidfile		  = gbConfigReadString( &config, "pidfile", "/var/run/gibson.pid" );
+	server.cronperiod	  = gbConfigReadInt( &config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
+	server.pidfile		  = gbConfigReadString( &config, "pidfile",        GB_DEFAULT_PID_FILE );
 	server.events 	      = gbCreateEventLoop( server.maxclients + 1024 );
 	server.clients 	      = ll_prealloc( server.maxclients );
-	server.cronperiod	  = 100; // TODO: Put in configuration
 	server.memused		  =
 	server.firstin		  =
 	server.lastin		  =

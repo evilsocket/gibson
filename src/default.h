@@ -26,37 +26,31 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __QUERY_H__
-#define __QUERY_H__
+#ifndef __DEFAULT_H__
+#define __DEFAULT_H__
 
-#include <unistd.h>
-#include "net.h"
-#include "default.h"
+#define GB_DEFAULT_CONFIGURATION			  "gibson.conf"
 
-/*
- * Query
- */
-#define OP_SET 1
-#define OP_TTL 2
-#define OP_GET 3
-#define OP_DEL 4
-#define OP_INC 5
-#define OP_DEC 6
-#define OP_END 0xFF
-// TODO: LOCK UNLOCK
+#define GB_DEAFULT_LOG_FILE					  "/dev/stdout"
+#define GB_DEFAULT_LOG_LEVEL				  INFO
+#define GB_DEFAULT_LOG_FLUSH_LEVEL			  1
 
-/*
- * Reply
- */
-#define REPL_ERR 		   0
-#define REPL_ERR_NOT_FOUND 1
-#define REPL_ERR_NAN 	   2
-#define REPL_ERR_MEM	   3
-#define REPL_OK  		   4
-#define REPL_VAL 		   5
+#define GB_DEFAULT_UNIX_SOCKET				  "gibson.sock"
+#define GB_DEFAULT_ADDRESS					  "127.0.0.1"
+#define GB_DEFAULT_PORT						  10128
 
-gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl );
-void    gbDestroyItem( gbServer *server, gbItem *item );
-int     gbProcessQuery( gbClient *client );
+#define GB_DEFAULT_PID_FILE					  "/var/run/gibson.pid"
+
+#define GBNET_DEFAULT_MAX_CLIENTS			  1024
+#define GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE 4096 * 1024
+#define GBNET_DEFAULT_MAX_IDLE_TIME			  1
+
+#define GB_DEFAULT_MAX_ITEM_TTL 			  2592000
+// TODO: Read from configuration
+#define GB_DEFAULT_MAX_QUERY_KEY_SIZE   	  512
+#define GB_DEFAULT_MAX_QUERY_VALUE_SIZE       4096
+
+#define GB_DEFAULT_MAX_MEMORY  				  2147483648
+#define GB_DEFAULT_CRON_PERIOD 				  100
 
 #endif
