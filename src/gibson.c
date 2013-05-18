@@ -385,7 +385,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 
 			gbMemFormat( before - server->memused, freed,  0xFF );
 
-			gbLog( INFO, "Freed %s bytes, left %d items.", freed, server->nitems );
+			gbLog( INFO, "Freed %s, left %d items.", freed, server->nitems );
 
 			server->freeolderthan = 0;
 		}
