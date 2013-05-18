@@ -393,18 +393,17 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 
 	CRON_EVERY( server->maxidletime * 1000 ) {
 		// Check for clients in idle state for too long.
-		ll_item_t *item = NULL;
-		for( item = server->clients->head; item; item = item->next )
+		ll_foreach( server->clients, llitem )
 		{
-			gbClient *client = ll_data( gbClient *, item );
+			gbClient *client = ll_data( gbClient *, llitem );
 			if( client != NULL && ( now - client->seen ) > server->maxidletime )
 			{
 				gbLog( WARNING, "Removing dead client.", client );
 				gbClientDestroy(client);
 				// Do not break the loop but start again.
-				item = server->clients->head;
+				llitem = server->clients->head;
 				// Have we removed the only client?
-				if( !item )
+				if( !llitem )
 					break;
 			}
 		}
