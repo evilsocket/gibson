@@ -86,7 +86,7 @@ void *at_insert( atree_t *at, char *key, int len, void *value ){
 	return NULL;
 }
 
-void *at_find( atree_t *at, char *key, int len ){
+atree_t *at_find_node( atree_t *at, char *key, int len ){
 	atree_item_t *link = at;
 	int i = 0;
 
@@ -97,6 +97,12 @@ void *at_find( atree_t *at, char *key, int len ){
 		link = at_find_next_link( link, key[i++] );
 	}
 	while( --len && link );
+
+	return link;
+}
+
+void *at_find( atree_t *at, char *key, int len ){
+	atree_item_t *link = at_find_node( at, key, len );
 	/*
 	 * End of the chain, if e_marker is NULL this chain is not complete,
 	 * therefore 'key' does not map any alive object.
@@ -112,6 +118,26 @@ void at_recurse( atree_t *at, at_recurse_handler handler, void *data ) {
 	}
 
 	handler( at, data );
+}
+
+void at_search_recursive_handler(atree_item_t *node, void *data){
+	llist_t *list = data;
+
+	if( node->e_marker != NULL )
+		ll_append( list, node );
+}
+
+llist_t* at_search( atree_t *at, char *prefix ) {
+	llist_t *list = NULL;
+	atree_item_t *start = at_find_node( at, prefix, strlen(prefix) );
+
+	if( start ){
+		list = ll_prealloc(255);
+
+		at_recurse( start, at_search_recursive_handler, list );
+	}
+
+	return list;
 }
 
 void *at_remove( atree_t *at, char *key, int len ){

@@ -31,6 +31,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "llist.h"
+
 /*
  * Implementation of an n-ary tree, where each link is represented
  * by a char of a key and its links by next chars.
@@ -86,11 +88,8 @@ typedef void (*at_recurse_handler)(atree_item_t *, void *);
 
 void at_recurse( atree_t *at, at_recurse_handler handler, void *data );
 
-/*
- * TODO: Implement at_search
- *
- * void **at_search( atree_t *at, char *prefix, int *elements );
- */
+llist_t* at_search( atree_t *at, char *prefix );
+
 /*
  * Remove the object from the tree and return its pointer.
  */
