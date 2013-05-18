@@ -151,6 +151,8 @@ typedef struct gbServer
 	time_t 	 maxidletime;
 	size_t	 maxrequestsize;
 	size_t   maxitemttl;
+	unsigned long maxkeysize;
+	unsigned long maxvaluesize;
 	unsigned long memused;
 	unsigned long maxmem;
 	time_t	 freeolderthan;

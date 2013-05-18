@@ -96,12 +96,12 @@ int gbIsItemStillValid( gbItem *item, gbServer *server, char *key, size_t klen, 
 	return 1;
 }
 
-void gbParseKeyValue( byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen ){
+void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen ){
 	byte_t *p = buffer;
 
 	*key = p;
 
-	size_t i = 0, end = min( size, GB_DEFAULT_MAX_QUERY_KEY_SIZE );
+	size_t i = 0, end = min( size, server->maxkeysize );
 	while( *p != ' ' && i++ < end )
 	{
 		++p;
@@ -111,7 +111,7 @@ void gbParseKeyValue( byte_t *buffer, size_t size, byte_t **key, byte_t **value,
 
 	if( value ){
 		*value = p;
-		*vlen   = min( size - *klen - 1, GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
+		*vlen   = min( size - *klen - 1, server->maxvaluesize );
 	}
 }
 
@@ -123,7 +123,7 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 	gbItem *item = NULL;
 
 	if( server->memused <= server->maxmem ) {
-		gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
+		gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
 
 		item = gbCreateItem( server, gbMemDup( v, vlen ), vlen, PLAIN, -1 );
 		gbItem * old = at_insert( &server->tree, k, klen, item );
@@ -137,24 +137,13 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 }
 
 int gbQueryTtlHandler( gbClient *client, byte_t *p ){
-	byte_t *k = p,
+	byte_t *k = NULL,
 		   *v = NULL;
-	size_t i = 0, klen = 0, vlen = 0;
+	size_t klen = 0, vlen = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
-	size_t limit = client->buffer_size - sizeof(short),
-				   end;
 
-	end = min( limit, GB_DEFAULT_MAX_QUERY_KEY_SIZE );
-	while( *p != ' ' && i++ < end )
-	{
-		++p;
-	}
-
-	klen = p++ - k;
-	v    = p;
-	vlen = limit - klen - 1;
-	vlen = min( vlen, GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
+	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
 
 	item = at_find( &server->tree, k, klen );
 	if( item )
@@ -183,7 +172,7 @@ int gbQueryGetHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	gbItem *item = NULL;
 
-	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
+	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
 	item = at_find( &server->tree, k, klen );
 
@@ -200,7 +189,7 @@ int gbQueryDelHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	gbItem *item = NULL;
 
-	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
+	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
 	item = at_remove( &server->tree, k, klen );
 	if( item )
@@ -233,7 +222,7 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 	gbItem *item = NULL;
 	long num = 0;
 
-	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
+	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
 	item = at_find( &server->tree, k, klen );
 	if( item == NULL ) {
@@ -276,7 +265,7 @@ int gbQueryLockHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	gbItem *item = NULL;
 
-	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
+	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
 
 	item = at_find( &server->tree, k, klen );
 	if( item && gbIsItemStillValid( item, server, k, klen, 1 ) )
@@ -305,7 +294,7 @@ int gbQueryUnlockHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	gbItem *item = NULL;
 
-	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
+	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
 	item = at_remove( &server->tree, k, klen );
 	if( item && gbIsItemStillValid( item, server, k, klen, 1 ) )

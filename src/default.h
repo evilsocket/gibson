@@ -46,11 +46,11 @@
 #define GBNET_DEFAULT_MAX_IDLE_TIME			  1
 
 #define GB_DEFAULT_MAX_ITEM_TTL 			  2592000
-// TODO: Read from configuration
+
+#define GB_DEFAULT_MAX_MEMORY  				  2147483648
 #define GB_DEFAULT_MAX_QUERY_KEY_SIZE   	  512
 #define GB_DEFAULT_MAX_QUERY_VALUE_SIZE       4096
 
-#define GB_DEFAULT_MAX_MEMORY  				  2147483648
 #define GB_DEFAULT_CRON_PERIOD 				  100
 
 #endif
