@@ -49,6 +49,7 @@ gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding 
 	item->encoding = encoding;
 	item->time	   = time(NULL);
 	item->ttl	   = ttl;
+	item->lock	   = 0;
 
 	++server->nitems;
 	server->memused += size + sizeof( gbItem );
@@ -72,10 +73,15 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 }
 
 int gbIsItemStillValid( gbItem *item, gbServer *server, char *key, size_t klen, int remove ) {
+	time_t eta = server->time - item->time;
+
 	if( item->ttl > 0 )
 	{
-		if( ( server->time - item->time ) > item->ttl )
+		if( eta > item->ttl )
 		{
+			// item locked, skip
+			if( item->lock == -1 || eta < item->lock ) return 1;
+
 			gbLog( DEBUG, "TTL of %ds expired for item at %p.", item->ttl, item );
 
 			if( remove )
@@ -90,26 +96,34 @@ int gbIsItemStillValid( gbItem *item, gbServer *server, char *key, size_t klen, 
 	return 1;
 }
 
+void gbParseKeyValue( byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen ){
+	byte_t *p = buffer;
+
+	*key = p;
+
+	size_t i = 0, end = min( size, GB_DEFAULT_MAX_QUERY_KEY_SIZE );
+	while( *p != ' ' && i++ < end )
+	{
+		++p;
+	}
+
+	*klen = p++ - *key;
+
+	if( value ){
+		*value = p;
+		*vlen   = min( size - *klen - 1, GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
+	}
+}
+
 int gbQuerySetHandler( gbClient *client, byte_t *p ){
-	byte_t *k = p,
+	byte_t *k = NULL,
 		   *v = NULL;
-	size_t i = 0, klen = 0, vlen = 0;
+	size_t klen = 0, vlen = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
-	size_t limit = client->buffer_size - sizeof(short),
-				   end;
 
 	if( server->memused <= server->maxmem ) {
-		end = min( limit, GB_DEFAULT_MAX_QUERY_KEY_SIZE );
-		while( *p != ' ' && i++ < end )
-		{
-			++p;
-		}
-
-		klen = p++ - k;
-		v    = p;
-		vlen = limit - klen - 1;
-		vlen = min( vlen, GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
+		gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
 
 		item = gbCreateItem( server, gbMemDup( v, vlen ), vlen, PLAIN, -1 );
 		gbItem * old = at_insert( &server->tree, k, klen, item );
@@ -164,17 +178,13 @@ int gbQueryTtlHandler( gbClient *client, byte_t *p ){
 }
 
 int gbQueryGetHandler( gbClient *client, byte_t *p ){
-	byte_t *k = p;
-	size_t i = 0, klen = 0;
+	byte_t *k = NULL;
+	size_t klen = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
-	size_t limit = client->buffer_size - sizeof(short),
-				   end;
 
-	end = min( limit, GB_DEFAULT_MAX_QUERY_KEY_SIZE );
-	while( i++ < end ) ++p;
+	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
-	klen = p - k;
 	item = at_find( &server->tree, k, klen );
 
 	if( item && gbIsItemStillValid( item, server, k, klen, 1 ) )
@@ -185,28 +195,31 @@ int gbQueryGetHandler( gbClient *client, byte_t *p ){
 }
 
 int gbQueryDelHandler( gbClient *client, byte_t *p ){
-	byte_t *k = p;
-	size_t i = 0, klen = 0;
+	byte_t *k = NULL;
+	size_t klen = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
-	size_t limit = client->buffer_size - sizeof(short),
-				   end;
 
-	end = min( limit, GB_DEFAULT_MAX_QUERY_KEY_SIZE );
-	while( i++ < end ) ++p;
-
-	klen = p - k;
+	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
 	item = at_remove( &server->tree, k, klen );
 	if( item )
 	{
-		int valid = gbIsItemStillValid( item, server, k, klen, 0 );
+		time_t eta = server->time - item->time;
 
-		gbDestroyItem( server, item );
+		if( item->lock == -1 || eta < item->lock )
+			return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 
-		if( valid )
+		else
 		{
-			return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+			int valid = gbIsItemStillValid( item, server, k, klen, 0 );
+
+			gbDestroyItem( server, item );
+
+			if( valid )
+			{
+				return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+			}
 		}
 	}
 
@@ -214,18 +227,13 @@ int gbQueryDelHandler( gbClient *client, byte_t *p ){
 }
 
 int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
-	byte_t *k = p;
-	size_t i = 0, klen = 0;
+	byte_t *k = NULL;
+	size_t klen = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
-	size_t limit = client->buffer_size - sizeof(short),
-				   end;
 	long num = 0;
 
-	end = min( limit, GB_DEFAULT_MAX_QUERY_KEY_SIZE );
-	while( i++ < end ) ++p;
-
-	klen = p - k;
+	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
 	item = at_find( &server->tree, k, klen );
 	if( item == NULL ) {
@@ -261,6 +269,55 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 		return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 }
 
+int gbQueryLockHandler( gbClient *client, byte_t *p ){
+	byte_t *k = NULL,
+		   *v = NULL;
+	size_t klen = 0, vlen = 0;
+	gbServer *server = client->server;
+	gbItem *item = NULL;
+
+	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
+
+	item = at_find( &server->tree, k, klen );
+	if( item && gbIsItemStillValid( item, server, k, klen, 1 ) )
+	{
+		long locktime;
+
+		*( v + vlen ) = 0x00;
+
+		if( isNumeric( (const char *)v, &locktime ) )
+		{
+			item->time = time(NULL);
+			item->lock = locktime;
+
+			return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+		}
+		else
+			return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+}
+
+int gbQueryUnlockHandler( gbClient *client, byte_t *p ){
+	byte_t *k = NULL;
+	size_t klen = 0;
+	gbServer *server = client->server;
+	gbItem *item = NULL;
+
+	gbParseKeyValue( p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
+
+	item = at_remove( &server->tree, k, klen );
+	if( item && gbIsItemStillValid( item, server, k, klen, 1 ) )
+	{
+		item->lock = 0;
+
+		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+	}
+
+	return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+}
+
 int gbProcessQuery( gbClient *client ) {
 
 	short  op = *(short *)&client->buffer[0];
@@ -285,6 +342,14 @@ int gbProcessQuery( gbClient *client ) {
 	else if( op == OP_INC || op == OP_DEC )
 	{
 		return gbQueryIncDecHandler( client, p, op == OP_INC ? +1 : -1 );
+	}
+	else if( op == OP_LOCK )
+	{
+		return gbQueryLockHandler( client, p );
+	}
+	else if( op == OP_UNLOCK )
+	{
+		return gbQueryUnlockHandler( client, p );
 	}
 	else if( op == OP_END )
 	{

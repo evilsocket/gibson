@@ -32,12 +32,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <getopt.h>
 #include "log.h"
 #include "net.h"
 #include "atree.h"
 #include "query.h"
 #include "config.h"
 #include "default.h"
+#include "configure.h"
 
 static gbServer server;
 static atree_t  config;
@@ -198,13 +200,8 @@ void gbMemoryFreeHandler( atree_item_t *elem, void *data ) {
 
 	// item is older enough to be deleted
 	if( eta >= server->freeolderthan ) {
-		// item strictly locked, skip
-		if( item->lock == -1 )
-			return;
-
-		// still locked
-		else if( eta < item->lock )
-			return;
+		// item locked, skip
+		if( item->lock == -1 || eta < item->lock ) return;
 
 		// item is freeable
 		elem->e_marker = NULL;
@@ -323,12 +320,63 @@ void gbProcessInit(){
 		gbLog( WARNING, "Error creating pid file %s.", server.pidfile );
 }
 
+void gbHelpMenu( char **argv, int exitcode ){
+	printf( "Gibson cache server v%s\nCopyright %s\nReleased under %s\n\n", VERSION, AUTHOR, LICENSE );
+
+	printf( "%s [-h|--help] [-c|--config FILE]\n\n", argv[0] );
+
+	printf("  -h, --help          print this help and exit\n");
+	printf("  -c, --config FILE   set configuration file to load\n\n");
+
+	exit(exitcode);
+}
+
 int main( int argc, char **argv)
 {
-	// TODO: getopt --config && --help
+	int c, option_index = 0;
 
-	// TODO: Read from command line or use default
-	gbConfigLoad( &config, GB_DEFAULT_CONFIGURATION );
+	static struct option long_options[] =
+	{
+		{"help",    no_argument,       0, 'h'},
+		{"config",  required_argument, 0, 'c'},
+		{0, 0, 0, 0}
+	};
+
+    char *configuration = GB_DEFAULT_CONFIGURATION;
+
+    while (1)
+    {
+    	c = getopt_long( argc, argv, "hc:", long_options, &option_index );
+    	if( c == -1 )
+    		break;
+
+    	switch (c)
+		{
+			case 0:
+				/* If this option set a flag, do nothing else now. */
+				if (long_options[option_index].flag != 0)
+					break;
+
+			break;
+
+			case 'h':
+
+				gbHelpMenu(argv,0);
+
+			break;
+
+			case 'c':
+
+				configuration = optarg;
+
+			break;
+
+			default:
+				gbHelpMenu(argv,1);
+		}
+    }
+
+    gbConfigLoad( &config, configuration );
 
 	gbLogInit
 	(

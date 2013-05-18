@@ -42,8 +42,11 @@
 #define OP_DEL 4
 #define OP_INC 5
 #define OP_DEC 6
+#define OP_LOCK 7
+#define OP_UNLOCK 8
 #define OP_END 0xFF
-// TODO: LOCK UNLOCK
+
+// TODO: REL
 
 /*
  * Reply
@@ -52,8 +55,9 @@
 #define REPL_ERR_NOT_FOUND 1
 #define REPL_ERR_NAN 	   2
 #define REPL_ERR_MEM	   3
-#define REPL_OK  		   4
-#define REPL_VAL 		   5
+#define REPL_ERR_LOCKED    4
+#define REPL_OK  		   5
+#define REPL_VAL 		   6
 
 gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl );
 void    gbDestroyItem( gbServer *server, gbItem *item );

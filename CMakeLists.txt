@@ -7,10 +7,10 @@ OPTION( WITH_DEBUG "enable debug module" OFF )
 # cmake needed modules
 include(CheckIncludeFiles)
 
-# config variables
+# configure variables
 set( PROJECT "gibson" )
-set( AUTHOR "Simone Margaritelli" )
-
+set( AUTHOR "Simone Margaritelli <evilsocket at gmail dot com>" )
+set( LICENSE "BSD License" )
 set( MAJOR_VERSION 1 )
 set( MINOR_VERSION 0 )
 set( PATCH_LEVEL   0 )
@@ -31,6 +31,9 @@ set( COMMON_CFLAGS "-w -Wunused ${OPTIMIZATION}" )
 
 file( GLOB_RECURSE MAIN_SOURCES src/*.c )
 file( GLOB_RECURSE HEADERS src/*.h )
+
+# configure.h generation
+configure_file( src/configure.h.in src/configure.h )
 
 # generation
 add_executable( ${PROJECT} ${MAIN_SOURCES} ) 
