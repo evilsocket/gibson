@@ -226,7 +226,7 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 	}
 	else if (nwrote == 0)
 	{
-		gbLog( INFO, "Client closed connection.");
+		gbLog( DEBUG, "Client closed connection.");
 		gbClientDestroy(client);
 		return;
 	}
@@ -288,7 +288,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 	}
 	else if (nread == 0)
 	{
-		gbLog( INFO, "Client closed connection.");
+		gbLog( DEBUG, "Client closed connection.");
 		gbClientDestroy(client);
 		return;
 	}
@@ -330,7 +330,7 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
     	gbLog( WARNING, "Dropping connection, current clients = %d, max = %d.", server->nclients, server->maxclients );
     }
 
-    gbLog( INFO, "New connection from %s:%d", *client_ip ? client_ip : server->address, client_port );
+    gbLog( DEBUG, "New connection from %s:%d", *client_ip ? client_ip : server->address, client_port );
 
 	if (client_fd != -1) {
 		gbNetNonBlock(NULL,client_fd);
