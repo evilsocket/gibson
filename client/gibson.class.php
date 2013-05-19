@@ -71,8 +71,12 @@ class Gibson
 		}
 	}
 	
-	public function set( $key, $value ){
-		return $this->sendCommandAssert( self::CMD_SET, "$key $value", self::REPL_VAL );
+	public function set( $key, $value, $ttl = 0 ){
+		$reply = $this->sendCommandAssert( self::CMD_SET, "$key $value", self::REPL_VAL );
+		if( $reply !== FALSE && $ttl > 0 )
+			$this->ttl( $key, $ttl );
+		
+		return $reply;
 	}
 
 	public function ttl( $key, $ttl ){
