@@ -174,7 +174,7 @@ typedef struct gbServer
 	size_t   maxitemttl;
 	// data bigger then this is going to be compressed
 	unsigned long compression;
-	// buffer used for lzf decompression, alloc'd only once
+	// buffer used for lzf (de)compression, alloc'd only once
 	byte_t *lzf_buffer;
 	// maximum size of an item key
 	unsigned long maxkeysize;

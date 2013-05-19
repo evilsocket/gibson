@@ -132,19 +132,17 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 
 		// should we compress ?
 		if( vlen > server->compression ){
-			data 	 = malloc( vlen );
-			comprlen = lzf_compress( v, vlen, data, needcompr );
+			comprlen = lzf_compress( v, vlen, server->lzf_buffer, needcompr );
 			// not enough compression
 			if( comprlen == 0 ){
 				encoding = PLAIN;
-				data     = realloc( data, vlen );
-				memcpy( data, v, vlen );
+				data	 = gbMemDup( v, vlen );
 			}
 			// succesfully compressed
 			else {
 				encoding = COMPRESSED;
 				vlen 	 = comprlen;
-				data 	 = realloc( data, vlen );
+				data 	 = gbMemDup( server->lzf_buffer, comprlen );
 			}
 		}
 		else {
