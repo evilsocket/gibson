@@ -127,9 +127,9 @@ void at_search_recursive_handler(atree_item_t *node, void *data){
 		ll_append( list, node );
 }
 
-llist_t* at_search( atree_t *at, char *prefix ) {
+llist_t* at_search( atree_t *at, char *prefix, int len ) {
 	llist_t *list = NULL;
-	atree_item_t *start = at_find_node( at, prefix, strlen(prefix) );
+	atree_item_t *start = at_find_node( at, prefix, len );
 
 	if( start ){
 		list = ll_prealloc(255);

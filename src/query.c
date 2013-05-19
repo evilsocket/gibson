@@ -128,7 +128,9 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 		item = gbCreateItem( server, gbMemDup( v, vlen ), vlen, PLAIN, -1 );
 		gbItem * old = at_insert( &server->tree, k, klen, item );
 		if( old )
+		{
 			gbDestroyItem( server, old );
+		}
 
 		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 	}

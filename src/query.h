@@ -36,17 +36,17 @@
 /*
  * Query
  */
-#define OP_SET 1
-#define OP_TTL 2
-#define OP_GET 3
-#define OP_DEL 4
-#define OP_INC 5
-#define OP_DEC 6
-#define OP_LOCK 7
+#define OP_SET    1
+#define OP_TTL    2
+#define OP_GET    3
+#define OP_DEL    4
+#define OP_INC    5
+#define OP_DEC    6
+#define OP_LOCK   7
 #define OP_UNLOCK 8
-#define OP_END 0xFF
+#define OP_SEARCH 9
+#define OP_END    0xFF
 
-// TODO: REL
 
 /*
  * Reply

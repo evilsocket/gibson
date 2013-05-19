@@ -88,7 +88,7 @@ typedef void (*at_recurse_handler)(atree_item_t *, void *);
 
 void at_recurse( atree_t *at, at_recurse_handler handler, void *data );
 
-llist_t* at_search( atree_t *at, char *prefix );
+llist_t* at_search( atree_t *at, char *prefix, int len );
 
 /*
  * Remove the object from the tree and return its pointer.
