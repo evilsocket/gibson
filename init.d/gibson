@@ -1,0 +1,89 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:	  gibson
+# Required-Start:    $local_fs $remote_fs $network $syslog $named
+# Required-Stop:     $local_fs $remote_fs $network $syslog $named
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: starts the gibson cache server
+# Description:       starts gibson using start-stop-daemon
+### END INIT INFO
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/sbin/gibson
+NAME=gibson
+DESC=gibson
+
+# Include gibson defaults if available
+if [ -f /etc/default/gibson ]; then
+	. /etc/default/gibson
+fi
+
+test -x $DAEMON || exit 0
+
+set -e
+
+. /lib/lsb/init-functions
+
+PID=$(awk -F'[ ;]' '$1 !~ /^#/ && /pid/ {print $2}' /etc/gibson/gibson.conf)
+if [ -z "$PID" ]
+then
+  PID=/var/run/gibson.pid
+fi
+
+# Check if the ULIMIT is set in /etc/default/gibson
+if [ -n "$ULIMIT" ]; then
+  # Set the ulimits
+  ulimit $ULIMIT
+fi
+
+start() {
+		start-stop-daemon --start --quiet --pidfile $PID \
+			--retry 5 --exec $DAEMON --oknodo -- $DAEMON_OPTS
+}
+
+stop() {
+		start-stop-daemon --stop --quiet --pidfile $PID \
+			--retry 5 --oknodo --exec $DAEMON
+}
+
+case "$1" in
+	start)
+		log_daemon_msg "Starting $DESC" "$NAME"
+		start
+		log_end_msg $?
+		;;
+
+	stop)
+		log_daemon_msg "Stopping $DESC" "$NAME"
+		stop
+		log_end_msg $?
+		;;
+
+	restart|force-reload)
+		log_daemon_msg "Restarting $DESC" "$NAME"
+		stop
+		sleep 1
+		start
+		log_end_msg $?
+		;;
+
+	reload)
+		log_daemon_msg "Reloading $DESC configuration" "$NAME"
+		start-stop-daemon --stop --signal HUP --quiet --pidfile $PID \
+			--oknodo --exec $DAEMON
+		log_end_msg $?
+		;;
+
+	status)
+		status_of_proc -p $PID "$DAEMON" gibson
+		;;
+
+	*)
+		echo "Usage: $NAME {start|stop|restart|reload|force-reload|status}" >&2
+		exit 1
+		;;
+esac
+
+exit 0
