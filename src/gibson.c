@@ -395,23 +395,20 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 	server->time = now;
 
 	CRON_EVERY( 15000 ) {
-		unsigned long before = server->memused;
-
-		gbLog( INFO, "Running TTL cron handler ..." );
+		unsigned long before = server->memused, deleted;
 
 		at_recurse( &server->tree, gbHandleDeadTTLHandler, server );
 
-		gbMemFormat( before - server->memused, freed,  0xFF );
+		deleted = before - server->memused;
 
-		gbLog( INFO, "Freed %s, left %d items.", freed, server->nitems );
+		if( deleted > 0 ){
+			gbMemFormat( deleted, freed,  0xFF );
+
+			gbLog( INFO, "Freed %s of expired data, left %d items.", freed, server->nitems );
+		}
 	}
 
 	CRON_EVERY( 5000 ) {
-		gbMemFormat( server->memused, used, 0xFF );
-		gbMemFormat( server->maxmem,  max,  0xFF );
-
-		gbLog( INFO, "%s/%s, clients = %d, stored items = %d", used, max, server->nclients, server->nitems );
-
 		if( server->memused > server->maxmem ){
 			// TODO: Implement a better algorithm for this!
 			time_t delta = ( server->time - server->firstin ) / 5.0;
@@ -447,6 +444,13 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 					break;
 			}
 		}
+	}
+
+	CRON_EVERY( 15000 ){
+		gbMemFormat( server->memused, used, 0xFF );
+		gbMemFormat( server->maxmem,  max,  0xFF );
+
+		gbLog( INFO, "%s/%s, clients = %d, stored items = %d", used, max, server->nclients, server->nitems );
 	}
 
 	if( server->shutdown )
