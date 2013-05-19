@@ -130,63 +130,106 @@ gbServerType;
 
 typedef struct gbServer
 {
+	// the main event loop structure
 	gbEventLoop *events;
+	// error buffer
 	char 	 error[0xFF];
+	// tcp port to use
 	int 	 port;
+	// tcp address or unix socket path to use
 	char     address[0xFF];
+	// TCP or UNIX
 	gbServerType type;
+	// 1 if we're running in daemon mode, otherwise 0
 	byte_t	 daemon;
+	// path of the pidfile
 	char	*pidfile;
+	// the main object container
 	atree_t  tree;
+	// server main file descriptor
 	int 	 fd;
+	// server time updated every cron loop
 	time_t 	 time;
+	// time of the first created object
 	time_t   firstin;
+	// time of the last created object
 	time_t	 lastin;
+	// list of currently connected clients
 	llist_t *clients;
+	// number of items stored in the container
 	uint     nitems;
+	// number of currently connected clients
 	uint 	 nclients;
+	// period in milliseconds of the cron loop
 	uint	 cronperiod;
+	// number of cron loops performed
 	uint	 crondone;
+	// maximum number of connected clients
 	uint 	 maxclients;
+	// maximum number of seconds a client can stay idle before being disconnected
 	time_t 	 maxidletime;
+	// maximum size of a request
 	size_t	 maxrequestsize;
+	// maximum number of seconds of an item TTL
 	size_t   maxitemttl;
+	// maximum size of an item key
 	unsigned long maxkeysize;
+	// maximum size of an item value
 	unsigned long maxvaluesize;
+	// currently used memory
 	unsigned long memused;
+	// maximum size of used memory
 	unsigned long maxmem;
-	time_t	 freeolderthan;
+	// number of seconds less than an object will be freed if memused >= maxmem
+	time_t	 gcdelta;
+	// flag to say the server to shutdown ASAP
 	int		 shutdown;
 }
 gbServer;
 
 typedef struct gbClient
 {
+	// main client file descriptor
 	int		  fd;
+	// client request/response buffer
 	byte_t   *buffer;
+	// client request/response buffer size
 	int		  buffer_size;
+	// number of bytes currently read
 	int		  read;
+	// number of bytes currently wrote
 	int 	  wrote;
+	// last time this client was seen alive
 	time_t    seen;
+	// pointer to the main server structure
 	gbServer *server;
+	// flag to make the client disconnect after the next I/O operation
 	byte_t	  shutdown;
 }
 gbClient;
 
 typedef enum
 {
+	// the item is in plain encoding and data points to its buffer
 	PLAIN  = 0x00,
+	// the item contains a number and data pointer is actually that number
 	NUMBER
 }
 gbItemEncoding;
 
 typedef struct
 {
+	// the item buffer
 	void  		  *data;
+	// the item buffer size
 	size_t 		   size;
+	// the item encoding
 	gbItemEncoding encoding;
+	// time the item was created
 	time_t		   time;
+	// TTL of this item
 	int			   ttl;
+	// flag to lock the item
 	int			   lock;
 }
 gbItem;

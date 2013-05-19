@@ -257,13 +257,9 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 		client->buffer_size = *(int *)client->buffer;
 		client->read = 0;
 
-		if( client->buffer_size <= server->maxrequestsize && client->buffer_size >= 0 )
+		if( client->buffer_size > server->maxrequestsize || client->buffer_size < 0 )
 		{
-			client->buffer = realloc( client->buffer, client->buffer_size );
-		}
-		else
-		{
-			gbLog( WARNING, "Client request %d > server->maxrequestsize or < 0 .", client->buffer_size );
+			gbLog( WARNING, "Client request size %d invalid.", client->buffer_size );
 			gbClientDestroy(client);
 			return;
 		}
@@ -310,37 +306,37 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 }
 
 void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
-    int cport, cfd;
-    char cip[128] = {0};
+    int client_port, client_fd;
+    char client_ip[128] = {0};
     gbServer *server = (gbServer *)privdata;
 
     if( server->type == TCP )
-    	cfd = gbNetTcpAccept( server->error, fd, cip, &cport );
+    	client_fd = gbNetTcpAccept( server->error, fd, client_ip, &client_port );
     else
-    	cfd = gbNetUnixAccept( server->error, fd );
+    	client_fd = gbNetUnixAccept( server->error, fd );
 
-    if (cfd == GB_ERR) {
+    if (client_fd == GB_ERR) {
     	gbLog( WARNING, "Error accepting client connection: %s", server->error );
         return;
     }
     else if( server->nclients >= server->maxclients )
     {
-    	close(cfd);
+    	close(client_fd);
     	gbLog( WARNING, "Dropping connection, current clients = %d, max = %d.", server->nclients, server->maxclients );
     }
 
-    gbLog( INFO, "New connection from %s:%d", *cip ? cip : server->address, cport );
+    gbLog( INFO, "New connection from %s:%d", *client_ip ? client_ip : server->address, client_port );
 
-	if (cfd != -1) {
-		gbNetNonBlock(NULL,cfd);
-		gbNetEnableTcpNoDelay(NULL,cfd);
+	if (client_fd != -1) {
+		gbNetNonBlock(NULL,client_fd);
+		gbNetEnableTcpNoDelay(NULL,client_fd);
 
-	    gbClient *client = gbClientCreate(cfd,server);
+	    gbClient *client = gbClientCreate(client_fd,server);
 
-		if ( gbCreateFileEvent( e, cfd, GB_READABLE, gbReadQueryHandler, client ) == GB_ERR )
+		if ( gbCreateFileEvent( e, client_fd, GB_READABLE, gbReadQueryHandler, client ) == GB_ERR )
 		{
 			gbClientDestroy( client );
-			close(cfd);
+			close(client_fd);
 			return;
 		}
 	}
@@ -352,7 +348,7 @@ void gbMemoryFreeHandler( atree_item_t *elem, void *data ) {
 	time_t	  eta = item ? ( server->time - item->time ) : 0;
 
 	// item is older enough to be deleted
-	if( eta >= server->freeolderthan ) {
+	if( eta >= server->gcdelta ) {
 		// item locked, skip
 		if( item->lock == -1 || eta < item->lock ) return;
 
@@ -382,12 +378,13 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		gbLog( INFO, "%s/%s, clients = %d, stored items = %d", used, max, server->nclients, server->nitems );
 
 		if( server->memused > server->maxmem ){
-			time_t delta = ( server->time - server->firstin ) / 2.0;
+			// TODO: Implement a better algorithm for this!
+			time_t delta = ( server->time - server->firstin ) / 5.0;
 			unsigned long before = server->memused;
 
 			gbLog( WARNING, "Max memory exhausted, trying to free data older than %ds.", delta );
 
-			server->freeolderthan = delta;
+			server->gcdelta = delta;
 
 			at_recurse( &server->tree, gbMemoryFreeHandler, server );
 
@@ -395,7 +392,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 
 			gbLog( INFO, "Freed %s, left %d items.", freed, server->nitems );
 
-			server->freeolderthan = 0;
+			server->gcdelta = 0;
 		}
 	}
 

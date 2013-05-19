@@ -890,13 +890,13 @@ int gbNetSockName(int fd, char *ip, int *port) {
 gbClient* gbClientCreate( int fd, gbServer *server  ){
 	gbClient *client = (gbClient *)malloc( sizeof( gbClient ) );
 
-	client->fd = fd;
-	client->buffer = (byte_t *)calloc( 1, sizeof( client->buffer_size ) );
+	client->fd 			= fd;
+	client->buffer 		= malloc( server->maxrequestsize );
 	client->buffer_size = -1;
-	client->read = 0;
-	client->wrote = 0;
-	client->server = server;
-	client->shutdown = 0;
+	client->read 		= 0;
+	client->wrote 		= 0;
+	client->server 		= server;
+	client->shutdown 	= 0;
 
 	ll_append( server->clients, client );
 
@@ -906,14 +906,10 @@ gbClient* gbClientCreate( int fd, gbServer *server  ){
 }
 
 void gbClientReset( gbClient *client ){
-	if( client->buffer != NULL )
-		free( client->buffer );
-
-	client->buffer = (byte_t *)calloc( 1, sizeof( client->buffer_size ) );
 	client->buffer_size = -1;
-	client->read = 0;
-	client->wrote = 0;
-	client->shutdown = 0;
+	client->read 		= 0;
+	client->wrote 		= 0;
+	client->shutdown 	= 0;
 }
 
 void gbClientDestroy( gbClient *client ){
@@ -949,7 +945,10 @@ int gbClientEnqueueData( gbClient *client, short code, byte_t *reply, size_t siz
 				   sizeof( size_t ) + // data length
 				   size;			  // data
 
-	client->buffer 		= (byte_t *)realloc( client->buffer, rsize );
+	// realloc only if needed
+	if( rsize > client->server->maxrequestsize )
+		client->buffer = (byte_t *)realloc( client->buffer, rsize );
+
 	client->buffer_size = rsize;
 	client->read  		= 0;
 	client->wrote 		= 0;
