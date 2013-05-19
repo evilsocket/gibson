@@ -127,7 +127,7 @@ int main( int argc, char **argv)
 		unlink( server.address );
 
 		server.type	= UNIX;
-		server.fd   = gbNetUnixServer( server.error, server.address, 0 );
+		server.fd   = gbNetUnixServer( server.error, server.address, 0777 );
 	}
 	else {
 		const char *address = gbConfigReadString( &config, "address", GB_DEFAULT_ADDRESS );
@@ -139,7 +139,7 @@ int main( int argc, char **argv)
 
 		server.type	= TCP;
 		server.port	= port;
-		server.fd   = gbNetUnixServer( server.error, server.address, 0 );
+		server.fd   = gbNetTcpServer( server.error, server.address, 0 );
 	}
 
 	if( server.fd == GBNET_ERR ){
