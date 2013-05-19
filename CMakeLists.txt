@@ -8,6 +8,7 @@ OPTION( WITH_DEBUG "enable debug module" OFF )
 include(CheckIncludeFiles)
 
 # configure variables
+set( PREFIX usr )
 set( PROJECT "gibson" )
 set( AUTHOR "Simone Margaritelli <evilsocket at gmail dot com>" )
 set( LICENSE "BSD License" )
@@ -39,3 +40,5 @@ configure_file( src/configure.h.in src/configure.h )
 add_executable( ${PROJECT} ${MAIN_SOURCES} ) 
 set_target_properties( ${PROJECT} PROPERTIES COMPILE_FLAGS "${COMMON_CFLAGS}" )
 
+install( TARGETS ${PROJECT} DESTINATION /${PREFIX}/sbin )
+install( FILES ${PROJECT}.conf DESTINATION /etc/gibson )

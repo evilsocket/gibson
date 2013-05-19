@@ -29,13 +29,13 @@
 #ifndef __DEFAULT_H__
 #define __DEFAULT_H__
 
-#define GB_DEFAULT_CONFIGURATION			  "gibson.conf"
+#define GB_DEFAULT_CONFIGURATION			  "/etc/gibson/gibson.conf"
 
 #define GB_DEAFULT_LOG_FILE					  "/dev/stdout"
 #define GB_DEFAULT_LOG_LEVEL				  INFO
 #define GB_DEFAULT_LOG_FLUSH_LEVEL			  1
 
-#define GB_DEFAULT_UNIX_SOCKET				  "gibson.sock"
+#define GB_DEFAULT_UNIX_SOCKET				  "/var/run/gibson.sock"
 #define GB_DEFAULT_ADDRESS					  "127.0.0.1"
 #define GB_DEFAULT_PORT						  10128
 
