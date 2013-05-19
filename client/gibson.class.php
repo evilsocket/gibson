@@ -54,7 +54,7 @@ class Gibson
 	const REPL_VAL 		     = 6;
 
 	public function __construct( $address ){
-		$this->sd 		  = fsockopen( $address, NULL );
+		$this->sd 		  = @fsockopen( $address, NULL );
 		$this->last_error = self::REPL_OK;
 	}
 	
@@ -125,29 +125,35 @@ class Gibson
  	}
 
 	private function sendCommand( $cmd, $data ){
-	    $cmd = pack( 'S', $cmd ).$data;
-	    $cmd = pack( 'I', strlen($cmd) ).$cmd;
-	    @fwrite( $this->sd, $cmd );
-	
-	    $reply = '';
-	    $data  = '';
-	
-	    $opcode = fread( $this->sd, 2 );
-	    $opcode = unpack( 'S', $opcode );
-	    $opcode = $opcode[1];
 		
-	    $length = fread( $this->sd, PHP_INT_SIZE );
-	    $length = unpack( 'I', $length );
-	    $length = $length[1];
+		if( $this->sd )
+		{
+		    $cmd = pack( 'S', $cmd ).$data;
+		    $cmd = pack( 'I', strlen($cmd) ).$cmd;
+		    @fwrite( $this->sd, $cmd );
 		
-	    $read = 0;
-	    
-	    while( $read < $length ){
-	    	$reply .= fread( $this->sd, $length - $read );
-	    	$read = strlen($reply);
-	    }
-	    	
-	    return array( $opcode, $reply );
+		    $reply = '';
+		    $data  = '';
+		
+		    $opcode = fread( $this->sd, 2 );
+		    $opcode = unpack( 'S', $opcode );
+		    $opcode = $opcode[1];
+			
+		    $length = fread( $this->sd, PHP_INT_SIZE );
+		    $length = unpack( 'I', $length );
+		    $length = $length[1];
+			
+		    $read = 0;
+		    
+		    while( $read < $length ){
+		    	$reply .= fread( $this->sd, $length - $read );
+		    	$read = strlen($reply);
+		    }
+		    	
+		    return array( $opcode, $reply );
+		}
+		else
+			return array( self::REPL_ERR, NULL );
 	}
 }
 
