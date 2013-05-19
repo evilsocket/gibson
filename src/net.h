@@ -172,6 +172,10 @@ typedef struct gbServer
 	size_t	 maxrequestsize;
 	// maximum number of seconds of an item TTL
 	size_t   maxitemttl;
+	// data bigger then this is going to be compressed
+	unsigned long compression;
+	// buffer used for lzf decompression, alloc'd only once
+	byte_t *lzf_buffer;
 	// maximum size of an item key
 	unsigned long maxkeysize;
 	// maximum size of an item value
@@ -208,11 +212,12 @@ typedef struct gbClient
 }
 gbClient;
 
-// TODO: Implement COMPRESSED
 typedef enum
 {
 	// the item is in plain encoding and data points to its buffer
 	PLAIN  = 0x00,
+	// PLAIN but compressed data with lzf
+	COMPRESSED,
 	// the item contains a number and data pointer is actually that number
 	NUMBER
 }

@@ -31,6 +31,7 @@
  */
 #include "atree.h"
 #include "net.h"
+#include "lzf.h"
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -971,6 +972,17 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
 
 	if( item->encoding == PLAIN ){
 		return gbClientEnqueueData( client, code, item->data, item->size, proc, shutdown );
+	}
+	else if( item->encoding == COMPRESSED ){
+		size_t declen = lzf_decompress
+		(
+			item->data,
+			item->size,
+			client->server->lzf_buffer,
+			client->server->maxrequestsize
+		);
+
+		return gbClientEnqueueData( client, code, client->server->lzf_buffer, declen, proc, shutdown );
 	}
 	else if( item->encoding == NUMBER ){
 		long num = (long)item->data;

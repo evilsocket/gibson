@@ -29,6 +29,7 @@
 #include "query.h"
 #include "log.h"
 #include "atree.h"
+#include "lzf.h"
 
 #define min(a,b) ( a < b ? a : b )
 
@@ -125,7 +126,33 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 	if( server->memused <= server->maxmem ) {
 		gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
 
-		item = gbCreateItem( server, gbMemDup( v, vlen ), vlen, PLAIN, -1 );
+		gbItemEncoding encoding = PLAIN;
+		void *data = v;
+		size_t comprlen = vlen, needcompr = vlen - 4; // compress at least of 4 bytes
+
+		// should we compress ?
+		if( vlen > server->compression ){
+			data 	 = malloc( vlen );
+			comprlen = lzf_compress( v, vlen, data, needcompr );
+			// not enough compression
+			if( comprlen == 0 ){
+				encoding = PLAIN;
+				data     = realloc( data, vlen );
+				memcpy( data, v, vlen );
+			}
+			// succesfully compressed
+			else {
+				encoding = COMPRESSED;
+				vlen 	 = comprlen;
+				data 	 = realloc( data, vlen );
+			}
+		}
+		else {
+			encoding = PLAIN;
+			data = gbMemDup( v, vlen );
+		}
+
+		item = gbCreateItem( server, data, vlen, encoding, -1 );
 		gbItem * old = at_insert( &server->tree, k, klen, item );
 		if( old )
 		{

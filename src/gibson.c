@@ -154,11 +154,13 @@ int main( int argc, char **argv)
 	server.maxmem		  = gbConfigReadSize( &config, "max_memory",       GB_DEFAULT_MAX_MEMORY );
 	server.maxkeysize	  = gbConfigReadSize( &config, "max_key_size",     GB_DEFAULT_MAX_QUERY_KEY_SIZE );
 	server.maxvaluesize	  = gbConfigReadSize( &config, "max_value_size",   GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
+	server.compression	  = gbConfigReadSize( &config, "compression",	   GB_DEFAULT_COMPRESSION );
 	server.daemon		  = gbConfigReadInt( &config, "daemonize", 		   0 );
 	server.cronperiod	  = gbConfigReadInt( &config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
 	server.pidfile		  = gbConfigReadString( &config, "pidfile",        GB_DEFAULT_PID_FILE );
 	server.events 	      = gbCreateEventLoop( server.maxclients + 1024 );
 	server.clients 	      = ll_prealloc( server.maxclients );
+	server.lzf_buffer	  = malloc( server.maxrequestsize );
 	server.memused		  =
 	server.firstin		  =
 	server.lastin		  =
@@ -172,12 +174,14 @@ int main( int argc, char **argv)
 	char reqsize[0xFF] = {0},
 		 maxmem[0xFF] = {0},
 		 maxkey[0xFF] = {0},
-		 maxvalue[0xFF] = {0};
+		 maxvalue[0xFF] = {0},
+		 compr[0xFF] = {0};
 
 	gbMemFormat( server.maxrequestsize, reqsize, 0xFF );
 	gbMemFormat( server.maxmem, maxmem, 0xFF );
 	gbMemFormat( server.maxkeysize, maxkey, 0xFF );
 	gbMemFormat( server.maxvaluesize, maxvalue, 0xFF );
+	gbMemFormat( server.compression, compr, 0xFF );
 
 	gbLog( INFO, "Server starting ..." );
 	gbLog( INFO, "Max idle time    : %ds", server.maxidletime );
@@ -186,6 +190,7 @@ int main( int argc, char **argv)
 	gbLog( INFO, "Max memory       : %s", maxmem );
 	gbLog( INFO, "Max key size     : %s", maxkey );
 	gbLog( INFO, "Max value size   : %s", maxvalue );
+	gbLog( INFO, "Data LZF compr.  : %s", compr );
 	gbLog( INFO, "Cron period      : %dms", server.cronperiod );
 
 	gbProcessInit();
