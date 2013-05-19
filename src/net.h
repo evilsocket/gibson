@@ -208,6 +208,7 @@ typedef struct gbClient
 }
 gbClient;
 
+// TODO: Implement COMPRESSED
 typedef enum
 {
 	// the item is in plain encoding and data points to its buffer
