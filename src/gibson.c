@@ -364,6 +364,25 @@ void gbMemoryFreeHandler( atree_item_t *elem, void *data ) {
 	}
 }
 
+void gbHandleDeadTTLHandler( atree_item_t *elem, void *data ){
+	gbServer *server = data;
+	gbItem	 *item = elem->e_marker;
+	time_t	  eta = item ? ( server->time - item->time ) : 0;
+
+	// item is older enough to be deleted
+	if( item && item->ttl > 0 && eta >= item->ttl ) {
+		// item locked, skip
+		if( item->lock == -1 || eta < item->lock ) return;
+
+		gbLog( DEBUG, "TTL of %ds expired for item at %p.", item->ttl, item );
+
+		// item is freeable
+		elem->e_marker = NULL;
+
+		gbDestroyItem( server, item );
+	}
+}
+
 #define CRON_EVERY(_ms_) if ((_ms_ <= server->cronperiod) || !(server->crondone%((_ms_)/server->cronperiod)))
 
 int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data) {
@@ -375,8 +394,19 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 
 	server->time = now;
 
-	CRON_EVERY( 5000 ) {
+	CRON_EVERY( 15000 ) {
+		unsigned long before = server->memused;
 
+		gbLog( INFO, "Running TTL cron handler ..." );
+
+		at_recurse( &server->tree, gbHandleDeadTTLHandler, server );
+
+		gbMemFormat( before - server->memused, freed,  0xFF );
+
+		gbLog( INFO, "Freed %s, left %d items.", freed, server->nitems );
+	}
+
+	CRON_EVERY( 5000 ) {
 		gbMemFormat( server->memused, used, 0xFF );
 		gbMemFormat( server->maxmem,  max,  0xFF );
 
