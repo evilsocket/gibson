@@ -2,7 +2,7 @@ Gibson
 ---
 
 A high performance pure cache server.  
-** ( Still under heavy development, do not use in production environments ) **  
+**Still under heavy development, do not use in production environments**  
 <http://www.emoticode.net/>  
 <http://www.evilsocket.net/>
 
