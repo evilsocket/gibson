@@ -67,7 +67,7 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	--server->nitems;
 	server->memused -= item->size + sizeof( gbItem );
 
-	if( item->encoding == PLAIN && item->data != NULL )
+	if( item->encoding != NUMBER && item->data != NULL )
 		free( item->data );
 
 	free( item );
