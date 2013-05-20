@@ -168,13 +168,8 @@ class WP_Object_Cache
 			$repl = $this->gb->inc( $key );
 
 		if( $repl !== FALSE )
-		{
-			$repl = unpack( 'I', $repl );
-			$repl = $repl[1];
-
 			$this->cache[$key] = serialize( $repl );
-		}
-
+		
 		return $repl;
 	}
 
@@ -185,13 +180,8 @@ class WP_Object_Cache
 			$repl = $this->gb->dec( $key );
 
 		if( $repl !== FALSE )
-		{
-			$repl = unpack( 'I', $repl );
-			$repl = $repl[1];
-
 			$this->cache[$key] = serialize( $repl );
-		}
-
+		
 		return $repl;
 	}
 

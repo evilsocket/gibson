@@ -56,6 +56,11 @@ class Gibson
 	public function __construct( $address ){
 		$this->sd 		  = @fsockopen( $address, NULL );
 		$this->last_error = self::REPL_OK;
+		$this->unpackers  = array
+		(
+			self::CMD_INC => 'I',
+			self::CMD_DEC => 'I'
+		);
 	}
 	
 	public function getLastError(){
@@ -115,8 +120,21 @@ class Gibson
  		list( $opcode, $reply ) = $this->sendCommand( $op, $cmd );
  	
  		if( $opcode == $code )
- 			return $code == self::REPL_VAL ? $reply : TRUE;
- 	
+ 		{
+ 			if( $code == self::REPL_VAL )
+ 			{
+ 				// any specific unpacker set ?
+ 				if( isset( $this->unpackers[ $op ] ) )
+ 				{
+ 					$reply = unpack( $this->unpackers[ $op ], $reply );
+ 					$reply = $reply[1];
+ 				}
+ 				
+ 				return $reply;
+ 			}
+ 			else 
+ 				return TRUE;
+ 		}
  		else
  		{
  			$this->last_error = $opcode;
