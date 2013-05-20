@@ -149,8 +149,9 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 			data = gbMemDup( v, vlen );
 		}
 
-		item = gbCreateItem( server, data, vlen, encoding, -1 );
 		gbItem * old = at_insert( &server->tree, k, klen, item );
+
+		item = gbCreateItem( server, data, vlen, encoding, old ? old->ttl : -1 );
 		if( old )
 		{
 			gbDestroyItem( server, old );
