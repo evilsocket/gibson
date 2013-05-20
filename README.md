@@ -2,7 +2,9 @@ Gibson
 ---
 
 A high performance pure cache server.  
-( Still under heavy development, do not use in production environments )
+** ( Still under heavy development, do not use in production environments ) **  
+<http://www.emoticode.net/>
+<http://www.evilsocket.net/>
 
 Features:
 ---
@@ -26,5 +28,5 @@ License:
 ---
 
 Released under the BSD license.  
-Copyright (c) 2013, Simone Margaritelli <evilsocket at gmail dot com>  
+Copyright &copy; 2013, Simone Margaritelli <evilsocket@gmail.com>  
 All rights reserved.
