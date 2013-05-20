@@ -153,7 +153,6 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 		gbItem * old = at_insert( &server->tree, k, klen, item );
 		if( old )
 		{
-			gbLog( INFO, "old->ttl = %d\n", old->ttl );
 			gbDestroyItem( server, old );
 		}
 
