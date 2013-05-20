@@ -6,7 +6,7 @@ A high performance pure cache server.
 <http://www.emoticode.net/>  
 <http://www.evilsocket.net/>
 
-Features:
+Features
 ---
 * Very fast and with the lowest memory footprint possible
 * Fast LZF object compression
@@ -14,17 +14,25 @@ Features:
 * Cached object locking and unlocking operators
 * More to come!
 
-Compilation / Installation:
+Compilation / Installation
 ---
 In order to compile gibson, you will need cmake and autotools installed, then:
 
-* cd /path/to/gibson-source/
-* cmake .
-* make
-* make install
+    $ cd /path/to/gibson-source/
+    $ cmake .
+    $ make
+    # make install
 
 
-License:
+Usage
+---
+
+    gibson [-h|--help] [-c|--config FILE]
+																																																												 
+        -h, --help          print this help and exit
+        -c, --config FILE   set configuration file to load
+
+License
 ---
 
 Released under the BSD license.  
