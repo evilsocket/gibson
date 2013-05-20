@@ -35,11 +35,10 @@
 
 extern void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask );
 
-double isNumeric (const char * s, long *num )
-{
-    char * p;
+__inline__ __attribute__((always_inline)) short gbIsNumeric(const char * s, long *num ){
+    char *p;
     *num = strtol (s, &p, 10);
-    return *p == '\0';
+    return ( *p == '\0' );
 }
 
 gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl ) {
@@ -179,7 +178,7 @@ int gbQueryTtlHandler( gbClient *client, byte_t *p ){
 
 		*( v + vlen ) = 0x00;
 
-		if( isNumeric( (const char *)v, &ttl ) )
+		if( gbIsNumeric( (const char *)v, &ttl ) )
 		{
 			item->time = time(NULL);
 			item->ttl  = min( server->maxitemttl, ttl );
@@ -267,7 +266,7 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 
 		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 	}
-	else if( item->encoding == PLAIN && isNumeric( item->data, &num ) ){
+	else if( item->encoding == PLAIN && gbIsNumeric( item->data, &num ) ){
 		num += delta;
 
 		server->memused -= ( item->size - sizeof(long) );
@@ -301,7 +300,7 @@ int gbQueryLockHandler( gbClient *client, byte_t *p ){
 
 		*( v + vlen ) = 0x00;
 
-		if( isNumeric( (const char *)v, &locktime ) )
+		if( gbIsNumeric( (const char *)v, &locktime ) )
 		{
 			item->time = time(NULL);
 			item->lock = locktime;
