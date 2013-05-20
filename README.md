@@ -1,14 +1,14 @@
 Gibson
 ---
 
-A high performance pure cache server.
+A high performance pure cache server.  
 ( Still under heavy development, do not use in production environments )
 
 Features:
 ---
 * Very fast and with the lowest memory footprint possible
-* LZF object compression
-* Builtin object TTL
+* Fast LZF object compression
+* Builtin object Time-To-Live
 * Cached object locking and unlocking operators
 * More to come!
 
@@ -25,6 +25,6 @@ In order to compile gibson, you will need cmake and autotools installed, then:
 License:
 ---
 
-Released under the BSD license.
-Copyright (c) 2013, Simone Margaritelli <evilsocket at gmail dot com>
+Released under the BSD license.  
+Copyright (c) 2013, Simone Margaritelli <evilsocket at gmail dot com>  
 All rights reserved.
