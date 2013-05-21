@@ -11,8 +11,24 @@ Features
 * Very fast and with the lowest memory footprint possible
 * Fast LZF object compression
 * Builtin object Time-To-Live
-* Cached object locking and unlocking operators
-* More to come!
+* Cached object locking and unlocking
+* Use prefix expressions with M* operators:  
+
+For instance let's say you are using Gibson to cache your blog statistics, then you'll have something like:  
+
+      INC /category/my-nice-post.html
+or  
+
+      INC /category/another-post-of-mine.html
+  
+To increment each url visit counter, then if you wanna do a mass increment on a given category:
+
+      MINC /category/
+      
+Will increment both urls since both satisfy the '/category/' key prefix expression.
+
+
+**More to come!**
 
 Compilation / Installation
 ---
