@@ -32,6 +32,8 @@
 #include "atree.h"
 #include "net.h"
 #include "lzf.h"
+#include "log.h"
+#include "query.h"
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -969,7 +971,6 @@ int gbClientEnqueueCode( gbClient *client, short code, gbFileProc proc, short sh
 }
 
 int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc *proc, short shutdown ){
-
 	if( item->encoding == PLAIN ){
 		return gbClientEnqueueData( client, code, item->data, item->size, proc, shutdown );
 	}
@@ -991,4 +992,64 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
 	}
 	else
 		return GBNET_ERR;
+}
+
+int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *proc, short shutdown ){
+	gbServer *server = client->server;
+	gbItem *item = NULL;
+	size_t sz = sizeof(size_t),
+		   vsize = 0,
+		   space = server->maxresponsesize;
+	byte_t *data = server->m_buffer,
+		   *p = data,
+		   *v = NULL;
+	long num;
+
+#define CHECK_SPACE(needed) if( needed > space ){ \
+						gbLog( WARNING, "Max response size reached." ); \
+						return GBNET_ERR; \
+					}
+
+#define SAFE_MEMCPY( p, data, size ) CHECK_SPACE(size); memcpy( p, data, size ); p += size; space -= size
+
+	SAFE_MEMCPY( p, &elements, sz );
+
+	ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+		item = vi->data;
+
+		// write key size + key
+		sz = strlen( ki->data );
+
+		SAFE_MEMCPY( p, &sz, sizeof(size_t) );
+		SAFE_MEMCPY( p, ki->data, sz );
+
+		// write value size + value
+		if( item->encoding == PLAIN ){
+			vsize = item->size;
+			v	  = item->data;
+		}
+		else if( item->encoding == COMPRESSED ){
+			vsize = lzf_decompress
+			(
+				item->data,
+				item->size,
+				client->server->lzf_buffer,
+				client->server->maxrequestsize
+			);
+
+			v = server->lzf_buffer;
+		}
+		else if( item->encoding == NUMBER ){
+			num = (long)item->data;
+			v = &num;
+			vsize = item->size;
+		}
+
+		SAFE_MEMCPY( p, &vsize, sizeof(size_t) );
+		SAFE_MEMCPY( p, v, vsize );
+	}
+
+	int ret = gbClientEnqueueData( client, REPL_KVAL, data, p - data, proc, shutdown );
+
+	return ret;
 }

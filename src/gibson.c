@@ -47,7 +47,7 @@ static atree_t  config;
 void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask );
 void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask );
 void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask);
-void gbMemoryFreeHandler( atree_item_t *elem, void *data );
+void gbMemoryFreeHandler( atree_item_t *elem, size_t level, void *data );
 int  gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data);
 void gbDaemonize();
 void gbProcessInit();
@@ -147,27 +147,31 @@ int main( int argc, char **argv)
 		exit(1);
 	}
 
-	server.maxidletime    = gbConfigReadInt( &config, "max_idletime",      GBNET_DEFAULT_MAX_IDLE_TIME );
-	server.maxclients     = gbConfigReadInt( &config, "max_clients",       GBNET_DEFAULT_MAX_CLIENTS );
-	server.maxrequestsize = gbConfigReadSize( &config, "max_request_size", GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE );
-	server.maxitemttl	  = gbConfigReadInt( &config, "max_item_ttl",      GB_DEFAULT_MAX_ITEM_TTL );
-	server.maxmem		  = gbConfigReadSize( &config, "max_memory",       GB_DEFAULT_MAX_MEMORY );
-	server.maxkeysize	  = gbConfigReadSize( &config, "max_key_size",     GB_DEFAULT_MAX_QUERY_KEY_SIZE );
-	server.maxvaluesize	  = gbConfigReadSize( &config, "max_value_size",   GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
-	server.compression	  = gbConfigReadSize( &config, "compression",	   GB_DEFAULT_COMPRESSION );
-	server.daemon		  = gbConfigReadInt( &config, "daemonize", 		   0 );
-	server.cronperiod	  = gbConfigReadInt( &config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
-	server.pidfile		  = gbConfigReadString( &config, "pidfile",        GB_DEFAULT_PID_FILE );
-	server.events 	      = gbCreateEventLoop( server.maxclients + 1024 );
-	server.clients 	      = ll_prealloc( server.maxclients );
-	server.lzf_buffer	  = malloc( server.maxrequestsize );
-	server.memused		  =
-	server.firstin		  =
-	server.lastin		  =
-	server.crondone		  =
-	server.nclients	      =
-	server.nitems	      =
-	server.shutdown		  = 0;
+	server.maxidletime     = gbConfigReadInt( &config, "max_idletime",      GBNET_DEFAULT_MAX_IDLE_TIME );
+	server.maxclients      = gbConfigReadInt( &config, "max_clients",       GBNET_DEFAULT_MAX_CLIENTS );
+	server.maxrequestsize  = gbConfigReadSize( &config, "max_request_size", GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE );
+	server.maxitemttl	   = gbConfigReadInt( &config, "max_item_ttl",      GB_DEFAULT_MAX_ITEM_TTL );
+	server.maxmem		   = gbConfigReadSize( &config, "max_memory",       GB_DEFAULT_MAX_MEMORY );
+	server.maxkeysize	   = gbConfigReadSize( &config, "max_key_size",     GB_DEFAULT_MAX_QUERY_KEY_SIZE );
+	server.maxvaluesize	   = gbConfigReadSize( &config, "max_value_size",   GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
+	server.maxresponsesize = gbConfigReadSize( &config, "max_response_size", GB_DEFAULT_MAX_RESPONSE_SIZE );
+	server.compression	   = gbConfigReadSize( &config, "compression",	   GB_DEFAULT_COMPRESSION );
+	server.daemon		   = gbConfigReadInt( &config, "daemonize", 		   0 );
+	server.cronperiod	   = gbConfigReadInt( &config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
+	server.pidfile		   = gbConfigReadString( &config, "pidfile",        GB_DEFAULT_PID_FILE );
+	server.events 	       = gbCreateEventLoop( server.maxclients + 1024 );
+	server.clients 	       = ll_prealloc( server.maxclients );
+	server.m_keys		   = ll_prealloc( 255 );
+	server.m_values		   = ll_prealloc( 255 );
+	server.lzf_buffer	   = calloc( 1, server.maxrequestsize );
+	server.m_buffer		   = calloc( 1, server.maxresponsesize );
+	server.memused		   =
+	server.firstin		   =
+	server.lastin		   =
+	server.crondone		   =
+	server.nclients	       =
+	server.nitems	       =
+	server.shutdown		   = 0;
 
 	at_init_tree( server.tree );
 
@@ -175,12 +179,14 @@ int main( int argc, char **argv)
 		 maxmem[0xFF] = {0},
 		 maxkey[0xFF] = {0},
 		 maxvalue[0xFF] = {0},
+		 maxrespsize[0xFF] = {0},
 		 compr[0xFF] = {0};
 
 	gbMemFormat( server.maxrequestsize, reqsize, 0xFF );
 	gbMemFormat( server.maxmem, maxmem, 0xFF );
 	gbMemFormat( server.maxkeysize, maxkey, 0xFF );
 	gbMemFormat( server.maxvaluesize, maxvalue, 0xFF );
+	gbMemFormat( server.maxresponsesize, maxrespsize, 0xFF );
 	gbMemFormat( server.compression, compr, 0xFF );
 
 	gbLog( INFO, "Server starting ..." );
@@ -190,6 +196,7 @@ int main( int argc, char **argv)
 	gbLog( INFO, "Max memory       : %s", maxmem );
 	gbLog( INFO, "Max key size     : %s", maxkey );
 	gbLog( INFO, "Max value size   : %s", maxvalue );
+	gbLog( INFO, "Max resp. size   : %s", maxrespsize );
 	gbLog( INFO, "Data LZF compr.  : %s", compr );
 	gbLog( INFO, "Cron period      : %dms", server.cronperiod );
 
@@ -347,7 +354,7 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 	}
 }
 
-void gbMemoryFreeHandler( atree_item_t *elem, void *data ) {
+void gbMemoryFreeHandler( atree_item_t *elem, size_t level, void *data ) {
 	gbServer *server = data;
 	gbItem	 *item = elem->e_marker;
 	time_t	  eta = item ? ( server->time - item->time ) : 0;
@@ -364,7 +371,7 @@ void gbMemoryFreeHandler( atree_item_t *elem, void *data ) {
 	}
 }
 
-void gbHandleDeadTTLHandler( atree_item_t *elem, void *data ){
+void gbHandleDeadTTLHandler( atree_item_t *elem, size_t level, void *data ){
 	gbServer *server = data;
 	gbItem	 *item = elem->e_marker;
 	time_t	  eta = item ? ( server->time - item->time ) : 0;
@@ -397,7 +404,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 	CRON_EVERY( 15000 ) {
 		unsigned long before = server->memused, deleted;
 
-		at_recurse( &server->tree, gbHandleDeadTTLHandler, server );
+		at_recurse( &server->tree, gbHandleDeadTTLHandler, server, 0 );
 
 		deleted = before - server->memused;
 
@@ -418,7 +425,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 
 			server->gcdelta = delta;
 
-			at_recurse( &server->tree, gbMemoryFreeHandler, server );
+			at_recurse( &server->tree, gbMemoryFreeHandler, server, 0 );
 
 			gbMemFormat( before - server->memused, freed,  0xFF );
 

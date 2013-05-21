@@ -1,3 +1,4 @@
+*.test.conf
 *.o
 *.lo
 *.so

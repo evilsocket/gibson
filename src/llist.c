@@ -28,11 +28,17 @@
  */
 #include "llist.h"
 
+void ll_init_space( llist_t *ll, size_t elements ){
+	ll->head = ll->tail = NULL;
+
+	while( elements-- )
+		ll_append( ll, NULL );
+}
+
 llist_t *ll_prealloc( size_t elements ){
 	llist_t *list = ll_create();
-	size_t i;
 
-	for( i = 0; i < elements; i++ )
+	while( elements-- )
 		ll_append( list, NULL );
 
 	return list;
@@ -181,4 +187,10 @@ void ll_clear( llist_t *ll ){
 	}
 
 	ll_init(ll);
+}
+
+void ll_reset( llist_t *ll ){
+	ll_foreach( ll, i ){
+		i->data = NULL;
+	}
 }

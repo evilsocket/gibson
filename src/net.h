@@ -176,10 +176,17 @@ typedef struct gbServer
 	unsigned long compression;
 	// buffer used for lzf (de)compression, alloc'd only once
 	byte_t *lzf_buffer;
+	// static lists used for multi-* operands
+	llist_t *m_keys;
+	llist_t *m_values;
+	// buffer used to send multi get responses
+	byte_t *m_buffer;
 	// maximum size of an item key
 	unsigned long maxkeysize;
 	// maximum size of an item value
 	unsigned long maxvaluesize;
+	// maximum size of a response
+	unsigned long maxresponsesize;
 	// currently used memory
 	unsigned long memused;
 	// maximum size of used memory
@@ -278,6 +285,7 @@ void      gbClientReset( gbClient *client );
 int 	  gbClientEnqueueData( gbClient *client, short code, byte_t *reply, size_t size, gbFileProc *proc, short shutdown );
 int       gbClientEnqueueCode( gbClient *client, short code, gbFileProc, short shutdown );
 int		  gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc *proc, short shutdown );
+int		  gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *proc, short shutdown );
 void	  gbClientDestroy( gbClient *client );
 
 #endif

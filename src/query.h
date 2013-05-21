@@ -33,18 +33,25 @@
 #include "net.h"
 #include "default.h"
 
-/*
- * Query
- */
-#define OP_SET    1
-#define OP_TTL    2
-#define OP_GET    3
-#define OP_DEL    4
-#define OP_INC    5
-#define OP_DEC    6
-#define OP_LOCK   7
-#define OP_UNLOCK 8
-#define OP_SEARCH 9
+// single
+#define OP_SET     1
+#define OP_TTL     2
+#define OP_GET     3
+#define OP_DEL     4
+#define OP_INC     5
+#define OP_DEC     6
+#define OP_LOCK    7
+#define OP_UNLOCK  8
+// multi
+#define OP_MSET    9
+#define OP_MTTL    10
+#define OP_MGET    11
+#define OP_MDEL    12
+#define OP_MINC    13
+#define OP_MDEC    14
+#define OP_MLOCK   15
+#define OP_MUNLOCK 16
+
 #define OP_END    0xFF
 
 
@@ -58,6 +65,7 @@
 #define REPL_ERR_LOCKED    4
 #define REPL_OK  		   5
 #define REPL_VAL 		   6
+#define REPL_KVAL		   7
 
 gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl );
 void    gbDestroyItem( gbServer *server, gbItem *item );

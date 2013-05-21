@@ -32,16 +32,25 @@ class Gibson
 {
 	private $sd 		= NULL;
 	private $last_error = 0;
-
-	const CMD_SET    = 1;
-	const CMD_TTL    = 2;
-	const CMD_GET    = 3;
-	const CMD_DEL    = 4;
-	const CMD_INC    = 5;
-	const CMD_DEC    = 6;
-	const CMD_LOCK   = 7;
-	const CMD_UNLOCK = 8;
-	const CMD_SEARCH = 9;
+	
+	// single
+	const CMD_SET     = 1;
+	const CMD_TTL     = 2;
+	const CMD_GET     = 3;
+	const CMD_DEL     = 4;
+	const CMD_INC     = 5;
+	const CMD_DEC     = 6;
+	const CMD_LOCK    = 7;
+	const CMD_UNLOCK  = 8;
+	// multi
+	const CMD_MSET    = 9;
+	const CMD_MTTL    = 10;
+	const CMD_MGET    = 11;
+	const CMD_MDEL    = 12;
+	const CMD_MINC    = 13;
+	const CMD_MDEC    = 14;
+	const CMD_MLOCK   = 15;
+	const CMD_MUNLOCK = 16;
 
 	const CMD_QUIT = 0xFF;
 
@@ -52,14 +61,22 @@ class Gibson
 	const REPL_ERR_LOCKED    = 4;
 	const REPL_OK  		     = 5;
 	const REPL_VAL 		     = 6;
-
+	const REPL_KVAL			 = 7;
+	
 	public function __construct( $address ){
 		$this->sd 		  = @fsockopen( $address, NULL );
 		$this->last_error = self::REPL_OK;
 		$this->unpackers  = array
 		(
-			self::CMD_INC => 'I',
-			self::CMD_DEC => 'I'
+			self::CMD_INC  => 'I',
+			self::CMD_DEC  => 'I',
+			self::CMD_MSET => 'I',
+			self::CMD_MTTL => 'I',
+			self::CMD_MDEL => 'I',
+			self::CMD_MINC => 'I',
+			self::CMD_MDEC => 'I',
+			self::CMD_MLOCK => 'I',
+			self::CMD_MUNLOCK => 'I'
 		);
 	}
 	
@@ -83,37 +100,97 @@ class Gibson
 		
 		return $reply;
 	}
+	
+	public function mset( $expr, $value ){
+		return $this->sendCommandAssert( self::CMD_MSET, "$expr $value", self::REPL_VAL );
+	}
 
 	public function ttl( $key, $ttl ){
 		return $this->sendCommandAssert( self::CMD_TTL, "$key $ttl", self::REPL_OK );
+	}
+	
+	public function mttl( $expr, $ttl ){
+		return $this->sendCommandAssert( self::CMD_MTTL, "$expr $ttl", self::REPL_VAL );
 	}
 
 	public function get( $key ){
 		return $this->sendCommandAssert( self::CMD_GET, $key, self::REPL_VAL );	
   	}
+  	
+  	public function mget( $expr ){
+  		return $this->sendCommandAssert( self::CMD_MGET, $expr, self::REPL_KVAL );
+  	}
 
 	public function del( $key ){
 		return $this->sendCommandAssert( self::CMD_DEL, $key, self::REPL_OK );
+	}
+	
+	public function mdel( $expr ){
+		return $this->sendCommandAssert( self::CMD_MDEL, $expr, self::REPL_VAL );
 	}
 
 	public function inc( $key ){
 		return $this->sendCommandAssert( self::CMD_INC, $key, self::REPL_VAL );
  	}
+ 	
+ 	public function minc( $expr ){
+ 		return $this->sendCommandAssert( self::CMD_MINC, $expr, self::REPL_VAL );
+ 	}
   
 	public function dec( $key ){
 		return $this->sendCommandAssert( self::CMD_DEC, $key, self::REPL_VAL );
   	}
+  	
+  	public function mdec( $expr ){
+  		return $this->sendCommandAssert( self::CMD_MDEC, $expr, self::REPL_VAL );
+  	}
   
-	public function lock( $key ){
-  		return $this->sendCommandAssert( self::CMD_LOCK, $key, self::REPL_OK );
+	public function lock( $key, $time ){
+  		return $this->sendCommandAssert( self::CMD_LOCK, "$key $time", self::REPL_OK );
+  	}
+  	
+  	public function mlock( $expr, $time ){
+  		return $this->sendCommandAssert( self::CMD_MLOCK, "$expr $time", self::REPL_VAL );
   	}
   
 	public function unlock( $key ){
 		return $this->sendCommandAssert( self::CMD_UNLOCK, $key, self::REPL_OK );
   	}
+  	
+  	public function munlock( $expr ){
+  		return $this->sendCommandAssert( self::CMD_MUNLOCK, $expr, self::REPL_VAL );
+  	}
   
   	public function quit(){
   		return $this->sendCommandAssert( self::CMD_QUIT, '', self::REPL_OK );
+ 	}
+ 	
+ 	private static function unpackKeyValueSet( $data ){
+ 		$set = array();
+
+ 		$elements = unpack( 'I', $data );
+ 		$elements = $elements[1];
+ 		 		
+ 		$data = substr( $data, PHP_INT_SIZE );
+ 		
+ 		for( $i = 0; $i < $elements; $i++ ){
+ 			$klen = unpack( 'I', $data );
+ 			$klen = $klen[1];
+ 			$data = substr( $data, PHP_INT_SIZE );
+ 		
+ 			$key = substr( $data, 0, $klen );
+ 			$data = substr( $data, $klen );
+ 		
+ 			$vlen = unpack( 'I', $data );
+ 			$vlen = $vlen[1];
+ 			$data = substr( $data, PHP_INT_SIZE );
+ 			$val  = substr( $data, 0, $vlen );
+ 			$data = substr( $data, $vlen );
+ 		
+ 			$set[ $key ] = $val;
+ 		}
+ 		
+ 		return $set;
  	}
  	
  	private function sendCommandAssert( $op, $cmd, $code ){
@@ -131,6 +208,10 @@ class Gibson
  				}
  				
  				return $reply;
+ 			}
+ 			else if( $code == self::REPL_KVAL )
+ 			{
+ 				return self::unpackKeyValueSet( $reply );
  			}
  			else 
  				return TRUE;

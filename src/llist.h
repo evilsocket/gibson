@@ -63,6 +63,11 @@ llist_t;
  */
 #define ll_foreach( ll, item ) ll_item_t *item = NULL; for( item = (ll)->head; item && item->data; item = item->next )
 /*
+ * Same as ll_foreach but on two lists.
+ */
+#define ll_foreach_2( la, lb, aitem, bitem ) ll_item_t *aitem = NULL, *bitem = NULL; \
+		for( aitem = (la)->head, bitem = (lb)->head; aitem && bitem && aitem->data && bitem->data; aitem = aitem->next, bitem = bitem->next )
+/*
  * Macro to easily loop the list until a certain item.
  * NOTE: This macro has to be used only for read only loops,
  * if during a loop the list is modified (i.e. an element is removed),
@@ -147,5 +152,9 @@ void 	ll_clear( llist_t *ll );
  */
 #define ll_destroy( ll ) ll_clear( (ll) ); \
 						 free(ll)
+
+void ll_init_space( llist_t *ll, size_t elements );
+
+void ll_reset( llist_t *ll );
 
 #endif

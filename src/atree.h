@@ -78,17 +78,21 @@ typedef atree_t atree_item_t;
  * the given 'key' of 'len' bytes.
  */
 void *at_insert( atree_t *at, char *key, int len, void *value );
+
+atree_t *at_find_node( atree_t *at, char *key, int len );
+
 /*
  * Find the object mapped mapped by the given 'key'
  * of 'len' bytes inside 'at' ascii tree.
  */
 void *at_find( atree_t *at, char *key, int len );
 
-typedef void (*at_recurse_handler)(atree_item_t *, void *);
+typedef void (*at_recurse_handler)(atree_item_t *, size_t, void *);
 
-void at_recurse( atree_t *at, at_recurse_handler handler, void *data );
+void at_recurse( atree_t *at, at_recurse_handler handler, void *data, size_t level );
 
-llist_t* at_search( atree_t *at, char *prefix, int len );
+size_t at_search( atree_t *at, char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **values );
+size_t at_search_nodes( atree_t *at, char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **nodes );
 
 /*
  * Remove the object from the tree and return its pointer.
