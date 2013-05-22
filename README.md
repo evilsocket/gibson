@@ -1,7 +1,7 @@
 Gibson [![Build Status](https://secure.travis-ci.org/evilsocket/gibson.png)](http://travis-ci.org/evilsocket/gibson)
----
+===
 
-A high performance pure cache server.  
+A high performance tree-based cache server.  
 **Still under heavy development, do not use in production environments**  
 <http://www.emoticode.net/>  
 <http://www.evilsocket.net/>
