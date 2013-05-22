@@ -118,7 +118,7 @@ class WP_Object_Cache
 		}
 		else {
 			$this->global_prefix = "gbwp_";
-			$this->blog_prefix = "gbwp_b?_"
+			$this->blog_prefix = "gbwp_b?_";
 		}
 	}
 
