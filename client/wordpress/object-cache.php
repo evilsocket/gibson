@@ -105,6 +105,9 @@ class WP_Object_Cache
 
 	var $cache_enabled = true;
 	var $default_expiration = 3600;
+	
+	var $serializer = NULL;
+	var $unserializer = NULL;
 
 	function WP_Object_Cache() {
 		$this->gb = new Gibson( 'unix:///var/run/gibson.sock' );
@@ -120,15 +123,24 @@ class WP_Object_Cache
 			$this->global_prefix = "gbwp_";
 			$this->blog_prefix = "gbwp_b?_";
 		}
+		
+		if( function_exists('igbinary_serialize') ){
+			$this->serializer = 'igbinary_serialize';
+			$this->unserializer = 'igbinary_unserialize';
+		}
+		else{
+			$this->serializer = 'serialize';
+			$this->unserializer = 'unserialize';
+		}
 	}
-
+	
 	function add($id, $data, $group = 'default', $expire = 0) {
 		$key = $this->key($id, $group);
 
 		if ( is_object( $data ) )
 			$data = clone $data;
 
-		$data = serialize($data);
+		$data = $this->serializer($data);
 
 		if ( in_array($group, $this->no_mc_groups) ) {
 			$this->cache[$key] = $data;
@@ -171,7 +183,7 @@ class WP_Object_Cache
 			$repl = $this->gb->inc( $key );
 
 		if( $repl !== FALSE )
-			$this->cache[$key] = serialize( $repl );
+			$this->cache[$key] = $this->serializer( $repl );
 		
 		return $repl;
 	}
@@ -183,7 +195,7 @@ class WP_Object_Cache
 			$repl = $this->gb->dec( $key );
 
 		if( $repl !== FALSE )
-			$this->cache[$key] = serialize( $repl );
+			$this->cache[$key] = $this->serializer( $repl );
 		
 		return $repl;
 	}
@@ -229,7 +241,7 @@ class WP_Object_Cache
 			$value = false;
 		}
 
-		return $value ? unserialize( $value ) : FALSE;
+		return $value ? $this->unserializer( $value ) : FALSE;
 	}
 
 	function get_multi( $groups ) {
@@ -251,7 +263,7 @@ class WP_Object_Cache
 
 		$uns = array();
 		foreach( $return as $k => $v )
-			$uns[$k] = $v ? unserialize($v) : FALSE;
+			$uns[$k] = $v ? $this->unserialize($v) : FALSE;
 
 		return $uns;
 	}
@@ -292,7 +304,7 @@ class WP_Object_Cache
 	}
 
 	function failure_callback($host, $port) {
-		// TODO: Some error_log maybe ?
+		@error_log( "GIBSON OBJECT CACHE FAILURE: $host:$port" );
 	}
 }
 ?>
