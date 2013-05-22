@@ -890,6 +890,37 @@ int gbNetSockName(int fd, char *ip, int *port) {
     return 0;
 }
 
+void gbServerFormatUptime( gbServer *server, char *s ){
+
+	int uptime = difftime( server->time, server->started );
+	int days = 0,
+		hours = 0,
+		minutes = 0,
+		seconds = 0;
+
+	if( uptime >= 86400 )
+	{
+		days = (int)( uptime / 86400 );
+		uptime %= 86400;
+	}
+
+	if( uptime >= 3600 )
+	{
+		hours = (int)( uptime / 3600 );
+		uptime %= 3600;
+	}
+
+	if( uptime >= 60 )
+	{
+		minutes = (int)( uptime / 60 );
+		uptime %= 60;
+	}
+
+	seconds = uptime;
+
+	sprintf( s, "%dd %dh %dm %ds", days, hours, minutes, seconds );
+}
+
 gbClient* gbClientCreate( int fd, gbServer *server  ){
 	gbClient *client = (gbClient *)malloc( sizeof( gbClient ) );
 

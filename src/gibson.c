@@ -57,8 +57,8 @@ void gbHelpMenu( char **argv, int exitcode ){
 
 	printf( "%s [-h|--help] [-c|--config FILE]\n\n", argv[0] );
 
-	printf("  -h, --help          print this help and exit\n");
-	printf("  -c, --config FILE   set configuration file to load\n\n");
+	printf("  -h, --help          Print this help and exit.\n");
+	printf("  -c, --config FILE   Set configuration file to load, default %s.\n\n", GB_DEFAULT_CONFIGURATION );
 
 	exit(exitcode);
 }
@@ -158,11 +158,13 @@ int main( int argc, char **argv)
 	server.compression	   = gbConfigReadSize( &config, "compression",	   GB_DEFAULT_COMPRESSION );
 	server.daemon		   = gbConfigReadInt( &config, "daemonize", 		   0 );
 	server.cronperiod	   = gbConfigReadInt( &config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
-	server.pidfile		   = gbConfigReadString( &config, "pidfile",        GB_DEFAULT_PID_FILE );
+	server.pidfile		   = gbConfigReadString( &config, "pidfile",       GB_DEFAULT_PID_FILE );
 	server.events 	       = gbCreateEventLoop( server.maxclients + 1024 );
 	server.clients 	       = ll_prealloc( server.maxclients );
 	server.m_keys		   = ll_prealloc( 255 );
 	server.m_values		   = ll_prealloc( 255 );
+	server.started		   =
+	server.time			   = time(NULL);
 	server.lzf_buffer	   = calloc( 1, server.maxrequestsize );
 	server.m_buffer		   = calloc( 1, server.maxresponsesize );
 	server.memused		   =
@@ -397,7 +399,8 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 	time_t now = time(NULL);
 	char used[0xFF] = {0},
 		 max[0xFF] = {0},
-		 freed[0xFF] = {0};
+		 freed[0xFF] = {0},
+		 uptime[0xFF] = {0};
 
 	server->time = now;
 
@@ -456,8 +459,9 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 	CRON_EVERY( 15000 ){
 		gbMemFormat( server->memused, used, 0xFF );
 		gbMemFormat( server->maxmem,  max,  0xFF );
+		gbServerFormatUptime( server, uptime );
 
-		gbLog( INFO, "%s/%s, clients = %d, stored items = %d", used, max, server->nclients, server->nitems );
+		gbLog( INFO, "RAM %s/%s CLIENTS %d OBJECTS %d UPTIME %s", used, max, server->nclients, server->nitems, uptime );
 	}
 
 	if( server->shutdown )
@@ -484,10 +488,52 @@ void gbDaemonize(){
     }
 }
 
-static void gbSigTermHandler(int sig) {
-    gbLog( WARNING, "Received SIGTERM, scheduling shutdown..." );
+static void gbSignalHandler(int sig) {
+	if( sig == SIGTERM ){
+		gbLog( WARNING, "Received SIGTERM, scheduling shutdown..." );
+		server.shutdown = 1;
+	}
+	else if( sig == SIGSEGV ){
+		gbLog( CRITICAL, "" );
+		gbLog( CRITICAL, "********* SEGMENTATION FAULT *********" );
+		gbLog( CRITICAL, "" );
 
-    server.shutdown = 1;
+		void *trace[32];
+		size_t size, i;
+		char **strings;
+
+		size    = backtrace( trace, 32 );
+		strings = backtrace_symbols( trace, size );
+
+		char used[0xFF] = {0},
+			 max[0xFF] = {0},
+			 uptime[0xFF] = {0};
+
+		gbMemFormat( server.memused, used, 0xFF );
+		gbMemFormat( server.maxmem,  max,  0xFF );
+		gbServerFormatUptime( &server, uptime );
+
+		gbLog( CRITICAL, "INFO:" );
+		gbLog( CRITICAL, "" );
+
+		gbLog( CRITICAL, "  Uptime          : %s", uptime );
+		gbLog( CRITICAL, "  Memory Used     : %s/%s", used, max );
+		gbLog( CRITICAL, "  Current Items   : %d", server.nitems );
+		gbLog( CRITICAL, "  Current Clients : %d", server.nclients );
+
+		gbLog( CRITICAL, "" );
+		gbLog( CRITICAL, "BACKTRACE:" );
+		gbLog( CRITICAL, "" );
+
+		for( i = 0; i < size; i++ ){
+			gbLog( CRITICAL, "  %s", strings[i] );
+		}
+
+		gbLog( CRITICAL, "" );
+		gbLog( CRITICAL, "***************************************" );
+
+		exit(-1);
+	}
 }
 
 void gbProcessInit(){
@@ -503,8 +549,10 @@ void gbProcessInit(){
 
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
-	act.sa_handler = gbSigTermHandler;
-	sigaction(SIGTERM, &act, NULL);
+	act.sa_handler = gbSignalHandler;
+
+	sigaction( SIGTERM, &act, NULL);
+	sigaction( SIGSEGV, &act, NULL);
 
 	FILE *fp = fopen(server.pidfile,"w+t");
 	if (fp) {

@@ -148,6 +148,8 @@ typedef struct gbServer
 	atree_t  tree;
 	// server main file descriptor
 	int 	 fd;
+	// time the server was started
+	time_t   started;
 	// server time updated every cron loop
 	time_t 	 time;
 	// time of the first created object

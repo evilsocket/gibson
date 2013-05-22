@@ -68,10 +68,11 @@ void gbLog( gbLogLevel level, const char *format, ... ){
 
 		switch( level )
 		{
-			case DEBUG   : slevel = "DBG"; break;
-			case WARNING : slevel = "WAR"; break;
-			case INFO    : slevel = "INF"; break;
-			case ERROR   : slevel = "ERR"; break;
+			case DEBUG    : slevel = "DBG"; break;
+			case WARNING  : slevel = "WAR"; break;
+			case INFO     : slevel = "INF"; break;
+			case ERROR    : slevel = "ERR"; break;
+			case CRITICAL : slevel = "CRT"; break;
 		}
 
 		fprintf( __log_fp, "[%s] [%s] %s\n", timestamp, slevel, buffer );
