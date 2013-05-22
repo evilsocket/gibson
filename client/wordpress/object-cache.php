@@ -116,6 +116,10 @@ class WP_Object_Cache
 			$this->global_prefix = ( is_multisite() || defined('CUSTOM_USER_TABLE') && defined('CUSTOM_USER_META_TABLE') ) ? '' : $table_prefix;
 			$this->blog_prefix = ( is_multisite() ? $blog_id : $table_prefix ) . ':';
 		}
+		else {
+			$this->global_prefix = "gbwp_";
+			$this->blog_prefix = "gbwp_b?_"
+		}
 	}
 
 	function add($id, $data, $group = 'default', $expire = 0) {
@@ -262,7 +266,7 @@ class WP_Object_Cache
 		else
 			$prefix = $this->blog_prefix;
 
-		return md5( preg_replace('/\s+/', '', WP_CACHE_KEY_SALT . "$prefix$group:$key") );
+		return preg_replace('/\s+/', '', WP_CACHE_KEY_SALT . "$prefix$group:$key" );
 	}
 
 	function replace($id, $data, $group = 'default', $expire = 0) {
@@ -277,12 +281,11 @@ class WP_Object_Cache
 		// Don't flush if multi-blog.
 		if ( function_exists('is_site_admin') || defined('CUSTOM_USER_TABLE') && defined('CUSTOM_USER_META_TABLE') )
 			return true;
-	
-		$ret = true;
-	
-		// TODO: Gibson flush
-	
-		return $ret;
+
+		$this->gb->mdel( $this->global_prefix.':' );
+		$this->gb->mdel( $this->blog_prefix.':' );
+		
+		return TRUE;
 	}
 	
 	function close() {
