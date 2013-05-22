@@ -1,4 +1,4 @@
-Gibson
+Gibson [![Build Status](https://secure.travis-ci.org/evilsocket/gibson.png)](http://travis-ci.org/evilsocket/gibson)
 ---
 
 A high performance pure cache server.  
