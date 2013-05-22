@@ -223,6 +223,22 @@ class Gibson
  		}
  	}
 
+ 	private function readShort(){
+ 		$short = fread( $this->sd, 2 );
+ 		$short = unpack( 'S', $short );
+ 		$short = $short[1];
+ 		
+ 		return $short;
+ 	}
+ 	
+ 	private function readInt(){
+ 		$int = fread( $this->sd, PHP_INT_SIZE );
+ 		$int = unpack( 'I', $int );
+ 		$int = $int[1];
+ 		
+ 		return $int;
+ 	}
+ 	 	
 	private function sendCommand( $cmd, $data ){
 		
 		if( $this->sd )
@@ -234,14 +250,9 @@ class Gibson
 		    $reply = '';
 		    $data  = '';
 		
-		    $opcode = fread( $this->sd, 2 );
-		    $opcode = unpack( 'S', $opcode );
-		    $opcode = $opcode[1];
-			
-		    $length = fread( $this->sd, PHP_INT_SIZE );
-		    $length = unpack( 'I', $length );
-		    $length = $length[1];
-			
+		    $opcode = $this->readShort();
+		    $length = $this->readInt();
+
 		    $read = 0;
 		    
 		    while( $read < $length ){

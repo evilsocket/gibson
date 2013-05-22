@@ -170,6 +170,8 @@ typedef struct gbServer
 	uint 	 maxclients;
 	// maximum number of seconds a client can stay idle before being disconnected
 	time_t 	 maxidletime;
+	// number of milliseconds to check for dead idle clients
+	time_t   idlecron;
 	// maximum size of a request
 	size_t	 maxrequestsize;
 	// maximum number of seconds of an item TTL

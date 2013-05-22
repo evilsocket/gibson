@@ -102,8 +102,7 @@ void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ke
 	*key = p;
 
 	size_t i = 0, end = min( size, server->maxkeysize );
-	while( *p != ' ' && i++ < end )
-	{
+	while( *p != ' ' && i++ < end ){
 		++p;
 	}
 

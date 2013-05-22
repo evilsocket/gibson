@@ -163,6 +163,7 @@ int main( int argc, char **argv)
 	server.clients 	       = ll_prealloc( server.maxclients );
 	server.m_keys		   = ll_prealloc( 255 );
 	server.m_values		   = ll_prealloc( 255 );
+	server.idlecron		   = server.maxidletime * 1000;
 	server.started		   =
 	server.time			   = time(NULL);
 	server.lzf_buffer	   = calloc( 1, server.maxrequestsize );
@@ -401,11 +402,12 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		 max[0xFF] = {0},
 		 freed[0xFF] = {0},
 		 uptime[0xFF] = {0};
+	unsigned long before = 0, deleted = 0;
 
 	server->time = now;
 
 	CRON_EVERY( 15000 ) {
-		unsigned long before = server->memused, deleted;
+		before = server->memused;
 
 		at_recurse( &server->tree, gbHandleDeadTTLHandler, server, 0 );
 
@@ -421,12 +423,11 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 	CRON_EVERY( 5000 ) {
 		if( server->memused > server->maxmem ){
 			// TODO: Implement a better algorithm for this!
-			time_t delta = ( server->time - server->firstin ) / 5.0;
-			unsigned long before = server->memused;
+			server->gcdelta = ( server->time - server->firstin ) / 5.0;
 
-			gbLog( WARNING, "Max memory exhausted, trying to free data older than %ds.", delta );
+			before = server->memused;
 
-			server->gcdelta = delta;
+			gbLog( WARNING, "Max memory exhausted, trying to free data older than %ds.", server->gcdelta );
 
 			at_recurse( &server->tree, gbMemoryFreeHandler, server, 0 );
 
@@ -438,7 +439,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		}
 	}
 
-	CRON_EVERY( server->maxidletime * 1000 ) {
+	CRON_EVERY( server->idlecron ) {
 		// Check for clients in idle state for too long.
 		ll_foreach( server->clients, llitem )
 		{
@@ -461,7 +462,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		gbMemFormat( server->maxmem,  max,  0xFF );
 		gbServerFormatUptime( server, uptime );
 
-		gbLog( INFO, "RAM %s/%s CLIENTS %d OBJECTS %d UPTIME %s", used, max, server->nclients, server->nitems, uptime );
+		gbLog( INFO, "MEM %s/%s CLIENTS %d OBJECTS %d UPTIME %s", used, max, server->nclients, server->nitems, uptime );
 	}
 
 	if( server->shutdown )
