@@ -544,7 +544,7 @@ void gbProcessInit(){
 	signal(SIGHUP, SIG_IGN);
 	signal(SIGPIPE, SIG_IGN);
 
-	// set SIGTERM custom handler
+	// set SIGTERM and SIGSEGV custom handler
 	struct sigaction act;
 
 	sigemptyset(&act.sa_mask);

@@ -104,7 +104,7 @@ class WP_Object_Cache
 	var $group_ops = array();
 
 	var $cache_enabled = true;
-	var $default_expiration = -1;
+	var $default_expiration = 3600;
 
 	function WP_Object_Cache() {
 		$this->gb = new Gibson( 'unix:///var/run/gibson.sock' );
@@ -136,14 +136,13 @@ class WP_Object_Cache
 		} elseif ( isset($this->cache[$key]) && $this->cache[$key] !== FALSE ) {
 			return FALSE;
 		}
+		
+		$expire = $expire > 0 ? $expire : $this->default_expiration;
 
-		$result = $this->gb->set( $key, $data );
+		$result = $this->gb->set( $key, $data, $expire );
 		if( $result !== FALSE )
 		{
 			$this->cache[$key] = $data;
-
-			if( $expire > 0 )
-				$this->gb->ttl( $key, $expire );
 		}
 
 		return $result;
