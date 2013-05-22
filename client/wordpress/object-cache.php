@@ -106,8 +106,7 @@ class WP_Object_Cache
 	var $cache_enabled = true;
 	var $default_expiration = 3600;
 	
-	var $serializer = NULL;
-	var $unserializer = NULL;
+	var $have_igbinary = FALSE;
 
 	function WP_Object_Cache() {
 		$this->gb = new Gibson( 'unix:///var/run/gibson.sock' );
@@ -124,14 +123,15 @@ class WP_Object_Cache
 			$this->blog_prefix = "gbwp_b?_";
 		}
 		
-		if( function_exists('igbinary_serialize') ){
-			$this->serializer = 'igbinary_serialize';
-			$this->unserializer = 'igbinary_unserialize';
-		}
-		else{
-			$this->serializer = 'serialize';
-			$this->unserializer = 'unserialize';
-		}
+		$this->have_igbinary = function_exists('igbinary_serialize');
+	}
+	
+	function serializer($data){
+		return $this->have_igbinary ? igbinary_serialize($data) : serialize($data);
+	}
+	
+	function unserializer($data){
+		return $this->have_igbinary ? igbinary_unserialize($data) : unserialize($data);
 	}
 	
 	function add($id, $data, $group = 'default', $expire = 0) {
