@@ -72,6 +72,31 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	free( item );
 }
 
+int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *server, int remove ){
+	time_t eta = server->time - item->time;
+
+	if( item->ttl > 0 )
+	{
+		if( eta > item->ttl )
+		{
+			// item locked, skip
+			if( item->lock == -1 || eta < item->lock ) return 1;
+
+			gbLog( DEBUG, "TTL of %ds expired for item at %p.", item->ttl, item );
+
+			// remove from container
+			if( remove )
+				node->e_marker = NULL;
+
+			gbDestroyItem( server, item );
+
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
 int gbIsItemStillValid( gbItem *item, gbServer *server, char *key, size_t klen, int remove ) {
 	time_t eta = server->time - item->time;
 
@@ -269,13 +294,14 @@ int gbQueryGetHandler( gbClient *client, byte_t *p ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
+	atree_item_t *node = NULL;
 	gbItem *item = NULL;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
-	item = at_find( &server->tree, k, klen );
+	node = at_find_node( &server->tree, k, klen );
 
-	if( item && gbIsItemStillValid( item, server, k, klen, 1 ) )
+	if( node && ( item = node->e_marker ) && gbIsNodeStillValid( node, node->e_marker, server, 1 ) )
 		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 
 	else
@@ -330,7 +356,7 @@ int gbQueryDelHandler( gbClient *client, byte_t *p ){
 			// Remove item from tree
 			node->e_marker = NULL;
 
-			int valid = gbIsItemStillValid( item, server, k, klen, 0 );
+			int valid = gbIsNodeStillValid( node, item, server, 0 );
 
 			gbDestroyItem( server, item );
 
@@ -371,7 +397,7 @@ int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 					// Remove item from tree
 					node->e_marker = NULL;
 
-					int valid = gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 0 );
+					int valid = gbIsNodeStillValid( node, item, server, 0 );
 
 					gbDestroyItem( server, item );
 
@@ -397,20 +423,26 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
+	atree_item_t *node = NULL;
 	gbItem *item = NULL;
 	long num = 0;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
-	item = at_find( &server->tree, k, klen );
+	node = at_find_node( &server->tree, k, klen );
+
+	item = node ? node->e_marker : NULL;
 	if( item == NULL ) {
 		item = gbCreateItem( server, (void *)1, sizeof( long ), NUMBER, -1 );
-
-		at_insert( &server->tree, k, klen, item );
+		// just reuse the node
+		if( node )
+			node->e_marker = item;
+		else
+			at_insert( &server->tree, k, klen, item );
 
 		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 	}
-	else if( gbIsItemStillValid( item, server, k, klen, 1 ) == 0 ){
+	else if( gbIsNodeStillValid( node, item, server, 1 ) == 0 ){
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
 	else if( item->encoding == NUMBER ){
@@ -499,12 +531,13 @@ int gbQueryLockHandler( gbClient *client, byte_t *p ){
 		   *v = NULL;
 	size_t klen = 0, vlen = 0;
 	gbServer *server = client->server;
+	atree_item_t *node = NULL;
 	gbItem *item = NULL;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
 
-	item = at_find( &server->tree, k, klen );
-	if( item && gbIsItemStillValid( item, server, k, klen, 1 ) )
+	node = at_find_node( &server->tree, k, klen );
+	if( node && ( item = node->e_marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
 	{
 		long locktime;
 
@@ -565,12 +598,13 @@ int gbQueryUnlockHandler( gbClient *client, byte_t *p ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
+	atree_item_t *node = NULL;
 	gbItem *item = NULL;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
-	item = at_find( &server->tree, k, klen );
-	if( item && gbIsItemStillValid( item, server, k, klen, 1 ) )
+	node = at_find_node( &server->tree, k, klen );
+	if( node && ( item = node->e_marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
 	{
 		item->lock = 0;
 
