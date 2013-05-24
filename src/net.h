@@ -158,8 +158,10 @@ typedef struct gbServer
 	time_t	 lastin;
 	// list of currently connected clients
 	llist_t *clients;
-	// number of items stored in the container
+	// number total of items stored in the container
 	uint     nitems;
+	// number of compressed items
+	uint	 ncompressed;
 	// number of currently connected clients
 	uint 	 nclients;
 	// period in milliseconds of the cron loop

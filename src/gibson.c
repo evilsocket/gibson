@@ -174,6 +174,7 @@ int main( int argc, char **argv)
 	server.crondone		   =
 	server.nclients	       =
 	server.nitems	       =
+	server.ncompressed	   =
 	server.shutdown		   = 0;
 
 	at_init_tree( server.tree );
@@ -462,7 +463,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		gbMemFormat( server->maxmem,  max,  0xFF );
 		gbServerFormatUptime( server, uptime );
 
-		gbLog( INFO, "MEM %s/%s CLIENTS %d OBJECTS %d UPTIME %s", used, max, server->nclients, server->nitems, uptime );
+		gbLog( INFO, "MEM %s/%s - CLIENTS %d - OBJECTS %d ( %d COMPRESSED ) - UPTIME %s", used, max, server->nclients, server->nitems, server->ncompressed, uptime );
 	}
 
 	if( server->shutdown )

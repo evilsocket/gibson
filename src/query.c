@@ -52,10 +52,12 @@ gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding 
 	item->lock	   = 0;
 
 	++server->nitems;
+
 	server->memused += size + sizeof( gbItem );
 
-	if( server->firstin == 0 )
-		server->firstin = server->time;
+	if( encoding == COMPRESSED ) ++server->ncompressed;
+
+	if( server->firstin == 0 ) server->firstin = server->time;
 
 	server->lastin = server->time;
 
@@ -65,6 +67,8 @@ gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding 
 void gbDestroyItem( gbServer *server, gbItem *item ){
 	--server->nitems;
 	server->memused -= item->size + sizeof( gbItem );
+
+	if( item->encoding == COMPRESSED ) --server->ncompressed;
 
 	if( item->encoding != NUMBER && item->data != NULL )
 		free( item->data );
