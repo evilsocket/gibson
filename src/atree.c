@@ -254,6 +254,7 @@ void at_free( atree_t *at ){
 			 * Free the link itself.
 			 */
 			free( at->links[i] );
+			at->links[i] = NULL;
 		}
 		/*
 		 * Finally free the array.

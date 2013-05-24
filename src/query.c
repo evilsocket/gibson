@@ -70,10 +70,13 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 
 	if( item->encoding == COMPRESSED ) --server->ncompressed;
 
-	if( item->encoding != NUMBER && item->data != NULL )
+	if( item->encoding != NUMBER && item->data != NULL ){
 		free( item->data );
+		item->data = NULL;
+	}
 
 	free( item );
+	item = NULL;
 }
 
 int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *server, int remove ){
@@ -213,6 +216,7 @@ int gbQueryMultiSetHandler( gbClient *client, byte_t *p ){
 
 				// free allocated key
 				free( ki->data );
+				ki->data = NULL;
 			}
 
 			ll_reset( server->m_keys );
@@ -280,6 +284,7 @@ int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 
 				// free allocated key
 				free( ki->data );
+				ki->data = NULL;
 			}
 
 			ll_reset( server->m_keys );
@@ -326,6 +331,7 @@ int gbQueryMultiGetHandler( gbClient *client, byte_t *p ){
 		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 			// free allocated key
 			free( ki->data );
+			ki->data = NULL;
 		}
 
 		ll_reset( server->m_keys );
@@ -412,6 +418,7 @@ int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 
 			// free allocated key
 			free( ki->data );
+			ki->data = NULL;
 		}
 
 		ll_reset( server->m_keys );
@@ -459,8 +466,10 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 
 		server->memused -= ( item->size - sizeof(long) );
 
-		if( item->data )
+		if( item->data != NULL ){
 			free( item->data );
+			item->data = NULL;
+		}
 
 		item->encoding = NUMBER;
 		item->data	   = (void *)num;
@@ -502,8 +511,10 @@ int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
 
 					server->memused -= ( item->size - sizeof(long) );
 
-					if( item->data )
+					if( item->data != NULL ){
 						free( item->data );
+						item->data = NULL;
+					}
 
 					item->encoding = NUMBER;
 					item->data	   = (void *)num;
@@ -515,6 +526,7 @@ int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
 
 			// free allocated key
 			free( ki->data );
+			ki->data = NULL;
 		}
 
 		ll_reset( server->m_keys );
@@ -584,6 +596,7 @@ int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
 
 				// free allocated key
 				free( ki->data );
+				ki->data = NULL;
 			}
 
 			ll_reset( server->m_keys );
@@ -639,6 +652,7 @@ int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p ){
 
 			// free allocated key
 			free( ki->data );
+			ki->data = NULL;
 		}
 
 		ll_reset( server->m_keys );

@@ -949,8 +949,10 @@ void gbClientReset( gbClient *client ){
 void gbClientDestroy( gbClient *client ){
 	gbServer *server = client->server;
 
-	if( client->buffer != NULL )
+	if( client->buffer != NULL ){
 		free( client->buffer );
+		client->buffer = NULL;
+	}
 
 	if (client->fd != -1) {
 		gbDeleteFileEvent( server->events, client->fd, GB_READABLE );
@@ -970,6 +972,7 @@ void gbClientDestroy( gbClient *client ){
 	--server->nclients;
 
 	free( client );
+	client = NULL;
 }
 
 int gbClientEnqueueData( gbClient *client, short code, byte_t *reply, size_t size, gbFileProc *proc, short shutdown ){
