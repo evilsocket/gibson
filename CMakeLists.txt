@@ -25,10 +25,10 @@ if (WITH_DEBUG)
 else (WITH_DEBUG)
 	message(STATUS "Configuring for release")
 	set( CMAKE_BUILD_TYPE Release )
-	set( OPTIMIZATION "-O2" )
+	set( OPTIMIZATION "-g -O2" )
 endif (WITH_DEBUG)
 
-set( COMMON_CFLAGS "-w -Wunused ${OPTIMIZATION}" )
+set( COMMON_CFLAGS "-w ${OPTIMIZATION}" )
 
 file( GLOB_RECURSE MAIN_SOURCES src/*.c )
 file( GLOB_RECURSE HEADERS src/*.h )

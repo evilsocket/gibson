@@ -53,7 +53,7 @@ typedef struct _atree {
 	/*
 	 * Sub links dynamic array.
 	 */
-	struct _atree **links;
+	struct _atree *links;
 }
 atree_t;
 

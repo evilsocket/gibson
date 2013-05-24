@@ -34,19 +34,15 @@ atree_item_t *at_find_next_link( atree_t *at, char ascii ){
 	int i, j, n_links = at->n_links, r_start = n_links - 1;
 
 	for( i = 0, j = r_start; i < n_links; ++i, --j ){
-		if( at->links[i]->ascii == ascii ){
-			return at->links[i];
+		if( at->links[i].ascii == ascii ){
+			return at->links + i;
 		}
-		else if( at->links[j]->ascii == ascii ){
-			return at->links[j];
+		else if( at->links[j].ascii == ascii ){
+			return at->links + j;
 		}
 	}
-	return NULL;
-}
 
-void at_append_link( atree_t *at, atree_item_t *link ){
-	at->links = (atree_t **)realloc( at->links, sizeof(atree_t **) * at->n_links + 1 );
-	at->links[ at->n_links++ ] = link;
+	return NULL;
 }
 
 void *at_insert( atree_t *at, char *key, int len, void *value ){
@@ -56,6 +52,7 @@ void *at_insert( atree_t *at, char *key, int len, void *value ){
 	if(!len){
 		void *old = at->e_marker;
 		at->e_marker = value;
+
 		return old;
 	}
 	/*
@@ -75,8 +72,13 @@ void *at_insert( atree_t *at, char *key, int len, void *value ){
 		/*
 		 * Allocate, initialize and append a new link.
 		 */
-		at_init_link( link, key );
-		at_append_link( at, link );
+		at->links = realloc( at->links, sizeof(atree_t) * ( at->n_links + 1 ) );
+
+		link = at->links + at->n_links++;
+		link->ascii    = key[0];
+		link->e_marker =
+		link->links    = NULL;
+		link->n_links  = 0;
 		/*
 		 * Continue with next byte.
 		 */
@@ -116,7 +118,7 @@ void at_recurse( atree_t *at, at_recurse_handler handler, void *data, size_t lev
 	handler( at, level, data );
 
 	for( i = 0; i < at->n_links; i++ ){
-		at_recurse( at->links[i], handler, data, level + 1 );
+		at_recurse( at->links + i, handler, data, level + 1 );
 	}
 }
 
@@ -249,15 +251,11 @@ void at_free( atree_t *at ){
 			/*
 			 * Free this link sub-links.
 			 */
-			at_free( at->links[i] );
-			/*
-			 * Free the link itself.
-			 */
-			free( at->links[i] );
-			at->links[i] = NULL;
+			at_free( at->links + i );
 		}
+
 		/*
-		 * Finally free the array.
+		 * Free the link itself.
 		 */
 		free( at->links );
 		at->links = NULL;

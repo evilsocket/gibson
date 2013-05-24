@@ -387,10 +387,10 @@ void gbHandleDeadTTLHandler( atree_item_t *elem, size_t level, void *data ){
 
 		gbLog( DEBUG, "TTL of %ds expired for item at %p.", item->ttl, item );
 
+		gbDestroyItem( server, item );
+
 		// item is freeable
 		elem->e_marker = NULL;
-
-		gbDestroyItem( server, item );
 	}
 }
 

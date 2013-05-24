@@ -91,11 +91,11 @@ int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *server, int 
 
 			gbLog( DEBUG, "TTL of %ds expired for item at %p.", item->ttl, item );
 
+			gbDestroyItem( server, item );
+
 			// remove from container
 			if( remove )
 				node->e_marker = NULL;
-
-			gbDestroyItem( server, item );
 
 			return 0;
 		}
@@ -363,17 +363,15 @@ int gbQueryDelHandler( gbClient *client, byte_t *p ){
 
 		else
 		{
-			// Remove item from tree
-			node->e_marker = NULL;
-
 			int valid = gbIsNodeStillValid( node, item, server, 0 );
 
 			gbDestroyItem( server, item );
 
+			// Remove item from tree
+			node->e_marker = NULL;
+
 			if( valid )
-			{
 				return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
-			}
 		}
 	}
 
