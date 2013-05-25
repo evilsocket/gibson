@@ -47,10 +47,6 @@ typedef struct _atree {
 	 */
 	void*   	  e_marker;
 	/*
-	 * Number of sub links.
-	 */
-	char    	  n_links;
-	/*
 	 * Sub links dynamic array.
 	 */
 	struct _atree *links;
@@ -62,14 +58,8 @@ typedef atree_t atree_item_t;
 /*
  * Initialize the head of the tree.
  */
-#define at_init_tree( t )    (t).n_links  = 0; \
-						     (t).e_marker = 0; \
+#define at_init_tree( t )    (t).e_marker = 0; \
 						     (t).links    = NULL
-/*
- * Allocate and initialize a link of the tree.
- */
-#define at_init_link( l, k ) l = (atree_t *)calloc( 1, sizeof(atree_t) ); \
-						     l->ascii = k[0]
 
 #define at_clear at_free
 
