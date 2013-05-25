@@ -89,7 +89,7 @@ int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *server, int 
 			// item locked, skip
 			if( item->lock == -1 || eta < item->lock ) return 1;
 
-			gbLog( DEBUG, "TTL of %ds expired for item at %p.", item->ttl, item );
+			gbLog( DEBUG, "[ACCESS] TTL of %ds expired for item at %p.", item->ttl, item );
 
 			gbDestroyItem( server, item );
 

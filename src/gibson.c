@@ -42,7 +42,6 @@
 #include "configure.h"
 
 static gbServer server;
-static atree_t  config;
 
 void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask );
 void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask );
@@ -51,6 +50,7 @@ void gbMemoryFreeHandler( atree_item_t *elem, size_t level, void *data );
 int  gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data);
 void gbDaemonize();
 void gbProcessInit();
+void gbServerDestroy( gbServer *server );
 
 void gbHelpMenu( char **argv, int exitcode ){
 	printf( "Gibson cache server v%s\nCopyright %s\nReleased under %s\n\n", VERSION, AUTHOR, LICENSE );
@@ -108,18 +108,18 @@ int main( int argc, char **argv)
 		}
     }
 
-    gbConfigLoad( &config, configuration );
+	memset( &server, 0x00, sizeof(gbServer) );
+
+    gbConfigLoad( &server.config, configuration );
 
 	gbLogInit
 	(
-	  gbConfigReadString( &config, "logfile", GB_DEAFULT_LOG_FILE ),
-	  gbConfigReadInt( &config, "loglevel", GB_DEFAULT_LOG_LEVEL ),
-	  gbConfigReadInt( &config, "logflushrate", GB_DEFAULT_LOG_FLUSH_LEVEL )
+	  gbConfigReadString( &server.config, "logfile", GB_DEAFULT_LOG_FILE ),
+	  gbConfigReadInt( &server.config, "loglevel", GB_DEFAULT_LOG_LEVEL ),
+	  gbConfigReadInt( &server.config, "logflushrate", GB_DEFAULT_LOG_FLUSH_LEVEL )
 	);
 
-	memset( &server, 0x00, sizeof(gbServer) );
-
-	const char *sock = gbConfigReadString( &config, "unix_socket", NULL );
+	const char *sock = gbConfigReadString( &server.config, "unix_socket", NULL );
 	if( sock != NULL ){
 		gbLog( INFO, "Creating unix server socket on %s ...", sock );
 
@@ -130,8 +130,8 @@ int main( int argc, char **argv)
 		server.fd   = gbNetUnixServer( server.error, server.address, 0777 );
 	}
 	else {
-		const char *address = gbConfigReadString( &config, "address", GB_DEFAULT_ADDRESS );
-		int port = gbConfigReadInt( &config, "port", GB_DEFAULT_PORT );
+		const char *address = gbConfigReadString( &server.config, "address", GB_DEFAULT_ADDRESS );
+		int port = gbConfigReadInt( &server.config, "port", GB_DEFAULT_PORT );
 
 		gbLog( INFO, "Creating tcp server socket on %s:%d ...", address, port );
 
@@ -147,18 +147,18 @@ int main( int argc, char **argv)
 		exit(1);
 	}
 
-	server.maxidletime     = gbConfigReadInt( &config, "max_idletime",      GBNET_DEFAULT_MAX_IDLE_TIME );
-	server.maxclients      = gbConfigReadInt( &config, "max_clients",       GBNET_DEFAULT_MAX_CLIENTS );
-	server.maxrequestsize  = gbConfigReadSize( &config, "max_request_size", GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE );
-	server.maxitemttl	   = gbConfigReadInt( &config, "max_item_ttl",      GB_DEFAULT_MAX_ITEM_TTL );
-	server.maxmem		   = gbConfigReadSize( &config, "max_memory",       GB_DEFAULT_MAX_MEMORY );
-	server.maxkeysize	   = gbConfigReadSize( &config, "max_key_size",     GB_DEFAULT_MAX_QUERY_KEY_SIZE );
-	server.maxvaluesize	   = gbConfigReadSize( &config, "max_value_size",   GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
-	server.maxresponsesize = gbConfigReadSize( &config, "max_response_size", GB_DEFAULT_MAX_RESPONSE_SIZE );
-	server.compression	   = gbConfigReadSize( &config, "compression",	   GB_DEFAULT_COMPRESSION );
-	server.daemon		   = gbConfigReadInt( &config, "daemonize", 		   0 );
-	server.cronperiod	   = gbConfigReadInt( &config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
-	server.pidfile		   = gbConfigReadString( &config, "pidfile",       GB_DEFAULT_PID_FILE );
+	server.maxidletime     = gbConfigReadInt( &server.config, "max_idletime",      GBNET_DEFAULT_MAX_IDLE_TIME );
+	server.maxclients      = gbConfigReadInt( &server.config, "max_clients",       GBNET_DEFAULT_MAX_CLIENTS );
+	server.maxrequestsize  = gbConfigReadSize( &server.config, "max_request_size", GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE );
+	server.maxitemttl	   = gbConfigReadInt( &server.config, "max_item_ttl",      GB_DEFAULT_MAX_ITEM_TTL );
+	server.maxmem		   = gbConfigReadSize( &server.config, "max_memory",       GB_DEFAULT_MAX_MEMORY );
+	server.maxkeysize	   = gbConfigReadSize( &server.config, "max_key_size",     GB_DEFAULT_MAX_QUERY_KEY_SIZE );
+	server.maxvaluesize	   = gbConfigReadSize( &server.config, "max_value_size",   GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
+	server.maxresponsesize = gbConfigReadSize( &server.config, "max_response_size", GB_DEFAULT_MAX_RESPONSE_SIZE );
+	server.compression	   = gbConfigReadSize( &server.config, "compression",	   GB_DEFAULT_COMPRESSION );
+	server.daemon		   = gbConfigReadInt( &server.config, "daemonize", 		   0 );
+	server.cronperiod	   = gbConfigReadInt( &server.config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
+	server.pidfile		   = gbConfigReadString( &server.config, "pidfile",       GB_DEFAULT_PID_FILE );
 	server.events 	       = gbCreateEventLoop( server.maxclients + 1024 );
 	server.clients 	       = ll_prealloc( server.maxclients );
 	server.m_keys		   = ll_prealloc( 255 );
@@ -206,7 +206,8 @@ int main( int argc, char **argv)
 
 	gbProcessInit();
 
-	gbCreateTimeEvent( server.events, 1, gbServerCronHandler, &server, NULL );
+	server.cron_id = gbCreateTimeEvent( server.events, 1, gbServerCronHandler, &server, NULL );
+
 	gbCreateFileEvent( server.events, server.fd, GB_READABLE, gbAcceptHandler, &server );
 
 	gbEventLoopMain( server.events );
@@ -322,7 +323,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 }
 
 void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
-    int client_port, client_fd;
+    int client_port = 0, client_fd;
     char client_ip[128] = {0};
     gbServer *server = (gbServer *)privdata;
 
@@ -385,7 +386,7 @@ void gbHandleDeadTTLHandler( atree_item_t *elem, size_t level, void *data ){
 		// item locked, skip
 		if( item->lock == -1 || eta < item->lock ) return;
 
-		gbLog( DEBUG, "TTL of %ds expired for item at %p.", item->ttl, item );
+		gbLog( DEBUG, "[CRON] TTL of %ds expired for item at %p.", item->ttl, item );
 
 		gbDestroyItem( server, item );
 
@@ -406,6 +407,10 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 	unsigned long before = 0, deleted = 0;
 
 	server->time = now;
+
+	// shutdown requested
+	if( server->shutdown )
+		gbServerDestroy( server );
 
 	CRON_EVERY( 15000 ) {
 		before = server->memused;
@@ -465,9 +470,6 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 
 		gbLog( INFO, "MEM %s/%s - CLIENTS %d - OBJECTS %d ( %d COMPRESSED ) - UPTIME %s", used, max, server->nclients, server->nitems, server->ncompressed, uptime );
 	}
-
-	if( server->shutdown )
-		exit( 0 );
 
 	++server->crondone;
 
@@ -563,4 +565,52 @@ void gbProcessInit(){
 	}
 	else
 		gbLog( WARNING, "Error creating pid file %s.", server.pidfile );
+}
+
+void gbObjectDestroyHandler( atree_item_t *elem, size_t level, void *data ){
+	gbServer *server = data;
+	gbItem	 *item = elem->e_marker;
+
+	if( item )
+		gbDestroyItem( server, item );
+}
+
+void gbConfigDestroyHandler( atree_item_t *elem, size_t level, void *data ){
+	gbServer *server = data;
+	char	 *item = elem->e_marker;
+
+	if( item )
+		free( item );
+}
+
+void gbServerDestroy( gbServer *server ){
+
+	if( server->clients ){
+		ll_foreach( server->clients, citem ){
+			gbClient *client = citem->data;
+			if( client ){
+				gbClientDestroy(client);
+			}
+		}
+
+		ll_destroy( server->clients );
+	}
+
+	ll_destroy( server->m_keys );
+	ll_destroy( server->m_values );
+
+	free( server->m_buffer );
+	free( server->lzf_buffer );
+
+	at_recurse( &server->tree, gbObjectDestroyHandler, server, 0 );
+	at_recurse( &server->config, gbConfigDestroyHandler, NULL, 0 );
+
+	at_free( &server->tree );
+	at_free( &server->config );
+
+	gbDeleteTimeEvent( server->events, server->cron_id );
+	gbDeleteEventLoop( server->events );
+	gbLogFinalize();
+
+	exit( 0 );
 }

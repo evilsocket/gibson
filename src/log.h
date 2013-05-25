@@ -41,5 +41,6 @@ gbLogLevel;
 
 void gbLogInit( char *filename, gbLogLevel level, int flushrate );
 void gbLog( gbLogLevel level, const char *format, ... );
+void gbLogFinalize();
 
 #endif

@@ -51,10 +51,10 @@ void gbLogInit( char *filename, gbLogLevel level, int flushrate ) {
 void gbLog( gbLogLevel level, const char *format, ... ){
 	char 	buffer[0xFF] 	= {0},
 			timestamp[0xFF] = {0},
-		   *slevel;
+		   *slevel = "???";
 	va_list ap;
-	time_t 		rawtime;
-  	struct tm * timeinfo;
+	time_t 		rawtime  = 0;
+  	struct tm * timeinfo = NULL;
 
 	if( level >= __log_level ){
 		va_start( ap, format );
@@ -80,4 +80,11 @@ void gbLog( gbLogLevel level, const char *format, ... ){
 		if( ( ++__log_counter % __log_flushrate ) == 0 )
 			fflush(__log_fp);
     }
+}
+
+void gbLogFinalize(){
+	if( __log_fp ){
+		fflush(__log_fp);
+		fclose(__log_fp);
+	}
 }

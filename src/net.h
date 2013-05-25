@@ -197,10 +197,14 @@ typedef struct gbServer
 	unsigned long memused;
 	// maximum size of used memory
 	unsigned long maxmem;
+	// cron timed event id
+	long long cron_id;
 	// number of seconds less than an object will be freed if memused >= maxmem
 	time_t	 gcdelta;
 	// flag to say the server to shutdown ASAP
 	int		 shutdown;
+	// plain configuration instance
+	atree_t	 config;
 }
 gbServer;
 

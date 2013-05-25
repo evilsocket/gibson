@@ -177,7 +177,7 @@ void ll_remove( llist_t *ll, ll_item_t *item ){
 }
 
 void ll_clear( llist_t *ll ){
-	ll_item_t *item = ll->head,
+	ll_item_t *item = ll ? ll->head : NULL,
 			  *next;
 
 	while(item){
