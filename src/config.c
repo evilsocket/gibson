@@ -27,6 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
+#include <ctype.h>
 #include "config.h"
 
 void gbConfigLoad( atree_t *config, char *filename )
@@ -75,7 +76,7 @@ void gbConfigLoad( atree_t *config, char *filename )
 				if( *p == 0x00 )
 				{
 					fclose( fp );
-					printf( "Error on line %d of %s, unexpected end of line.\n", lineno, filename );
+					printf( "Error on line %zu of %s, unexpected end of line.\n", lineno, filename );
 					exit( 1 );
 				}
 
@@ -83,7 +84,7 @@ void gbConfigLoad( atree_t *config, char *filename )
 				pd = &value[0];
 				while( !isspace( *p ) && *p ) *pd++ = *p++;
 
-				at_insert( config, key, strlen(key), strdup( value ) );
+				at_insert( config, (unsigned char *)key, strlen(key), strdup( value ) );
 			}
 		}
 
@@ -98,7 +99,7 @@ void gbConfigLoad( atree_t *config, char *filename )
 
 int gbConfigReadInt( atree_t *config, const char *key, int def )
 {
-	char *value = at_find( config, key, strlen( key ) );
+	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
 	if( value )
 	{
 	    char * p;
@@ -112,7 +113,7 @@ int gbConfigReadInt( atree_t *config, const char *key, int def )
 
 unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long def )
 {
-	char *value = at_find( config, key, strlen( key ) );
+	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
 	if( value )
 	{
 		size_t len = strlen(value);
@@ -145,7 +146,7 @@ unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long 
 
 const char *gbConfigReadString( atree_t *config, const char *key, const char *def )
 {
-	char *value = at_find( config, key, strlen( key ) );
+	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
 
 	return value ? value : def;
 }

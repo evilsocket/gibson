@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <getopt.h>
+#include <execinfo.h>
 #include "log.h"
 #include "net.h"
 #include "atree.h"
@@ -139,7 +140,7 @@ int main( int argc, char **argv)
 
 		server.type	= TCP;
 		server.port	= port;
-		server.fd   = gbNetTcpServer( server.error, server.address, 0 );
+		server.fd   = gbNetTcpServer( server.error, server.port, server.address );
 	}
 
 	if( server.fd == GBNET_ERR ){
@@ -541,6 +542,8 @@ static void gbSignalHandler(int sig) {
 }
 
 void gbProcessInit(){
+	struct sigaction act;
+
 	if( server.daemon )
 		gbDaemonize();
 
@@ -549,14 +552,12 @@ void gbProcessInit(){
 	signal(SIGPIPE, SIG_IGN);
 
 	// set SIGTERM and SIGSEGV custom handler
-	struct sigaction act;
-
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	act.sa_handler = gbSignalHandler;
 
-	sigaction( SIGTERM, &act, NULL);
-	sigaction( SIGSEGV, &act, NULL);
+	sigaction( SIGTERM, &act, NULL );
+	sigaction( SIGSEGV, &act, NULL );
 
 	FILE *fp = fopen(server.pidfile,"w+t");
 	if (fp) {
@@ -576,8 +577,7 @@ void gbObjectDestroyHandler( atree_item_t *elem, size_t level, void *data ){
 }
 
 void gbConfigDestroyHandler( atree_item_t *elem, size_t level, void *data ){
-	gbServer *server = data;
-	char	 *item = elem->e_marker;
+	char *item = elem->e_marker;
 
 	if( item )
 		free( item );

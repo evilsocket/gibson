@@ -1022,7 +1022,7 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
 	else if( item->encoding == NUMBER ){
 		long num = (long)item->data;
 
-		return gbClientEnqueueData( client, code, &num, item->size, proc, shutdown );
+		return gbClientEnqueueData( client, code, (byte_t *)&num, item->size, proc, shutdown );
 	}
 	else
 		return GBNET_ERR;
@@ -1075,7 +1075,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 		}
 		else if( item->encoding == NUMBER ){
 			num = (long)item->data;
-			v = &num;
+			v   = (byte_t *)&num;
 			vsize = item->size;
 		}
 

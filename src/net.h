@@ -143,7 +143,7 @@ typedef struct gbServer
 	// 1 if we're running in daemon mode, otherwise 0
 	byte_t	 daemon;
 	// path of the pidfile
-	char	*pidfile;
+	const char *pidfile;
 	// the main object container
 	atree_t  tree;
 	// server main file descriptor
@@ -159,17 +159,17 @@ typedef struct gbServer
 	// list of currently connected clients
 	llist_t *clients;
 	// number total of items stored in the container
-	uint     nitems;
+	unsigned int nitems;
 	// number of compressed items
-	uint	 ncompressed;
+	unsigned int ncompressed;
 	// number of currently connected clients
-	uint 	 nclients;
+	unsigned int nclients;
 	// period in milliseconds of the cron loop
-	uint	 cronperiod;
+	unsigned int cronperiod;
 	// number of cron loops performed
-	uint	 crondone;
+	unsigned int crondone;
 	// maximum number of connected clients
-	uint 	 maxclients;
+	unsigned int maxclients;
 	// maximum number of seconds a client can stay idle before being disconnected
 	time_t 	 maxidletime;
 	// number of milliseconds to check for dead idle clients
@@ -289,6 +289,7 @@ int gbNetTcpKeepAlive(char *err, int fd);
 int gbNetPeerToString(int fd, char *ip, int *port);
 int gbNetKeepAlive(char *err, int fd, int interval);
 
+void gbServerFormatUptime( gbServer *server, char *s );
 
 gbClient *gbClientCreate( int fd, gbServer *server );
 void      gbClientReset( gbClient *client );

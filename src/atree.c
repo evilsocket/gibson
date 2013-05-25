@@ -30,7 +30,7 @@
 /*
  * Find next link with 'ascii' byte.
  */
-atree_item_t *at_find_next_link( atree_t *at, char ascii ){
+atree_item_t *at_find_next_link( atree_t *at, unsigned char ascii ){
 	int i, j, n_links = at->n_links, r_start = n_links - 1;
 
 	for( i = 0, j = r_start; i < n_links; ++i, --j ){
@@ -45,7 +45,7 @@ atree_item_t *at_find_next_link( atree_t *at, char ascii ){
 	return NULL;
 }
 
-void *at_insert( atree_t *at, char *key, int len, void *value ){
+void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 	/*
 	 * End of the chain, set the marker value and exit the recursion.
 	 */
@@ -88,7 +88,7 @@ void *at_insert( atree_t *at, char *key, int len, void *value ){
 	return NULL;
 }
 
-atree_t *at_find_node( atree_t *at, char *key, int len ){
+atree_t *at_find_node( atree_t *at, unsigned char *key, int len ){
 	atree_item_t *link = at;
 	int i = 0;
 
@@ -103,7 +103,7 @@ atree_t *at_find_node( atree_t *at, char *key, int len ){
 	return link;
 }
 
-void *at_find( atree_t *at, char *key, int len ){
+void *at_find( atree_t *at, unsigned char *key, int len ){
 	atree_item_t *link = at_find_node( at, key, len );
 	/*
 	 * End of the chain, if e_marker is NULL this chain is not complete,
@@ -144,7 +144,7 @@ void at_search_recursive_handler(atree_item_t *node, size_t level, void *data){
 	}
 }
 
-size_t at_search( atree_t *at, char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **values ) {
+size_t at_search( atree_t *at, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **values ) {
 	struct at_search_data searchdata;
 
 	searchdata.keys    = keys;
@@ -157,7 +157,7 @@ size_t at_search( atree_t *at, char *prefix, int len, int maxkeylen, llist_t **k
 	if( start ){
 		searchdata.current = calloc( 1, maxkeylen );
 
-		strncpy( searchdata.current, prefix, len );
+		strncpy( searchdata.current, (char *)prefix, len );
 
 		at_recurse( start, at_search_recursive_handler, &searchdata, len - 1 );
 
@@ -189,7 +189,7 @@ void at_search_nodes_recursive_handler(atree_item_t *node, size_t level, void *d
 	}
 }
 
-size_t at_search_nodes( atree_t *at, char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **nodes ){
+size_t at_search_nodes( atree_t *at, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **nodes ){
 	struct at_search_nodes_data searchdata;
 
 	searchdata.keys    = keys;
@@ -202,7 +202,7 @@ size_t at_search_nodes( atree_t *at, char *prefix, int len, int maxkeylen, llist
 	if( start ){
 		searchdata.current = calloc( 1, maxkeylen );
 
-		strncpy( searchdata.current, prefix, len );
+		strncpy( searchdata.current, (char *)prefix, len );
 
 		at_recurse( start, at_search_nodes_recursive_handler, &searchdata, len - 1 );
 
@@ -212,7 +212,7 @@ size_t at_search_nodes( atree_t *at, char *prefix, int len, int maxkeylen, llist
 	return searchdata.total;
 }
 
-void *at_remove( atree_t *at, char *key, int len ){
+void *at_remove( atree_t *at, unsigned char *key, int len ){
 	atree_item_t *link = at;
 	int i = 0;
 

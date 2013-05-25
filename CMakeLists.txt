@@ -28,7 +28,7 @@ else (WITH_DEBUG)
 	set( OPTIMIZATION "-g -O2" )
 endif (WITH_DEBUG)
 
-set( COMMON_CFLAGS "-w ${OPTIMIZATION}" )
+set( COMMON_CFLAGS "-Wall -std=gnu99 -pedantic ${OPTIMIZATION}" )
 
 file( GLOB_RECURSE MAIN_SOURCES src/*.c )
 file( GLOB_RECURSE HEADERS src/*.h )

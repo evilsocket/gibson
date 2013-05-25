@@ -31,6 +31,7 @@
 
 #include <memory.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 void  gbMemFormat( unsigned long used, char *buffer, size_t size );
 void *gbMemDup( void *mem, size_t size );

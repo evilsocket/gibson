@@ -28,6 +28,8 @@
  */
 #include "llist.h"
 
+void ll_append_new( llist_t *ll, void *data );
+
 void ll_init_space( llist_t *ll, size_t elements ){
 	ll->head = ll->tail = NULL;
 

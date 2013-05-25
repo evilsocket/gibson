@@ -30,13 +30,14 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
+#include <stdlib.h>
 
-static FILE 	  *__log_fp        = NULL;
+static FILE 	  *__log_fp       = NULL;
 static gbLogLevel __log_level     = DEBUG;
-static int		   __log_flushrate = 1;
-static int		   __log_counter   = 0;
+static int		  __log_flushrate = 1;
+static int		  __log_counter   = 0;
 
-void gbLogInit( char *filename, gbLogLevel level, int flushrate ) {
+void gbLogInit( const char *filename, gbLogLevel level, int flushrate ) {
 	__log_fp = fopen( filename, "a+t" );
 	if( __log_fp == NULL ){
 		printf( "ERROR: Unable to open logfile %s!\n", filename );

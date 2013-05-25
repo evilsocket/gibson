@@ -41,7 +41,7 @@ typedef struct _atree {
 	/*
 	 * The byte value of this link.
 	 */
-	char    	  ascii;
+	unsigned char ascii;
 	/*
 	 * Value of the link (end marker of a chain).
 	 */
@@ -77,27 +77,27 @@ typedef atree_t atree_item_t;
  * Insert 'value' inside 'at' ascii tree, mapped by
  * the given 'key' of 'len' bytes.
  */
-void *at_insert( atree_t *at, char *key, int len, void *value );
+void *at_insert( atree_t *at, unsigned char *key, int len, void *value );
 
-atree_t *at_find_node( atree_t *at, char *key, int len );
+atree_t *at_find_node( atree_t *at, unsigned char *key, int len );
 
 /*
  * Find the object mapped mapped by the given 'key'
  * of 'len' bytes inside 'at' ascii tree.
  */
-void *at_find( atree_t *at, char *key, int len );
+void *at_find( atree_t *at, unsigned char *key, int len );
 
 typedef void (*at_recurse_handler)(atree_item_t *, size_t, void *);
 
 void at_recurse( atree_t *at, at_recurse_handler handler, void *data, size_t level );
 
-size_t at_search( atree_t *at, char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **values );
-size_t at_search_nodes( atree_t *at, char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **nodes );
+size_t at_search( atree_t *at, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **values );
+size_t at_search_nodes( atree_t *at, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **nodes );
 
 /*
  * Remove the object from the tree and return its pointer.
  */
-void *at_remove( atree_t *at, char *key, int len );
+void *at_remove( atree_t *at, unsigned char *key, int len );
 /*
  * Free the tree nodes.
  */
