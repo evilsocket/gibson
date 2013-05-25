@@ -27,17 +27,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "atree.h"
-
 /*
- * This could be reduced if the key charset is known, TODO: Make this configurable?
+ * Find next link with 'ascii' byte.
  */
-#define NODE_LINK_NUMBER 256
+atree_item_t *at_find_next_link( atree_t *at, unsigned char ascii ){
+	int i, j, n_links = at->n_links, r_start = n_links - 1;
 
-#define at_find_next_link( at, c ) ( (at)->links ? (at)->links + c : NULL )
+	for( i = 0, j = r_start; i < n_links; ++i, --j ){
+		if( at->links[i].ascii == ascii ){
+			return at->links + i;
+		}
+		else if( at->links[j].ascii == ascii ){
+			return at->links + j;
+		}
+	}
+
+	return NULL;
+}
 
 void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
-	unsigned char current = key[0];
-
 	/*
 	 * End of the chain, set the marker value and exit the recursion.
 	 */
@@ -50,7 +58,7 @@ void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 	/*
 	 * Has the item a link with given byte?
 	 */
-	atree_item_t *link = at_find_next_link( at, current );
+	atree_item_t *link = at_find_next_link( at, key[0] );
 	if( link ){
 		/*
 		 * Next recursion, search next byte,
@@ -61,15 +69,17 @@ void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 	 * Nothing found.
 	 */
 	else{
-		// Preallocate if needed
-		if( at->links == NULL )
-			at->links = calloc( NODE_LINK_NUMBER, sizeof(atree_t) );
+		unsigned short current = at->n_links;
+		/*
+		 * Allocate, initialize and append a new link.
+		 */
+		at->links = realloc( at->links, sizeof(atree_t) * ++at->n_links );
 
 		link = at->links + current;
-		link->ascii    = current;
+		link->ascii    = key[0];
 		link->e_marker =
 		link->links    = NULL;
-
+		link->n_links  = 0;
 		/*
 		 * Continue with next byte.
 		 */
@@ -83,9 +93,13 @@ atree_t *at_find_node( atree_t *at, unsigned char *key, int len ){
 	atree_item_t *link = at;
 	int i = 0;
 
-	for( i = 0; link && i < len; i++ ){
-		link = at_find_next_link( link, key[i] );
+	do{
+		/*
+		 * Find next link ad continue.
+		 */
+		link = at_find_next_link( link, key[i++] );
 	}
+	while( --len && link );
 
 	return link;
 }
@@ -104,10 +118,8 @@ void at_recurse( atree_t *at, at_recurse_handler handler, void *data, size_t lev
 
 	handler( at, level, data );
 
-	if( at->links ){
-		for( i = 0; i < NODE_LINK_NUMBER; i++ ){
-			at_recurse( at->links + i, handler, data, level + 1 );
-		}
+	for( i = 0; i < at->n_links; i++ ){
+		at_recurse( at->links + i, handler, data, level + 1 );
 	}
 }
 
@@ -203,9 +215,15 @@ size_t at_search_nodes( atree_t *at, unsigned char *prefix, int len, int maxkeyl
 
 void *at_remove( atree_t *at, unsigned char *key, int len ){
 	atree_item_t *link = at;
+	int i = 0;
 
-	link = at_find_node( at, key, len );
-
+	do{
+		/*
+		 * Find next link ad continue.
+		 */
+		link = at_find_next_link( link, key[i++] );
+	}
+	while( --len && link );
 	/*
 	 * End of the chain, if e_marker is NULL this chain is not complete,
 	 * therefore 'key' does not map any alive object.
@@ -222,7 +240,7 @@ void *at_remove( atree_t *at, unsigned char *key, int len ){
 }
 
 void at_free( atree_t *at ){
-	int i;
+	int i, n_links = at->n_links;
 	/*
 	 * Better be safe than sorry ;)
 	 */
@@ -230,7 +248,7 @@ void at_free( atree_t *at ){
 		/*
 		 * First of all, loop all the sub links.
 		 */
-		for( i = 0; i < NODE_LINK_NUMBER; ++i ){
+		for( i = 0; i < n_links; ++i, --at->n_links ){
 			/*
 			 * Free this link sub-links.
 			 */
