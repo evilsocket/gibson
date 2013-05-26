@@ -142,7 +142,7 @@ void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ke
 
 	if( value ){
 		*value = p;
-		*vlen   = min( size - *klen - 1, server->maxvaluesize );
+		*vlen  = min( size - *klen - 1, server->maxvaluesize );
 	}
 }
 

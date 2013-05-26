@@ -26,6 +26,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include "configure.h"
 #include <stdio.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -33,14 +34,17 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <getopt.h>
+#if HAVE_BACKTRACE
 #include <execinfo.h>
+#endif
 #include "log.h"
 #include "net.h"
 #include "atree.h"
 #include "query.h"
 #include "config.h"
 #include "default.h"
-#include "configure.h"
+
+extern char *aeApiName();
 
 static gbServer server;
 
@@ -77,8 +81,7 @@ int main( int argc, char **argv)
 
     char *configuration = GB_DEFAULT_CONFIGURATION;
 
-    while (1)
-    {
+    while(1){
     	c = getopt_long( argc, argv, "hc:", long_options, &option_index );
     	if( c == -1 )
     		break;
@@ -195,6 +198,7 @@ int main( int argc, char **argv)
 	gbMemFormat( server.compression, compr, 0xFF );
 
 	gbLog( INFO, "Server starting ..." );
+	gbLog( INFO, "Multiplexing API : '%s'", aeApiName() );
 	gbLog( INFO, "Max idle time    : %ds", server.maxidletime );
 	gbLog( INFO, "Max clients      : %d", server.maxclients );
 	gbLog( INFO, "Max request size : %s", reqsize );
@@ -224,39 +228,30 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
     towrite = client->buffer_size - client->wrote;
     nwrote  = write( client->fd, client->buffer + client->wrote, towrite );
 
-    if (nwrote == -1)
-	{
-		if (errno == EAGAIN)
-		{
+    if (nwrote == -1){
+		if (errno == EAGAIN){
 			nwrote = 0;
 		}
-		else
-		{
+		else{
 			gbLog( WARNING, "Error writing to client: %s",strerror(errno));
 			gbClientDestroy(client);
 			return;
 		}
 	}
-	else if (nwrote == 0)
-	{
+	else if (nwrote == 0){
 		gbLog( DEBUG, "Client closed connection.");
 		gbClientDestroy(client);
 		return;
 	}
-
-
-	if (nwrote)
-	{
+	else{
 		client->wrote += nwrote;
 		client->seen = client->server->time;
 
-		if( client->wrote == client->buffer_size )
-		{
+		if( client->wrote == client->buffer_size ){
 			if( client->shutdown )
 				gbClientDestroy(client);
 
-			else
-			{
+			else{
 				gbClientReset(client);
 				gbDeleteFileEvent( client->server->events, client->fd, GB_WRITABLE );
 			}
@@ -270,52 +265,41 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 	gbServer *server = client->server;
 	int nread, toread;
 
-	if( client->buffer_size < 0 && client->read >= sizeof( client->buffer_size ) )
-	{
+	if( client->buffer_size < 0 && client->read >= sizeof( int ) ){
 		client->buffer_size = *(int *)client->buffer;
 		client->read = 0;
 
-		if( client->buffer_size > server->maxrequestsize || client->buffer_size < 0 )
-		{
+		if( client->buffer_size > server->maxrequestsize || client->buffer_size < 0 ){
 			gbLog( WARNING, "Client request size %d invalid.", client->buffer_size );
 			gbClientDestroy(client);
 			return;
 		}
 	}
 
-	toread = client->buffer_size >= 0 ? client->buffer_size : sizeof( client->buffer_size );
+	toread = client->buffer_size >= 0 ? client->buffer_size : sizeof( int );
 	nread =  read( fd, client->buffer + client->read, toread );
 
-	if (nread == -1)
-	{
-		if (errno == EAGAIN)
-		{
+	if (nread == -1){
+		if (errno == EAGAIN){
 			nread = 0;
 		}
-		else
-		{
+		else{
 			gbLog( WARNING, "Error reading from client: %s",strerror(errno));
 			gbClientDestroy(client);
 			return;
 		}
 	}
-	else if (nread == 0)
-	{
+	else if (nread == 0){
 		gbLog( DEBUG, "Client closed connection.");
 		gbClientDestroy(client);
 		return;
 	}
-
-
-    if (nread)
-    {
+	else{
     	client->read += nread;
     	client->seen = client->server->time;
 
-    	if( client->read == client->buffer_size )
-    	{
-    		if( gbProcessQuery(client) != GB_OK )
-    		{
+    	if( client->read == client->buffer_size ){
+    		if( gbProcessQuery(client) != GB_OK ){
     			gbLog( WARNING, "Malformed query, dropping client." );
     			gbClientDestroy(client);
     		}
@@ -506,10 +490,10 @@ static void gbSignalHandler(int sig) {
 		void *trace[32];
 		size_t size, i;
 		char **strings;
-
+#if HAVE_BACKTRACE
 		size    = backtrace( trace, 32 );
 		strings = backtrace_symbols( trace, size );
-
+#endif
 		char used[0xFF] = {0},
 			 max[0xFF] = {0},
 			 uptime[0xFF] = {0};
@@ -525,7 +509,7 @@ static void gbSignalHandler(int sig) {
 		gbLog( CRITICAL, "  Memory Used     : %s/%s", used, max );
 		gbLog( CRITICAL, "  Current Items   : %d", server.nitems );
 		gbLog( CRITICAL, "  Current Clients : %d", server.nclients );
-
+#if HAVE_BACKTRACE
 		gbLog( CRITICAL, "" );
 		gbLog( CRITICAL, "BACKTRACE:" );
 		gbLog( CRITICAL, "" );
@@ -533,7 +517,7 @@ static void gbSignalHandler(int sig) {
 		for( i = 0; i < size; i++ ){
 			gbLog( CRITICAL, "  %s", strings[i] );
 		}
-
+#endif
 		gbLog( CRITICAL, "" );
 		gbLog( CRITICAL, "***************************************" );
 
@@ -569,22 +553,18 @@ void gbProcessInit(){
 }
 
 void gbObjectDestroyHandler( atree_item_t *elem, size_t level, void *data ){
-	gbServer *server = data;
-	gbItem	 *item = elem->e_marker;
-
+	gbItem *item = elem->e_marker;
 	if( item )
-		gbDestroyItem( server, item );
+		gbDestroyItem( data, item );
 }
 
 void gbConfigDestroyHandler( atree_item_t *elem, size_t level, void *data ){
 	char *item = elem->e_marker;
-
 	if( item )
 		free( item );
 }
 
 void gbServerDestroy( gbServer *server ){
-
 	if( server->clients ){
 		ll_foreach( server->clients, citem ){
 			gbClient *client = citem->data;

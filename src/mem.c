@@ -28,7 +28,7 @@
  */
 #include "mem.h"
 
-void gbMemFormat( unsigned long used, char *buffer, size_t size ) {
+void gbMemFormat( unsigned long used, char *buffer, size_t size ){
 	memset( buffer, 0x00, size );
 
 	char *suffix[] = { "B", "KB", "MB", "GB", "TB" };
@@ -43,17 +43,15 @@ void gbMemFormat( unsigned long used, char *buffer, size_t size ) {
 	sprintf( buffer, "%.1f%s", d, suffix[i] );
 }
 
-void *gbMemDup( void *mem, size_t size )
-{
-	unsigned char *dup = ( unsigned char *)malloc( size );
+void *gbMemDup( void *mem, size_t size ){
+	unsigned char *dup = malloc( size );
 
 	memcpy( dup, mem, size );
 
 	return dup;
 }
 
-void *gbMemReuse( void *old, void *new, size_t size )
-{
+void *gbMemReuse( void *old, void *new, size_t size ){
 	old = realloc( old, size );
 
 	memset( old, 0x00, size );

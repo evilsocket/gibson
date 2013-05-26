@@ -29,6 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include "configure.h"
 #include "atree.h"
 #include "net.h"
 #include "lzf.h"
@@ -59,78 +60,22 @@
 #include <errno.h>
 #include <stdarg.h>
 
-/*
- * SELECT multiplexing technique
- */
-typedef struct aeApiState {
-    fd_set rfds, wfds;
-    /* We need to have a copy of the fd sets as it's not safe to reuse
-     * FD sets after select(). */
-    fd_set _rfds, _wfds;
-} aeApiState;
 
-static int aeApiCreate(gbEventLoop *eventLoop) {
-    aeApiState *state = malloc(sizeof(aeApiState));
-
-    if (!state) return -1;
-    FD_ZERO(&state->rfds);
-    FD_ZERO(&state->wfds);
-    eventLoop->apidata = state;
-    return 0;
-}
-
-static void aeApiFree(gbEventLoop *eventLoop) {
-    free(eventLoop->apidata);
-}
-
-static int aeApiAddEvent(gbEventLoop *eventLoop, int fd, int mask) {
-    aeApiState *state = eventLoop->apidata;
-
-    if (mask & GB_READABLE) FD_SET(fd,&state->rfds);
-    if (mask & GB_WRITABLE) FD_SET(fd,&state->wfds);
-    return 0;
-}
-
-static void aeApiDelEvent(gbEventLoop *eventLoop, int fd, int mask) {
-    aeApiState *state = eventLoop->apidata;
-
-    if (mask & GB_READABLE) FD_CLR(fd,&state->rfds);
-    if (mask & GB_WRITABLE) FD_CLR(fd,&state->wfds);
-}
-
-static int aeApiPoll(gbEventLoop *eventLoop, struct timeval *tvp) {
-    aeApiState *state = eventLoop->apidata;
-    int retval, j, numevents = 0;
-
-    memcpy(&state->_rfds,&state->rfds,sizeof(fd_set));
-    memcpy(&state->_wfds,&state->wfds,sizeof(fd_set));
-
-    retval = select(eventLoop->maxfd+1,
-                &state->_rfds,&state->_wfds,NULL,tvp);
-    if (retval > 0) {
-        for (j = 0; j <= eventLoop->maxfd; j++) {
-            int mask = 0;
-            gbFileEvent *fe = &eventLoop->events[j];
-
-            if (fe->mask == GB_NONE) continue;
-            if ( ( fe->mask & GB_READABLE ) && FD_ISSET(j,&state->_rfds))
-                mask |= GB_READABLE;
-            if ( ( fe->mask & GB_WRITABLE ) && FD_ISSET(j,&state->_wfds))
-                mask |= GB_WRITABLE;
-            eventLoop->fired[numevents].fd = j;
-            eventLoop->fired[numevents].mask = mask;
-            numevents++;
-        }
-    }
-    return numevents;
-}
-
-static char *aeApiName(void) {
-    return "select";
-}
-/*
- * END OF SELECT multiplexing technique
- */
+/* Include the best multiplexing layer supported by this system.
+ * The following should be ordered by performances, descending. */
+#ifdef HAVE_EVPORT
+#include "evport.c"
+#else
+    #ifdef HAVE_EPOLL
+    #include "epoll.c"
+    #else
+        #ifdef HAVE_KQUEUE
+        #include "kqueue.c"
+        #else
+        #include "select.c"
+        #endif
+    #endif
+#endif
 
 gbEventLoop *gbCreateEventLoop(int setsize) {
     gbEventLoop *eventLoop;
