@@ -55,7 +55,7 @@ gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding 
 
 	server->memused += size + sizeof( gbItem );
 
-	if( encoding == COMPRESSED ) ++server->ncompressed;
+	if( encoding == GB_ENC_LZF ) ++server->ncompressed;
 
 	if( server->firstin == 0 ) server->firstin = server->time;
 
@@ -68,9 +68,9 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	--server->nitems;
 	server->memused -= item->size + sizeof( gbItem );
 
-	if( item->encoding == COMPRESSED ) --server->ncompressed;
+	if( item->encoding == GB_ENC_LZF ) --server->ncompressed;
 
-	if( item->encoding != NUMBER && item->data != NULL ){
+	if( item->encoding != GB_ENC_NUMBER && item->data != NULL ){
 		free( item->data );
 		item->data = NULL;
 	}
@@ -147,7 +147,7 @@ void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ke
 }
 
 gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbServer *server ){
-	gbItemEncoding encoding = PLAIN;
+	gbItemEncoding encoding = GB_ENC_PLAIN;
 	void *data = v;
 	size_t comprlen = vlen, needcompr = vlen - 4; // compress at least of 4 bytes
 	gbItem *item, *old;
@@ -157,18 +157,18 @@ gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbServer *s
 		comprlen = lzf_compress( v, vlen, server->lzf_buffer, needcompr );
 		// not enough compression
 		if( comprlen == 0 ){
-			encoding = PLAIN;
+			encoding = GB_ENC_PLAIN;
 			data	 = gbMemDup( v, vlen );
 		}
 		// succesfully compressed
 		else {
-			encoding = COMPRESSED;
+			encoding = GB_ENC_LZF;
 			vlen 	 = comprlen;
 			data 	 = gbMemDup( server->lzf_buffer, comprlen );
 		}
 	}
 	else {
-		encoding = PLAIN;
+		encoding = GB_ENC_PLAIN;
 		data = gbMemDup( v, vlen );
 	}
 
@@ -441,7 +441,7 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 
 	item = node ? node->e_marker : NULL;
 	if( item == NULL ) {
-		item = gbCreateItem( server, (void *)1, sizeof( long ), NUMBER, -1 );
+		item = gbCreateItem( server, (void *)1, sizeof( long ), GB_ENC_NUMBER, -1 );
 		// just reuse the node
 		if( node )
 			node->e_marker = item;
@@ -453,12 +453,12 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 	else if( gbIsNodeStillValid( node, item, server, 1 ) == 0 ){
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
-	else if( item->encoding == NUMBER ){
+	else if( item->encoding == GB_ENC_NUMBER ){
 		item->data = (void *)( (long)item->data + delta );
 
 		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 	}
-	else if( item->encoding == PLAIN && gbIsNumeric( item->data, &num ) ){
+	else if( item->encoding == GB_ENC_PLAIN && gbIsNumeric( item->data, &num ) ){
 		num += delta;
 
 		server->memused -= ( item->size - sizeof(long) );
@@ -468,7 +468,7 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 			item->data = NULL;
 		}
 
-		item->encoding = NUMBER;
+		item->encoding = GB_ENC_NUMBER;
 		item->data	   = (void *)num;
 		item->size	   = sizeof(long);
 
@@ -495,10 +495,10 @@ int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
 			if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) == 0 ){
 				--found;
 			}
-			else if( item->encoding == NUMBER ){
+			else if( item->encoding == GB_ENC_NUMBER ){
 				item->data = (void *)( (long)item->data + delta );
 			}
-			else if( item->encoding == PLAIN ){
+			else if( item->encoding == GB_ENC_PLAIN ){
 
 				((char *)item->data)[ item->size - 1 ] = '\0';
 
@@ -513,7 +513,7 @@ int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
 						item->data = NULL;
 					}
 
-					item->encoding = NUMBER;
+					item->encoding = GB_ENC_NUMBER;
 					item->data	   = (void *)num;
 					item->size	   = sizeof(long);
 				}

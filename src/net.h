@@ -229,16 +229,14 @@ typedef struct gbClient
 }
 gbClient;
 
-typedef enum
-{
-	// the item is in plain encoding and data points to its buffer
-	PLAIN  = 0x00,
-	// PLAIN but compressed data with lzf
-	COMPRESSED,
-	// the item contains a number and data pointer is actually that number
-	NUMBER
-}
-gbItemEncoding;
+typedef unsigned char gbItemEncoding;
+
+// the item is in plain encoding and data points to its buffer
+#define	GB_ENC_PLAIN  0x00
+// PLAIN but compressed data with lzf
+#define GB_ENC_LZF    0x01
+// the item contains a number and data pointer is actually that number
+#define GB_ENC_NUMBER 0x02
 
 typedef struct
 {
@@ -251,11 +249,11 @@ typedef struct
 	// time the item was created
 	time_t		   time;
 	// TTL of this item
-	int			   ttl;
+	short		   ttl;
 	// flag to lock the item
-	int			   lock;
+	char		   lock;
 }
-gbItem;
+__attribute__((packed)) gbItem;
 
 gbEventLoop *gbCreateEventLoop(int setsize);
 void gbDeleteEventLoop(gbEventLoop *eventLoop);

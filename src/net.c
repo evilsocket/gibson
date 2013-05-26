@@ -950,10 +950,10 @@ int gbClientEnqueueCode( gbClient *client, short code, gbFileProc proc, short sh
 }
 
 int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc *proc, short shutdown ){
-	if( item->encoding == PLAIN ){
+	if( item->encoding == GB_ENC_PLAIN ){
 		return gbClientEnqueueData( client, code, item->data, item->size, proc, shutdown );
 	}
-	else if( item->encoding == COMPRESSED ){
+	else if( item->encoding == GB_ENC_LZF ){
 		size_t declen = lzf_decompress
 		(
 			item->data,
@@ -964,7 +964,7 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
 
 		return gbClientEnqueueData( client, code, client->server->lzf_buffer, declen, proc, shutdown );
 	}
-	else if( item->encoding == NUMBER ){
+	else if( item->encoding == GB_ENC_NUMBER ){
 		long num = (long)item->data;
 
 		return gbClientEnqueueData( client, code, (byte_t *)&num, item->size, proc, shutdown );
@@ -1003,11 +1003,11 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 		SAFE_MEMCPY( p, ki->data, sz );
 
 		// write value size + value
-		if( item->encoding == PLAIN ){
+		if( item->encoding == GB_ENC_PLAIN ){
 			vsize = item->size;
 			v	  = item->data;
 		}
-		else if( item->encoding == COMPRESSED ){
+		else if( item->encoding == GB_ENC_LZF ){
 			vsize = lzf_decompress
 			(
 				item->data,
@@ -1018,7 +1018,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 
 			v = server->lzf_buffer;
 		}
-		else if( item->encoding == NUMBER ){
+		else if( item->encoding == GB_ENC_NUMBER ){
 			num = (long)item->data;
 			v   = (byte_t *)&num;
 			vsize = item->size;

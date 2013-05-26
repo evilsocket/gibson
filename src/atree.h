@@ -55,7 +55,7 @@ typedef struct _atree {
 	 */
 	struct _atree *links;
 }
-atree_t;
+__attribute__((packed)) atree_t;
 
 typedef atree_t atree_item_t;
 

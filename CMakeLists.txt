@@ -25,7 +25,7 @@ if (WITH_DEBUG)
 else (WITH_DEBUG)
 	message(STATUS "Configuring for release")
 	set( CMAKE_BUILD_TYPE Release )
-	set( OPTIMIZATION "-g -O2" )
+	set( OPTIMIZATION "-g -O3" )
 endif (WITH_DEBUG)
 
 set( COMMON_CFLAGS "-Wall -Wno-unused-function -std=gnu99 -pedantic ${OPTIMIZATION}" )
