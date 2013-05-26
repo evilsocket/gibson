@@ -3,8 +3,7 @@ Gibson [![Build Status](https://secure.travis-ci.org/evilsocket/gibson.png)](htt
 
 A high performance tree-based cache server.  
 **Still under heavy development, do not use in production environments**  
-<http://www.emoticode.net/>  
-<http://www.evilsocket.net/>
+<http://gibson-db.in/>  
 
 Features
 ---
