@@ -321,8 +321,7 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
     	gbLog( WARNING, "Error accepting client connection: %s", server->error );
         return;
     }
-    else if( server->nclients >= server->maxclients )
-    {
+    else if( server->nclients >= server->maxclients ) {
     	close(client_fd);
     	gbLog( WARNING, "Dropping connection, current clients = %d, max = %d.", server->nclients, server->maxclients );
     }
@@ -335,8 +334,7 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 
 	    gbClient *client = gbClientCreate(client_fd,server);
 
-		if ( gbCreateFileEvent( e, client_fd, GB_READABLE, gbReadQueryHandler, client ) == GB_ERR )
-		{
+		if( gbCreateFileEvent( e, client_fd, GB_READABLE, gbReadQueryHandler, client ) == GB_ERR ) {
 			gbClientDestroy( client );
 			close(client_fd);
 			return;

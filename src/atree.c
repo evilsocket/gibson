@@ -46,6 +46,8 @@ atree_item_t *at_find_next_link( atree_t *at, unsigned char ascii ){
 }
 
 void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
+	unsigned char first = key[0];
+
 	/*
 	 * End of the chain, set the marker value and exit the recursion.
 	 */
@@ -58,7 +60,7 @@ void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 	/*
 	 * Has the item a link with given byte?
 	 */
-	atree_item_t *link = at_find_next_link( at, key[0] );
+	atree_item_t *link = at_find_next_link( at, first );
 	if( link ){
 		/*
 		 * Next recursion, search next byte,
@@ -76,7 +78,7 @@ void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 		at->links = realloc( at->links, sizeof(atree_t) * ++at->n_links );
 
 		link = at->links + current;
-		link->ascii    = key[0];
+		link->ascii    = first;
 		link->e_marker =
 		link->links    = NULL;
 		link->n_links  = 0;

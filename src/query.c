@@ -35,10 +35,14 @@
 
 extern void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask );
 
-__inline__ __attribute__((always_inline)) short gbIsNumeric(const char * s, long *num ){
-    char *p;
-    *num = strtol (s, &p, 10);
-    return ( *p == '\0' );
+__inline__ __attribute__((always_inline)) short gbQueryParseLong( byte_t *v, size_t vlen, long *l ){
+	char *p;
+
+	// make sure v is null terminated, strtol is such a bitch!
+	*( v + vlen ) = 0x00;
+	*l = strtol( (const char *)v, &p, 10 );
+
+	return ( *p == '\0' );
 }
 
 gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl ) {
@@ -142,7 +146,8 @@ void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ke
 
 	if( value ){
 		*value = p;
-		*vlen  = min( size - *klen - 1, server->maxvaluesize );
+		*vlen  = size - *klen - 1;
+		*vlen  = min( *vlen, server->maxvaluesize );
 	}
 }
 
@@ -236,17 +241,14 @@ int gbQueryTtlHandler( gbClient *client, byte_t *p ){
 	size_t klen = 0, vlen = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
+	long ttl;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
 
 	item = at_find( &server->tree, k, klen );
 	if( item )
 	{
-		long ttl;
-
-		*( v + vlen ) = 0x00;
-
-		if( gbIsNumeric( (const char *)v, &ttl ) )
+		if( gbQueryParseLong( v, vlen, &ttl ) )
 		{
 			item->time = time(NULL);
 			item->ttl  = min( server->maxitemttl, ttl );
@@ -266,13 +268,11 @@ int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 	size_t exprlen = 0, vlen = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
+	long ttl;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen );
 
-	long ttl;
-	*( v + vlen ) = 0x00;
-
-	if( gbIsNumeric( (const char *)v, &ttl ) )
+	if( gbQueryParseLong( v, vlen, &ttl ) )
 	{
 		size_t found = at_search( &server->tree, expr, exprlen, server->maxkeysize, &server->m_keys, &server->m_values );
 		if( found ){
@@ -458,7 +458,7 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 
 		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 	}
-	else if( item->encoding == GB_ENC_PLAIN && gbIsNumeric( item->data, &num ) ){
+	else if( item->encoding == GB_ENC_PLAIN && gbQueryParseLong( item->data, item->size, &num ) ){
 		num += delta;
 
 		server->memused -= ( item->size - sizeof(long) );
@@ -500,9 +500,7 @@ int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
 			}
 			else if( item->encoding == GB_ENC_PLAIN ){
 
-				((char *)item->data)[ item->size - 1 ] = '\0';
-
-				if( gbIsNumeric( item->data, &num ) )
+				if( gbQueryParseLong( item->data, item->size, &num ) )
 				{
 					num += delta;
 
@@ -546,17 +544,14 @@ int gbQueryLockHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	atree_item_t *node = NULL;
 	gbItem *item = NULL;
+	long locktime;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
 
 	node = at_find_node( &server->tree, k, klen );
 	if( node && ( item = node->e_marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
 	{
-		long locktime;
-
-		*( v + vlen ) = 0x00;
-
-		if( gbIsNumeric( (const char *)v, &locktime ) )
+		if( gbQueryParseLong( v, vlen, &locktime ) )
 		{
 			item->time = time(NULL);
 			item->lock = locktime;
@@ -576,13 +571,11 @@ int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
 	size_t exprlen = 0, vlen = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
+	long locktime;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen );
 
-	long locktime;
-	*( v + vlen ) = 0x00;
-
-	if( gbIsNumeric( (const char *)v, &locktime ) )
+	if( gbQueryParseLong( v, vlen, &locktime ) )
 	{
 		size_t found = at_search( &server->tree, expr, exprlen, server->maxkeysize, &server->m_keys, &server->m_values );
 		if( found ){
@@ -694,70 +687,54 @@ int gbProcessQuery( gbClient *client ) {
 	short  op = *(short *)&client->buffer[0];
 	byte_t *p =  client->buffer + sizeof(short);
 
-	if( op == OP_SET )
-	{
-		return gbQuerySetHandler( client, p );
-	}
-	else if( op == OP_MSET )
-	{
-		return gbQueryMultiSetHandler( client, p );
-	}
-	else if( op == OP_TTL )
-	{
-		return gbQueryTtlHandler( client, p );
-	}
-	else if( op == OP_MTTL )
-	{
-		return gbQueryMultiTtlHandler( client, p );
-	}
-	else if( op == OP_GET )
-	{
+	if( op == OP_GET ){
 		return gbQueryGetHandler( client, p );
 	}
-	else if( op == OP_MGET )
-	{
+	else if( op == OP_SET ){
+		return gbQuerySetHandler( client, p );
+	}
+	else if( op == OP_TTL ){
+		return gbQueryTtlHandler( client, p );
+	}
+	else if( op == OP_MSET ){
+		return gbQueryMultiSetHandler( client, p );
+	}
+	else if( op == OP_MTTL ){
+		return gbQueryMultiTtlHandler( client, p );
+	}
+	else if( op == OP_MGET ){
 		return gbQueryMultiGetHandler( client, p );
 	}
-	else if( op == OP_DEL )
-	{
+	else if( op == OP_DEL ){
 		return gbQueryDelHandler( client, p );
 	}
-	else if( op == OP_MDEL )
-	{
+	else if( op == OP_MDEL ){
 		return gbQueryMultiDelHandler( client, p );
 	}
-	else if( op == OP_INC || op == OP_DEC )
-	{
+	else if( op == OP_INC || op == OP_DEC ){
 		return gbQueryIncDecHandler( client, p, op == OP_INC ? +1 : -1 );
 	}
-	else if( op == OP_MINC || op == OP_MDEC )
-	{
+	else if( op == OP_MINC || op == OP_MDEC ){
 		return gbQueryMultiIncDecHandler( client, p, op == OP_MINC ? +1 : -1 );
 	}
-	else if( op == OP_LOCK )
-	{
+	else if( op == OP_LOCK ){
 		return gbQueryLockHandler( client, p );
 	}
-	else if( op == OP_MLOCK )
-	{
+	else if( op == OP_MLOCK ){
 		return gbQueryMultiLockHandler( client, p );
 	}
-	else if( op == OP_UNLOCK )
-	{
+	else if( op == OP_UNLOCK ){
 		return gbQueryUnlockHandler( client, p );
 	}
-	else if( op == OP_MUNLOCK )
-	{
+	else if( op == OP_MUNLOCK ){
 		return gbQueryMultiUnlockHandler( client, p );
 	}
-	else if( op == OP_COUNT )
-	{
+	else if( op == OP_COUNT ){
 		return gbQueryCountHandler( client, p );
 	}
-	else if( op == OP_END )
-	{
+	else if( op == OP_END ){
 		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 1 );
 	}
-
-	return GB_ERR;
+	else
+		return GB_ERR;
 }
