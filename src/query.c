@@ -662,6 +662,33 @@ int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p ){
 	return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
+int gbQueryCountHandler( gbClient *client, byte_t *p ){
+	byte_t *expr = NULL;
+	size_t exprlen = 0;
+	gbServer *server = client->server;
+	gbItem *item = NULL;
+
+	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL );
+
+	size_t found = at_search( &server->tree, expr, exprlen, server->maxkeysize, &server->m_keys, &server->m_values );
+	if( found ){
+		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+			item = vi->data;
+			if( !gbIsItemStillValid( item, server, expr, exprlen, 1 ) )
+				--found;
+
+			// free allocated key
+			free( ki->data );
+			ki->data = NULL;
+		}
+
+		ll_reset( server->m_keys );
+		ll_reset( server->m_values );
+	}
+
+	return gbClientEnqueueData( client, REPL_VAL, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+}
+
 int gbProcessQuery( gbClient *client ) {
 
 	short  op = *(short *)&client->buffer[0];
@@ -722,6 +749,10 @@ int gbProcessQuery( gbClient *client ) {
 	else if( op == OP_MUNLOCK )
 	{
 		return gbQueryMultiUnlockHandler( client, p );
+	}
+	else if( op == OP_COUNT )
+	{
+		return gbQueryCountHandler( client, p );
 	}
 	else if( op == OP_END )
 	{

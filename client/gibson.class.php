@@ -51,7 +51,8 @@ class Gibson
 	const CMD_MDEC    = 14;
 	const CMD_MLOCK   = 15;
 	const CMD_MUNLOCK = 16;
-
+	const CMD_COUNT	  = 17;
+	
 	const CMD_QUIT = 0xFF;
 
 	const REPL_ERR 		     = 0;
@@ -76,7 +77,8 @@ class Gibson
 			self::CMD_MINC => 'I',
 			self::CMD_MDEC => 'I',
 			self::CMD_MLOCK => 'I',
-			self::CMD_MUNLOCK => 'I'
+			self::CMD_MUNLOCK => 'I',
+			self::CMD_COUNT => 'I'
 		);
 	}
 	
@@ -160,7 +162,11 @@ class Gibson
   	public function munlock( $expr ){
   		return $this->sendCommandAssert( self::CMD_MUNLOCK, $expr, self::REPL_VAL );
   	}
-  
+  	
+  	public function count( $expr ){
+  		return $this->sendCommandAssert( self::CMD_COUNT, $expr, self::REPL_VAL );
+  	}
+  	
   	public function quit(){
   		return $this->sendCommandAssert( self::CMD_QUIT, '', self::REPL_OK );
  	}
