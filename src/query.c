@@ -64,8 +64,7 @@ gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding 
 
 	server->stats.lastin  = server->stats.time;
 	server->stats.memused += mem;
-	server->stats.sizeavg += mem;
-	server->stats.sizeavg /= ++server->stats.nitems;
+	server->stats.sizeavg = server->stats.memused / ++server->stats.nitems;
 
 	return item;
 }
@@ -74,8 +73,7 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	unsigned long mem = item->size + sizeof( gbItem );
 
 	server->stats.memused -= mem;
-	server->stats.sizeavg -= mem;
-	server->stats.sizeavg /= --server->stats.nitems;
+	server->stats.sizeavg = server->stats.memused / --server->stats.nitems;
 
 	if( item->encoding == GB_ENC_LZF ) --server->stats.ncompressed;
 
