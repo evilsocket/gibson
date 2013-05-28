@@ -837,7 +837,7 @@ int gbNetSockName(int fd, char *ip, int *port) {
 
 void gbServerFormatUptime( gbServer *server, char *s ){
 
-	int uptime = difftime( server->time, server->started );
+	int uptime = difftime( server->stats.time, server->stats.started );
 	int days = 0,
 		hours = 0,
 		minutes = 0,
@@ -870,7 +870,7 @@ gbClient* gbClientCreate( int fd, gbServer *server  ){
 	gbClient *client = (gbClient *)malloc( sizeof( gbClient ) );
 
 	client->fd 			= fd;
-	client->buffer 		= malloc( server->maxrequestsize );
+	client->buffer 		= malloc( server->limits.maxrequestsize );
 	client->buffer_size = -1;
 	client->read 		= 0;
 	client->wrote 		= 0;
@@ -879,7 +879,7 @@ gbClient* gbClientCreate( int fd, gbServer *server  ){
 
 	ll_append( server->clients, client );
 
-	++server->nclients;
+	++server->stats.nclients;
 
 	return client;
 }
@@ -914,7 +914,7 @@ void gbClientDestroy( gbClient *client ){
 		}
 	}
 
-	--server->nclients;
+	--server->stats.nclients;
 
 	free( client );
 	client = NULL;
@@ -928,7 +928,7 @@ int gbClientEnqueueData( gbClient *client, short code, byte_t *reply, size_t siz
 				   size;			  // data
 
 	// realloc only if needed
-	if( rsize > client->server->maxrequestsize )
+	if( rsize > client->server->limits.maxrequestsize )
 		client->buffer = (byte_t *)realloc( client->buffer, rsize );
 
 	client->buffer_size = rsize;
@@ -959,7 +959,7 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
 			item->data,
 			item->size,
 			client->server->lzf_buffer,
-			client->server->maxrequestsize
+			client->server->limits.maxrequestsize
 		);
 
 		return gbClientEnqueueData( client, code, client->server->lzf_buffer, declen, proc, shutdown );
@@ -978,7 +978,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 	gbItem *item = NULL;
 	size_t sz = sizeof(size_t),
 		   vsize = 0,
-		   space = server->maxresponsesize;
+		   space = server->limits.maxresponsesize;
 	byte_t *data = server->m_buffer,
 		   *p = data,
 		   *v = NULL;
@@ -1013,7 +1013,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 				item->data,
 				item->size,
 				client->server->lzf_buffer,
-				client->server->maxrequestsize
+				client->server->limits.maxrequestsize
 			);
 
 			v = server->lzf_buffer;

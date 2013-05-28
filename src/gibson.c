@@ -151,35 +151,39 @@ int main( int argc, char **argv)
 		exit(1);
 	}
 
-	server.maxidletime     = gbConfigReadInt( &server.config, "max_idletime",      GBNET_DEFAULT_MAX_IDLE_TIME );
-	server.maxclients      = gbConfigReadInt( &server.config, "max_clients",       GBNET_DEFAULT_MAX_CLIENTS );
-	server.maxrequestsize  = gbConfigReadSize( &server.config, "max_request_size", GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE );
-	server.maxitemttl	   = gbConfigReadInt( &server.config, "max_item_ttl",      GB_DEFAULT_MAX_ITEM_TTL );
-	server.maxmem		   = gbConfigReadSize( &server.config, "max_memory",       GB_DEFAULT_MAX_MEMORY );
-	server.maxkeysize	   = gbConfigReadSize( &server.config, "max_key_size",     GB_DEFAULT_MAX_QUERY_KEY_SIZE );
-	server.maxvaluesize	   = gbConfigReadSize( &server.config, "max_value_size",   GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
-	server.maxresponsesize = gbConfigReadSize( &server.config, "max_response_size", GB_DEFAULT_MAX_RESPONSE_SIZE );
-	server.compression	   = gbConfigReadSize( &server.config, "compression",	   GB_DEFAULT_COMPRESSION );
-	server.daemon		   = gbConfigReadInt( &server.config, "daemonize", 		   0 );
-	server.cronperiod	   = gbConfigReadInt( &server.config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
-	server.pidfile		   = gbConfigReadString( &server.config, "pidfile",       GB_DEFAULT_PID_FILE );
-	server.events 	       = gbCreateEventLoop( server.maxclients + 1024 );
-	server.clients 	       = ll_prealloc( server.maxclients );
-	server.m_keys		   = ll_prealloc( 255 );
-	server.m_values		   = ll_prealloc( 255 );
-	server.idlecron		   = server.maxidletime * 1000;
-	server.started		   =
-	server.time			   = time(NULL);
-	server.lzf_buffer	   = calloc( 1, server.maxrequestsize );
-	server.m_buffer		   = calloc( 1, server.maxresponsesize );
-	server.memused		   =
-	server.firstin		   =
-	server.lastin		   =
-	server.crondone		   =
-	server.nclients	       =
-	server.nitems	       =
-	server.ncompressed	   =
-	server.shutdown		   = 0;
+	// read server limit values from config
+	server.limits.maxidletime     = gbConfigReadInt( &server.config, "max_idletime",       GBNET_DEFAULT_MAX_IDLE_TIME );
+	server.limits.maxclients      = gbConfigReadInt( &server.config, "max_clients",        GBNET_DEFAULT_MAX_CLIENTS );
+	server.limits.maxrequestsize  = gbConfigReadSize( &server.config, "max_request_size",  GBNET_DEFAULT_MAX_REQUEST_BUFFER_SIZE );
+	server.limits.maxitemttl	  = gbConfigReadInt( &server.config, "max_item_ttl",       GB_DEFAULT_MAX_ITEM_TTL );
+	server.limits.maxmem		  = gbConfigReadSize( &server.config, "max_memory",        GB_DEFAULT_MAX_MEMORY );
+	server.limits.maxkeysize	  = gbConfigReadSize( &server.config, "max_key_size",      GB_DEFAULT_MAX_QUERY_KEY_SIZE );
+	server.limits.maxvaluesize	  = gbConfigReadSize( &server.config, "max_value_size",    GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
+	server.limits.maxresponsesize = gbConfigReadSize( &server.config, "max_response_size", GB_DEFAULT_MAX_RESPONSE_SIZE );
+	// initialize server statistics
+	server.stats.started     =
+	server.stats.time	     = time(NULL);
+	server.stats.memused     =
+	server.stats.firstin     =
+	server.stats.lastin      =
+	server.stats.crondone    =
+	server.stats.nclients    =
+	server.stats.nitems	     =
+	server.stats.ncompressed =
+	server.stats.sizeavg	 = 0;
+
+	server.compression = gbConfigReadSize( &server.config, "compression",	   GB_DEFAULT_COMPRESSION );
+	server.daemon	   = gbConfigReadInt( &server.config, "daemonize", 		   0 );
+	server.cronperiod  = gbConfigReadInt( &server.config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
+	server.pidfile	   = gbConfigReadString( &server.config, "pidfile",        GB_DEFAULT_PID_FILE );
+	server.events 	   = gbCreateEventLoop( server.limits.maxclients + 1024 );
+	server.clients 	   = ll_prealloc( server.limits.maxclients );
+	server.m_keys	   = ll_prealloc( 255 );
+	server.m_values	   = ll_prealloc( 255 );
+	server.idlecron	   = server.limits.maxidletime * 1000;
+	server.lzf_buffer  = calloc( 1, server.limits.maxrequestsize );
+	server.m_buffer	   = calloc( 1, server.limits.maxresponsesize );
+	server.shutdown	   = 0;
 
 	at_init_tree( server.tree );
 
@@ -190,17 +194,17 @@ int main( int argc, char **argv)
 		 maxrespsize[0xFF] = {0},
 		 compr[0xFF] = {0};
 
-	gbMemFormat( server.maxrequestsize, reqsize, 0xFF );
-	gbMemFormat( server.maxmem, maxmem, 0xFF );
-	gbMemFormat( server.maxkeysize, maxkey, 0xFF );
-	gbMemFormat( server.maxvaluesize, maxvalue, 0xFF );
-	gbMemFormat( server.maxresponsesize, maxrespsize, 0xFF );
+	gbMemFormat( server.limits.maxrequestsize, reqsize, 0xFF );
+	gbMemFormat( server.limits.maxmem, maxmem, 0xFF );
+	gbMemFormat( server.limits.maxkeysize, maxkey, 0xFF );
+	gbMemFormat( server.limits.maxvaluesize, maxvalue, 0xFF );
+	gbMemFormat( server.limits.maxresponsesize, maxrespsize, 0xFF );
 	gbMemFormat( server.compression, compr, 0xFF );
 
 	gbLog( INFO, "Server starting ..." );
 	gbLog( INFO, "Multiplexing API : '%s'", aeApiName() );
-	gbLog( INFO, "Max idle time    : %ds", server.maxidletime );
-	gbLog( INFO, "Max clients      : %d", server.maxclients );
+	gbLog( INFO, "Max idle time    : %ds", server.limits.maxidletime );
+	gbLog( INFO, "Max clients      : %d", server.limits.maxclients );
 	gbLog( INFO, "Max request size : %s", reqsize );
 	gbLog( INFO, "Max memory       : %s", maxmem );
 	gbLog( INFO, "Max key size     : %s", maxkey );
@@ -245,7 +249,7 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 	}
 	else{
 		client->wrote += nwrote;
-		client->seen = client->server->time;
+		client->seen = client->server->stats.time;
 
 		if( client->wrote == client->buffer_size ){
 			if( client->shutdown )
@@ -269,7 +273,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 		client->buffer_size = *(int *)client->buffer;
 		client->read = 0;
 
-		if( client->buffer_size > server->maxrequestsize || client->buffer_size < 0 ){
+		if( client->buffer_size > server->limits.maxrequestsize || client->buffer_size < 0 ){
 			gbLog( WARNING, "Client request size %d invalid.", client->buffer_size );
 			gbClientDestroy(client);
 			return;
@@ -296,7 +300,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 	}
 	else{
     	client->read += nread;
-    	client->seen = client->server->time;
+    	client->seen = client->server->stats.time;
 
     	if( client->read == client->buffer_size ){
     		if( gbProcessQuery(client) != GB_OK ){
@@ -321,9 +325,9 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
     	gbLog( WARNING, "Error accepting client connection: %s", server->error );
         return;
     }
-    else if( server->nclients >= server->maxclients ) {
+    else if( server->stats.nclients >= server->limits.maxclients ) {
     	close(client_fd);
-    	gbLog( WARNING, "Dropping connection, current clients = %d, max = %d.", server->nclients, server->maxclients );
+    	gbLog( WARNING, "Dropping connection, current clients = %d, max = %d.", server->stats.nclients, server->limits.maxclients );
     }
 
     gbLog( DEBUG, "New connection from %s:%d", *client_ip ? client_ip : server->address, client_port );
@@ -345,7 +349,7 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 void gbMemoryFreeHandler( atree_item_t *elem, size_t level, void *data ) {
 	gbServer *server = data;
 	gbItem	 *item = elem->e_marker;
-	time_t	  eta = item ? ( server->time - item->time ) : 0;
+	time_t	  eta = item ? ( server->stats.time - item->time ) : 0;
 
 	// item is older enough to be deleted
 	if( eta >= server->gcdelta ) {
@@ -362,7 +366,7 @@ void gbMemoryFreeHandler( atree_item_t *elem, size_t level, void *data ) {
 void gbHandleDeadTTLHandler( atree_item_t *elem, size_t level, void *data ){
 	gbServer *server = data;
 	gbItem	 *item = elem->e_marker;
-	time_t	  eta = item ? ( server->time - item->time ) : 0;
+	time_t	  eta = item ? ( server->stats.time - item->time ) : 0;
 
 	// item is older enough to be deleted
 	if( item && item->ttl > 0 && eta >= item->ttl ) {
@@ -378,7 +382,7 @@ void gbHandleDeadTTLHandler( atree_item_t *elem, size_t level, void *data ){
 	}
 }
 
-#define CRON_EVERY(_ms_) if ((_ms_ <= server->cronperiod) || !(server->crondone%((_ms_)/server->cronperiod)))
+#define CRON_EVERY(_ms_) if ((_ms_ <= server->cronperiod) || !(server->stats.crondone % ((_ms_)/server->cronperiod)))
 
 int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data) {
 	gbServer *server = data;
@@ -386,43 +390,44 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 	char used[0xFF] = {0},
 		 max[0xFF] = {0},
 		 freed[0xFF] = {0},
-		 uptime[0xFF] = {0};
+		 uptime[0xFF] = {0},
+		 avgsize[0xFF] = {0};
 	unsigned long before = 0, deleted = 0;
 
-	server->time = now;
+	server->stats.time = now;
 
 	// shutdown requested
 	if( server->shutdown )
 		gbServerDestroy( server );
 
 	CRON_EVERY( 15000 ) {
-		before = server->memused;
+		before = server->stats.memused;
 
 		at_recurse( &server->tree, gbHandleDeadTTLHandler, server, 0 );
 
-		deleted = before - server->memused;
+		deleted = before - server->stats.memused;
 
 		if( deleted > 0 ){
 			gbMemFormat( deleted, freed,  0xFF );
 
-			gbLog( INFO, "Freed %s of expired data, left %d items.", freed, server->nitems );
+			gbLog( INFO, "Freed %s of expired data, left %d items.", freed, server->stats.nitems );
 		}
 	}
 
 	CRON_EVERY( 5000 ) {
-		if( server->memused > server->maxmem ){
+		if( server->stats.memused > server->limits.maxmem ){
 			// TODO: Implement a better algorithm for this!
-			server->gcdelta = ( server->time - server->firstin ) / 5.0;
+			server->gcdelta = ( server->stats.time - server->stats.firstin ) / 5.0;
 
-			before = server->memused;
+			before = server->stats.memused;
 
 			gbLog( WARNING, "Max memory exhausted, trying to free data older than %ds.", server->gcdelta );
 
 			at_recurse( &server->tree, gbMemoryFreeHandler, server, 0 );
 
-			gbMemFormat( before - server->memused, freed,  0xFF );
+			gbMemFormat( before - server->stats.memused, freed,  0xFF );
 
-			gbLog( INFO, "Freed %s, left %d items.", freed, server->nitems );
+			gbLog( INFO, "Freed %s, left %d items.", freed, server->stats.nitems );
 
 			server->gcdelta = 0;
 		}
@@ -433,7 +438,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		ll_foreach( server->clients, llitem )
 		{
 			gbClient *client = ll_data( gbClient *, llitem );
-			if( client != NULL && ( now - client->seen ) > server->maxidletime )
+			if( client != NULL && ( now - client->seen ) > server->limits.maxidletime )
 			{
 				gbLog( WARNING, "Removing dead client.", client );
 				gbClientDestroy(client);
@@ -447,14 +452,27 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 	}
 
 	CRON_EVERY( 15000 ){
-		gbMemFormat( server->memused, used, 0xFF );
-		gbMemFormat( server->maxmem,  max,  0xFF );
+		gbMemFormat( server->stats.memused, used, 0xFF );
+		gbMemFormat( server->limits.maxmem, max,  0xFF );
+		gbMemFormat( server->stats.sizeavg, avgsize, 0xFF );
+
 		gbServerFormatUptime( server, uptime );
 
-		gbLog( INFO, "MEM %s/%s - CLIENTS %d - OBJECTS %d ( %d COMPRESSED ) - UPTIME %s", used, max, server->nclients, server->nitems, server->ncompressed, uptime );
+		gbLog
+		(
+		  INFO,
+		  "MEM %s/%s - CLIENTS %d - OBJECTS %d ( %d COMPRESSED ) - AVERAGE SIZE %s - UPTIME %s",
+		  used,
+		  max,
+		  server->stats.nclients,
+		  server->stats.nitems,
+		  server->stats.ncompressed,
+		  avgsize,
+		  uptime
+		);
 	}
 
-	++server->crondone;
+	++server->stats.crondone;
 
 	return server->cronperiod;
 }
@@ -496,8 +514,8 @@ static void gbSignalHandler(int sig) {
 			 max[0xFF] = {0},
 			 uptime[0xFF] = {0};
 
-		gbMemFormat( server.memused, used, 0xFF );
-		gbMemFormat( server.maxmem,  max,  0xFF );
+		gbMemFormat( server.stats.memused, used, 0xFF );
+		gbMemFormat( server.limits.maxmem, max,  0xFF );
 		gbServerFormatUptime( &server, uptime );
 
 		gbLog( CRITICAL, "INFO:" );
@@ -505,8 +523,8 @@ static void gbSignalHandler(int sig) {
 
 		gbLog( CRITICAL, "  Uptime          : %s", uptime );
 		gbLog( CRITICAL, "  Memory Used     : %s/%s", used, max );
-		gbLog( CRITICAL, "  Current Items   : %d", server.nitems );
-		gbLog( CRITICAL, "  Current Clients : %d", server.nclients );
+		gbLog( CRITICAL, "  Current Items   : %d", server.stats.nitems );
+		gbLog( CRITICAL, "  Current Clients : %d", server.stats.nclients );
 #if HAVE_BACKTRACE
 		gbLog( CRITICAL, "" );
 		gbLog( CRITICAL, "BACKTRACE:" );

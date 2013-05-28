@@ -128,6 +128,52 @@ typedef enum
 }
 gbServerType;
 
+typedef struct
+{
+	// maximum number of connected clients
+	unsigned int maxclients;
+	// maximum number of seconds a client can stay idle before being disconnected
+	time_t 	 maxidletime;
+	// maximum size of a request
+	size_t	 maxrequestsize;
+	// maximum number of seconds of an item TTL
+	size_t   maxitemttl;
+	// maximum size of an item key
+	unsigned long maxkeysize;
+	// maximum size of an item value
+	unsigned long maxvaluesize;
+	// maximum size of a response
+	unsigned long maxresponsesize;
+	// maximum size of used memory
+	unsigned long maxmem;
+}
+gbServerLimits;
+
+typedef struct
+{
+	// time the server was started
+	time_t   started;
+	// server time updated every cron loop
+	time_t 	 time;
+	// time of the first created object
+	time_t   firstin;
+	// time of the last created object
+	time_t	 lastin;
+	// number total of items stored in the container
+	unsigned int nitems;
+	// number of compressed items
+	unsigned int ncompressed;
+	// number of currently connected clients
+	unsigned int nclients;
+	// number of cron loops performed
+	unsigned int crondone;
+	// currently used memory
+	unsigned long memused;
+	// average object size
+	double sizeavg;
+}
+gbServerStats;
+
 typedef struct gbServer
 {
 	// the main event loop structure
@@ -148,36 +194,12 @@ typedef struct gbServer
 	atree_t  tree;
 	// server main file descriptor
 	int 	 fd;
-	// time the server was started
-	time_t   started;
-	// server time updated every cron loop
-	time_t 	 time;
-	// time of the first created object
-	time_t   firstin;
-	// time of the last created object
-	time_t	 lastin;
 	// list of currently connected clients
 	llist_t *clients;
-	// number total of items stored in the container
-	unsigned int nitems;
-	// number of compressed items
-	unsigned int ncompressed;
-	// number of currently connected clients
-	unsigned int nclients;
 	// period in milliseconds of the cron loop
 	unsigned int cronperiod;
-	// number of cron loops performed
-	unsigned int crondone;
-	// maximum number of connected clients
-	unsigned int maxclients;
-	// maximum number of seconds a client can stay idle before being disconnected
-	time_t 	 maxidletime;
 	// number of milliseconds to check for dead idle clients
 	time_t   idlecron;
-	// maximum size of a request
-	size_t	 maxrequestsize;
-	// maximum number of seconds of an item TTL
-	size_t   maxitemttl;
 	// data bigger then this is going to be compressed
 	unsigned long compression;
 	// buffer used for lzf (de)compression, alloc'd only once
@@ -187,16 +209,6 @@ typedef struct gbServer
 	llist_t *m_values;
 	// buffer used to send multi get responses
 	byte_t *m_buffer;
-	// maximum size of an item key
-	unsigned long maxkeysize;
-	// maximum size of an item value
-	unsigned long maxvaluesize;
-	// maximum size of a response
-	unsigned long maxresponsesize;
-	// currently used memory
-	unsigned long memused;
-	// maximum size of used memory
-	unsigned long maxmem;
 	// cron timed event id
 	long long cron_id;
 	// number of seconds less than an object will be freed if memused >= maxmem
@@ -205,6 +217,9 @@ typedef struct gbServer
 	int		 shutdown;
 	// plain configuration instance
 	atree_t	 config;
+
+	gbServerLimits limits;
+	gbServerStats stats;
 }
 gbServer;
 
