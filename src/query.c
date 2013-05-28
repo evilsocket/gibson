@@ -47,6 +47,7 @@ __inline__ __attribute__((always_inline)) short gbQueryParseLong( byte_t *v, siz
 
 gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl ) {
 	gbItem *item = ( gbItem * )malloc( sizeof( gbItem ) );
+	unsigned long mem = size + sizeof( gbItem );
 
 	item->data 	   = data;
 	item->size 	   = size;
@@ -55,25 +56,26 @@ gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding 
 	item->ttl	   = ttl;
 	item->lock	   = 0;
 
-	++server->stats.nitems;
-
-	server->stats.memused += size + sizeof( gbItem );
-
 	if( encoding == GB_ENC_LZF )
 		++server->stats.ncompressed;
 
 	if( server->stats.firstin == 0 )
 		server->stats.firstin = server->stats.time;
 
-	server->stats.lastin = server->stats.time;
-	server->stats.sizeavg = ( server->stats.sizeavg + ( size + sizeof( gbItem ) ) ) / server->stats.nitems;
+	server->stats.lastin  = server->stats.time;
+	server->stats.memused += mem;
+	server->stats.sizeavg += mem;
+	server->stats.sizeavg /= ++server->stats.nitems;
 
 	return item;
 }
 
 void gbDestroyItem( gbServer *server, gbItem *item ){
-	--server->stats.nitems;
-	server->stats.memused -= item->size + sizeof( gbItem );
+	unsigned long mem = item->size + sizeof( gbItem );
+
+	server->stats.memused -= mem;
+	server->stats.sizeavg -= mem;
+	server->stats.sizeavg /= --server->stats.nitems;
 
 	if( item->encoding == GB_ENC_LZF ) --server->stats.ncompressed;
 
