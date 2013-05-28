@@ -52,6 +52,7 @@
 #define OP_MLOCK   15
 #define OP_MUNLOCK 16
 #define OP_COUNT   17
+#define OP_STATS   18
 
 #define OP_END    0xFF
 

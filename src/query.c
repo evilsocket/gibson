@@ -45,6 +45,30 @@ __inline__ __attribute__((always_inline)) short gbQueryParseLong( byte_t *v, siz
 	return ( *p == '\0' );
 }
 
+gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding encoding ) {
+	gbItem *item = ( gbItem * )malloc( sizeof( gbItem ) );
+
+	item->data 	   = data;
+	item->size 	   = size;
+	item->encoding = encoding;
+	item->time	   = 0;
+	item->ttl	   = -1;
+	item->lock	   = 0;
+
+	return item;
+}
+
+
+void gbDestroyVolatileItem( gbItem *item ){
+	if( item->encoding != GB_ENC_NUMBER && item->data != NULL ){
+		free( item->data );
+		item->data = NULL;
+	}
+
+	free( item );
+	item = NULL;
+}
+
 gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl ) {
 	gbItem *item = ( gbItem * )malloc( sizeof( gbItem ) );
 	unsigned long mem = size + sizeof( gbItem );
@@ -73,7 +97,7 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	unsigned long mem = item->size + sizeof( gbItem );
 
 	server->stats.memused -= mem;
-	server->stats.sizeavg = server->stats.memused / --server->stats.nitems;
+	server->stats.sizeavg = server->stats.nitems == 1 ? 0 : server->stats.memused / --server->stats.nitems;
 
 	if( item->encoding == GB_ENC_LZF ) --server->stats.ncompressed;
 
@@ -685,6 +709,38 @@ int gbQueryCountHandler( gbClient *client, byte_t *p ){
 	return gbClientEnqueueData( client, REPL_VAL, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 }
 
+int gbQueryStatsHandler( gbClient *client, byte_t *p ){
+	gbServer *server = client->server;
+
+#define APPEND_STATS( key, value, size, encoding ) ll_append( server->m_keys, key ); \
+												   ll_append( server->m_values, gbCreateVolatileItem( (void *)(long)value, size, encoding ) )
+
+	APPEND_STATS( "server_started",         server->stats.started, sizeof(time_t), GB_ENC_NUMBER );
+	APPEND_STATS( "server_time",            server->stats.time, sizeof(time_t), GB_ENC_NUMBER );
+	APPEND_STATS( "first_item_seen",        server->stats.firstin, sizeof(time_t), GB_ENC_NUMBER );
+	APPEND_STATS( "last_item_seen",         server->stats.lastin, sizeof(time_t), GB_ENC_NUMBER );
+	APPEND_STATS( "total_items",            server->stats.nitems, sizeof(unsigned int), GB_ENC_NUMBER );
+	APPEND_STATS( "total_compressed_items", server->stats.ncompressed, sizeof(unsigned int), GB_ENC_NUMBER );
+	APPEND_STATS( "total_clients",          server->stats.nclients, sizeof(unsigned int), GB_ENC_NUMBER );
+	APPEND_STATS( "total_cron_done",        server->stats.crondone, sizeof(unsigned int), GB_ENC_NUMBER );
+	APPEND_STATS( "memory_used",            server->stats.memused, sizeof(unsigned long), GB_ENC_NUMBER );
+	APPEND_STATS( "item_size_avg",          (unsigned int)server->stats.sizeavg, sizeof(unsigned int), GB_ENC_NUMBER );
+
+#undef APPEND_STATS
+
+	int ret = gbClientEnqueueKeyValueSet( client, 10, gbWriteReplyHandler, 0 );
+
+	ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+		gbDestroyVolatileItem( vi->data );
+		vi->data = NULL;
+	}
+
+	ll_reset( server->m_keys );
+	ll_reset( server->m_values );
+
+	return ret;
+}
+
 int gbProcessQuery( gbClient *client ) {
 
 	short  op = *(short *)&client->buffer[0];
@@ -734,6 +790,9 @@ int gbProcessQuery( gbClient *client ) {
 	}
 	else if( op == OP_COUNT ){
 		return gbQueryCountHandler( client, p );
+	}
+	else if( op == OP_STATS ){
+		return gbQueryStatsHandler( client, p );
 	}
 	else if( op == OP_END ){
 		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 1 );
