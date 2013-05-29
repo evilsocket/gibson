@@ -228,7 +228,8 @@ class Gibson
  				if( isset( $this->unpackers[ $op ] ) )
  				{
  					foreach( $reply as $key => $packed ){
- 						$reply[$key] = unpack( $this->unpackers[ $op ], $packed )[1];
+ 						$unpacked = unpack( $this->unpackers[ $op ], $packed );
+ 						$reply[$key] = $unpacked[1];
  					}
  				}
  					
