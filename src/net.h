@@ -169,6 +169,8 @@ typedef struct
 	unsigned int crondone;
 	// currently used memory
 	unsigned long memused;
+	// maximum memory peak
+	unsigned long mempeak;
 	// average object size
 	double sizeavg;
 }

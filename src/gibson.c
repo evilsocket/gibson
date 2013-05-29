@@ -164,6 +164,7 @@ int main( int argc, char **argv)
 	server.stats.started     =
 	server.stats.time	     = time(NULL);
 	server.stats.memused     =
+	server.stats.mempeak     =
 	server.stats.firstin     =
 	server.stats.lastin      =
 	server.stats.crondone    =

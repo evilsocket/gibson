@@ -90,6 +90,9 @@ gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding 
 	server->stats.memused += mem;
 	server->stats.sizeavg = server->stats.memused / ++server->stats.nitems;
 
+	if( server->stats.memused > server->stats.mempeak )
+		server->stats.mempeak = server->stats.memused;
+
 	return item;
 }
 
@@ -711,8 +714,10 @@ int gbQueryCountHandler( gbClient *client, byte_t *p ){
 
 int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
+	size_t elems = 0;
 
-#define APPEND_STATS( key, value, size, encoding ) ll_append( server->m_keys, key ); \
+#define APPEND_STATS( key, value, size, encoding ) ++elems; \
+												   ll_append( server->m_keys, key ); \
 												   ll_append( server->m_values, gbCreateVolatileItem( (void *)(long)value, size, encoding ) )
 
 	APPEND_STATS( "server_started",         server->stats.started, sizeof(time_t), GB_ENC_NUMBER );
@@ -724,11 +729,12 @@ int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	APPEND_STATS( "total_clients",          server->stats.nclients, sizeof(unsigned int), GB_ENC_NUMBER );
 	APPEND_STATS( "total_cron_done",        server->stats.crondone, sizeof(unsigned int), GB_ENC_NUMBER );
 	APPEND_STATS( "memory_used",            server->stats.memused, sizeof(unsigned long), GB_ENC_NUMBER );
+	APPEND_STATS( "memory_peak", 			server->stats.mempeak, sizeof(unsigned long), GB_ENC_NUMBER );
 	APPEND_STATS( "item_size_avg",          (unsigned int)server->stats.sizeavg, sizeof(unsigned int), GB_ENC_NUMBER );
 
 #undef APPEND_STATS
 
-	int ret = gbClientEnqueueKeyValueSet( client, 10, gbWriteReplyHandler, 0 );
+	int ret = gbClientEnqueueKeyValueSet( client, elems, gbWriteReplyHandler, 0 );
 
 	ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 		gbDestroyVolatileItem( vi->data );
