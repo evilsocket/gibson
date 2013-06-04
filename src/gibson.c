@@ -353,7 +353,7 @@ void gbMemoryFreeHandler( atree_item_t *elem, size_t level, void *data ) {
 	time_t	  eta = item ? ( server->stats.time - item->time ) : 0;
 
 	// item is older enough to be deleted
-	if( eta >= server->gcdelta ) {
+	if( eta && eta >= server->gcdelta ) {
 		// item locked, skip
 		if( item->lock == -1 || eta < item->lock ) return;
 
