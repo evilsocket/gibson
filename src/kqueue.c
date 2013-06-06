@@ -35,6 +35,10 @@
 #include <sys/event.h>
 #include <sys/time.h>
 
+#if HAVE_JEMALLOC == 1
+#include <jemalloc/jemalloc.h>
+#endif
+
 typedef struct aeApiState {
     int kqfd;
     struct kevent *events;

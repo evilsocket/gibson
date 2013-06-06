@@ -6,6 +6,23 @@ OPTION( WITH_DEBUG "enable debug module" OFF )
 
 # cmake needed modules
 include(CheckIncludeFiles)
+include(CheckLibraryExists)
+
+set(HAVE_JEMALLOC 0)
+
+FIND_LIBRARY(JEMALLOC_LIB jemalloc)
+if (JEMALLOC_LIB)
+	CHECK_LIBRARY_EXISTS(jemalloc mallctl "" HAVE_JEMALLOC_FUN)
+	if (HAVE_JEMALLOC_FUN)
+		message(STATUS "Found jemalloc: ${JEMALLOC_LIB}")
+		set(HAVE_JEMALLOC 1)
+	else()
+		message(STATUS "Found jemalloc at ${JEMALLOC_LIB}, but unable to find its API "
+		               "(maybe the library was configured with a non-empty function prefix?)")
+	endif()
+else()
+	message(STATUS "Can't find jemalloc")
+endif()
 
 # configure variables
 set( PREFIX usr )
@@ -39,6 +56,10 @@ configure_file( src/configure.h.in src/configure.h )
 # generation
 add_executable( ${PROJECT} ${MAIN_SOURCES} ) 
 set_target_properties( ${PROJECT} PROPERTIES COMPILE_FLAGS "${COMMON_CFLAGS}" )
+
+if ( HAVE_JEMALLOC EQUAL 1 )
+	target_link_libraries( ${PROJECT} jemalloc )
+endif ( HAVE_JEMALLOC EQUAL 1 )
 
 install( TARGETS ${PROJECT} DESTINATION /${PREFIX}/sbin )
 install( FILES ${PROJECT}.conf DESTINATION /etc/gibson )

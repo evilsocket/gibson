@@ -33,6 +33,10 @@
 #include "net.h"
 #include "default.h"
 
+#if HAVE_JEMALLOC == 1
+#include <jemalloc/jemalloc.h>
+#endif
+
 // single
 #define OP_SET     1
 #define OP_TTL     2

@@ -31,6 +31,10 @@
 #include "atree.h"
 #include "lzf.h"
 
+#if HAVE_JEMALLOC == 1
+#include <jemalloc/jemalloc.h>
+#endif
+
 #define min(a,b) ( a < b ? a : b )
 
 extern void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask );

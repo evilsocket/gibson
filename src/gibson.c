@@ -44,6 +44,10 @@
 #include "config.h"
 #include "default.h"
 
+#if HAVE_JEMALLOC == 1
+#include <jemalloc/jemalloc.h>
+#endif
+
 extern char *aeApiName();
 
 static gbServer server;
@@ -204,6 +208,15 @@ int main( int argc, char **argv)
 
 	gbLog( INFO, "Server starting ..." );
 	gbLog( INFO, "Multiplexing API : '%s'", aeApiName() );
+#if HAVE_JEMALLOC == 1
+	const char *p;
+	size_t s = sizeof(p);
+	mallctl("version", &p,  &s, NULL, 0);
+
+	gbLog( INFO, "Memory allocator : 'jemalloc %s'", p );
+#else
+	gbLog( INFO, "Memory allocator : 'malloc'" );
+#endif
 	gbLog( INFO, "Max idle time    : %ds", server.limits.maxidletime );
 	gbLog( INFO, "Max clients      : %d", server.limits.maxclients );
 	gbLog( INFO, "Max request size : %s", reqsize );

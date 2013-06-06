@@ -41,6 +41,10 @@
 
 #include <stdio.h>
 
+#if HAVE_JEMALLOC == 1
+#include <jemalloc/jemalloc.h>
+#endif
+
 static int evport_debug = 0;
 
 /*

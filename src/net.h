@@ -39,6 +39,10 @@
 #include "mem.h"
 #include "default.h"
 
+#if HAVE_JEMALLOC == 1
+#include <jemalloc/jemalloc.h>
+#endif
+
 #if defined(__sun)
 #define AF_LOCAL AF_UNIX
 #endif

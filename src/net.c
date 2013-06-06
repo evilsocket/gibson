@@ -60,6 +60,9 @@
 #include <errno.h>
 #include <stdarg.h>
 
+#if HAVE_JEMALLOC == 1
+#include <jemalloc/jemalloc.h>
+#endif
 
 /* Include the best multiplexing layer supported by this system.
  * The following should be ordered by performances, descending. */

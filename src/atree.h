@@ -33,6 +33,10 @@
 #include <string.h>
 #include "llist.h"
 
+#if HAVE_JEMALLOC == 1
+#include <jemalloc/jemalloc.h>
+#endif
+
 /*
  * Implementation of an n-ary tree, where each link is represented
  * by a char of a key and its links by next chars.

@@ -33,6 +33,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#if HAVE_JEMALLOC == 1
+#include <jemalloc/jemalloc.h>
+#endif
+
 /*
  * Linked list generic item container.
  */
