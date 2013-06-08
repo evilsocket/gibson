@@ -8,32 +8,6 @@ OPTION( WITH_DEBUG "enable debug module" OFF )
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
-set(HAVE_JEMALLOC 0)
-
-FIND_LIBRARY(JEMALLOC_LIB jemalloc)
-if (JEMALLOC_LIB)
-	CHECK_LIBRARY_EXISTS(jemalloc mallctl "" HAVE_JEMALLOC_FUN)
-	if (HAVE_JEMALLOC_FUN)
-		message(STATUS "Found jemalloc: ${JEMALLOC_LIB}")
-		set(HAVE_JEMALLOC 1)
-	else()
-		message(STATUS "Found jemalloc at ${JEMALLOC_LIB}, but unable to find its API "
-		               "(maybe the library was configured with a non-empty function prefix?)")
-	endif()
-else()
-	message(STATUS "Can't find jemalloc")
-endif()
-
-# configure variables
-set( PREFIX usr )
-set( PROJECT "gibson" )
-set( AUTHOR "Simone Margaritelli <evilsocket at gmail dot com>" )
-set( LICENSE "BSD License" )
-set( MAJOR_VERSION 1 )
-set( MINOR_VERSION 0 )
-set( PATCH_LEVEL   0 )
-set( VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL}b" )
-
 # common compilation flags
 if (WITH_DEBUG)
 	message(STATUS "Configuring for debug")
@@ -44,6 +18,36 @@ else (WITH_DEBUG)
 	set( CMAKE_BUILD_TYPE Release )
 	set( OPTIMIZATION "-g -O3" )
 endif (WITH_DEBUG)
+
+set(HAVE_JEMALLOC 0)
+
+if (WITH_JEMALLOC)
+	FIND_LIBRARY(JEMALLOC_LIB jemalloc)
+	if (JEMALLOC_LIB)
+		CHECK_LIBRARY_EXISTS(jemalloc mallctl "" HAVE_JEMALLOC_FUN)
+		if (HAVE_JEMALLOC_FUN)
+			message(STATUS "Using jemalloc memory allocator at ${JEMALLOC_LIB}")
+			set(HAVE_JEMALLOC 1)
+		else()
+			message(STATUS "Found jemalloc at ${JEMALLOC_LIB}, but unable to find its API "
+			               "(maybe the library was configured with a non-empty function prefix?)")
+		endif()
+	else() 
+		message(STATUS "Can't find jemalloc")
+	endif()
+else (WITH_JEMALLOC)
+	message(STATUS "Using standard libc memory allocator." )
+endif (WITH_JEMALLOC)
+
+# configure variables
+set( PREFIX usr )
+set( PROJECT "gibson" )
+set( AUTHOR "Simone Margaritelli <evilsocket at gmail dot com>" )
+set( LICENSE "BSD License" )
+set( MAJOR_VERSION 1 )
+set( MINOR_VERSION 0 )
+set( PATCH_LEVEL   0 )
+set( VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL}b" )
 
 set( COMMON_CFLAGS "-Wall -Wno-unused-function -std=gnu99 -pedantic ${OPTIMIZATION}" )
 
