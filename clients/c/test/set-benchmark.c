@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
 		 val[0xFF] = {0};
 
 	// printf("tcp connect  : %d\n", gb_tcp_connect(&client, NULL, 0, 1000));
-	printf("unix connect : %d\n", gb_unix_connect(&client, "../../gibson/gibson.sock", 100 ) );
+	printf("unix connect : %d\n", gb_unix_connect(&client, "../../../gibson.sock", 100 ) );
 
 	start = millis();
 

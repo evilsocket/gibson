@@ -117,12 +117,8 @@ int gb_tcp_connect(gbClient *c, char *address, int port, int timeout) {
 	strncpy( c->address, inet_ntoa(sa.sin_addr), 0xFF );
 	c->port = port;
 
-	c->reply.buffer   = malloc( GB_DEFAULT_BUFFER_SIZE );
-	c->reply.code     = 0;
-	c->reply.size     = GB_DEFAULT_BUFFER_SIZE;
-	c->request.buffer = malloc( GB_DEFAULT_BUFFER_SIZE );
-	c->request.code   = 0;
-	c->request.size   = GB_DEFAULT_BUFFER_SIZE;
+	GB_INIT_BUFFER( c->reply );
+	GB_INIT_BUFFER( c->request );
 
 	return 0;
 }
@@ -167,12 +163,8 @@ int gb_unix_connect( gbClient *c, char *socket, int timeout ){
 	strncpy( c->address, socket, 0xFF );
 	c->port = -1;
 
-	c->reply.buffer   = malloc( GB_DEFAULT_BUFFER_SIZE );
-	c->reply.code     = 0;
-	c->reply.size     = GB_DEFAULT_BUFFER_SIZE;
-	c->request.buffer = malloc( GB_DEFAULT_BUFFER_SIZE );
-	c->request.code   = 0;
-	c->request.size   = GB_DEFAULT_BUFFER_SIZE;
+	GB_INIT_BUFFER( c->reply );
+	GB_INIT_BUFFER( c->request );
 
 	return 0;
 }
@@ -247,8 +239,10 @@ int gb_send_command( gbClient *c, short cmd, void *data, int len ){
 
 		c->error = 0;
 
-		if( rsize > c->reply.size )
+		if( rsize > c->reply.rsize ){
 			c->reply.buffer = realloc( c->reply.buffer, rsize );
+			c->reply.rsize = rsize;
+		}
 
 		c->reply.size = rsize;
 
@@ -275,10 +269,12 @@ int gb_send_command_assert( gbClient *c, short cmd, void *data, int len, short r
 	return c->error;
 }
 
-#define gb_snprintf( c, len, format, ... ) if( c->request.size < ( len ) ){ \
-										       c->request.buffer = realloc( c->request.buffer, len ); } \
+#define gb_snprintf( c, len, format, ... ) if( c->request.rsize < ( len ) ){ \
+										       c->request.buffer = realloc( c->request.buffer, len ); \
+										       c->request.rsize = ( len ); \
+										   } \
 										   c->request.size = ( len ); \
-										   snprintf( c->request.buffer, c->request.size + 1, format, __VA_ARGS__ )
+										   snprintf( (char *)c->request.buffer, c->request.size + 1, format, __VA_ARGS__ )
 
 int gb_set(gbClient *c, char *key, int klen, char *value, int vlen, int ttl ) {
 	gb_snprintf( c, klen + 1 + vlen, "%s %s", key, value );
@@ -381,6 +377,66 @@ int gb_stats(gbClient *c) {
 
 int gb_quit(gbClient *c) {
 	return gb_send_command_assert(c, OP_END, NULL, 0, REPL_OK);
+}
+
+const unsigned char *gb_reply_raw(gbClient *c){
+	return c->reply.buffer;
+}
+
+long gb_reply_number(gbClient *c){
+	return *(long *)c->reply.buffer;
+}
+
+void gb_reply_multi(gbClient *c, gbMultiBuffer *b){
+	size_t i, klen, vsize;
+	unsigned char *p = c->reply.buffer;
+
+	b->count  = 0;
+	b->keys   = (char **)NULL;
+	b->values = NULL;
+
+	b->count  = *(size_t *)p; p += sizeof(size_t);
+	b->keys   = (char **)malloc( b->count * sizeof(char *) );
+	b->values = (gbBuffer *)malloc( b->count * sizeof(gbBuffer) );
+
+	for( i = 0; i < b->count; i++ ){
+		GB_INIT_BUFFER( b->values[i] );
+
+		klen = *(size_t *)p; p += sizeof(size_t);
+
+		b->keys[i] = (char *)malloc( klen );
+
+		memcpy( b->keys[i], p, klen ); p += klen;
+
+		vsize = *(size_t *)p; p += sizeof(size_t);
+
+		if( vsize > b->values[i].rsize ){
+			b->values[i].buffer = realloc( b->values[i].buffer, vsize );
+			b->values[i].rsize = vsize;
+		}
+
+		b->values[i].size = vsize;
+
+		memcpy( b->values[i].buffer, p, vsize ); p += vsize;
+	}
+}
+
+void gb_reply_multi_free(gbMultiBuffer *b){
+	size_t i;
+	for( i = 0; i < b->count; i++ ){
+		free( b->values[i].buffer );
+		free( b->keys[i] );
+
+		b->values[i].buffer = (unsigned char *)NULL;
+		b->keys[i] = NULL;
+	}
+
+	free( b->values );
+	free( b->keys );
+
+	b->values = NULL;
+	b->keys = (char **)NULL;
+	b->count = 0;
 }
 
 void gb_disconnect( gbClient *c ){

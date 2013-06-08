@@ -93,10 +93,24 @@ extern "C" {
 typedef struct
 {
 	short code;   // used to tag this buffer ( for reply code )
-	char *buffer; // buffer
+	unsigned char *buffer; // buffer
+	size_t rsize; // real buffer size
 	size_t size;  // current buffer size
 }
 gbBuffer;
+
+#define GB_INIT_BUFFER(b) (b).buffer = malloc( GB_DEFAULT_BUFFER_SIZE ); \
+						  (b).code   = 0; \
+						  (b).rsize  = \
+						  (b).size   = GB_DEFAULT_BUFFER_SIZE
+
+typedef struct
+{
+	size_t count;
+	char    **keys;
+	gbBuffer *values;
+}
+gbMultiBuffer;
 
 typedef struct
 {
@@ -132,6 +146,11 @@ int gb_munlock(gbClient *c, char *expr, int elen);
 int gb_count(gbClient *c, char *expr, int elen);
 int gb_stats(gbClient *c);
 int gb_quit(gbClient *c);
+
+const unsigned char *gb_reply_raw(gbClient *c);
+long gb_reply_number(gbClient *c);
+void gb_reply_multi(gbClient *c, gbMultiBuffer *b);
+void gb_reply_multi_free(gbMultiBuffer *b);
 
 void gb_disconnect( gbClient *c );
 
