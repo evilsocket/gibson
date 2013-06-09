@@ -170,9 +170,9 @@ class Gibson
   		return $this->sendCommandAssert( self::CMD_QUIT, '', self::REPL_OK );
  	}
  	
- 	private function decode( $encoding, $raw ){
+ 	private static function decode( $encoding, $raw ){
  		if( $encoding == self::ENC_PLAIN || $encoding == self::ENC_LZF )
- 			return strval($raw);
+ 			return $raw;
 
  		else {
  			$val = unpack( 'I', $raw );
@@ -207,7 +207,7 @@ class Gibson
  			$val  = substr( $data, 0, $vlen );
  			$data = substr( $data, $vlen );
 
- 			$set[ $key ] = $this->decode( $encoding, $val );
+ 			$set[ $key ] = self::decode( $encoding, $val );
  		}
  		
  		return $set;
@@ -220,7 +220,7 @@ class Gibson
  		{
  			if( $code == self::REPL_VAL )
  			{
- 				return $this->decode( $encoding, $reply );
+ 				return self::decode( $encoding, $reply );
  			}
  			else if( $code == self::REPL_KVAL )
  			{ 				
