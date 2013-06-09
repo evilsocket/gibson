@@ -312,7 +312,7 @@ void gbServerFormatUptime( gbServer *server, char *s );
 
 gbClient *gbClientCreate( int fd, gbServer *server );
 void      gbClientReset( gbClient *client );
-int 	  gbClientEnqueueData( gbClient *client, short code, byte_t *reply, size_t size, gbFileProc *proc, short shutdown );
+int 	  gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, byte_t *reply, size_t size, gbFileProc *proc, short shutdown );
 int       gbClientEnqueueCode( gbClient *client, short code, gbFileProc, short shutdown );
 int		  gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc *proc, short shutdown );
 int		  gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *proc, short shutdown );

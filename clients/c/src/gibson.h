@@ -90,19 +90,30 @@ extern "C" {
 #define REPL_VAL 		   6
 #define REPL_KVAL		   7
 
+typedef unsigned char gbEncoding;
+
+// the item is in plain encoding and data points to its buffer
+#define	GB_ENC_PLAIN  0x00
+// PLAIN but compressed data with lzf
+#define GB_ENC_LZF    0x01
+// the item contains a number and data pointer is actually that number
+#define GB_ENC_NUMBER 0x02
+
 typedef struct
 {
-	short code;   // used to tag this buffer ( for reply code )
+	short code;   		   // used to tag this buffer ( for reply code )
+	gbEncoding encoding;   // buffer encoding
 	unsigned char *buffer; // buffer
-	size_t rsize; // real buffer size
-	size_t size;  // current buffer size
+	size_t rsize; 		   // real buffer size
+	size_t size;  		   // current buffer size
 }
 gbBuffer;
 
-#define GB_INIT_BUFFER(b) (b).buffer = malloc( GB_DEFAULT_BUFFER_SIZE ); \
-						  (b).code   = 0; \
-						  (b).rsize  = \
-						  (b).size   = GB_DEFAULT_BUFFER_SIZE
+#define GB_INIT_BUFFER(b) (b).buffer   = malloc( GB_DEFAULT_BUFFER_SIZE ); \
+						  (b).encoding = GB_ENC_PLAIN; \
+						  (b).code     = 0; \
+						  (b).rsize    = \
+						  (b).size     = GB_DEFAULT_BUFFER_SIZE
 
 typedef struct
 {

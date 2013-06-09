@@ -234,6 +234,9 @@ int gb_send_command( gbClient *c, short cmd, void *data, int len ){
 		else if( ( c->error = gb_recv( c, c->timeout, &c->reply.code, sizeof(short) ) ) != sizeof(short) )
 			return c->error;
 
+		else if( ( c->error = gb_recv( c, c->timeout, &c->reply.encoding, sizeof(gbEncoding) ) ) != sizeof(gbEncoding) )
+			return c->error;
+
 		else if( ( c->error = gb_recv( c, c->timeout, &rsize, sizeof(size_t) ) ) != sizeof(size_t) )
 			return c->error;
 
@@ -389,6 +392,8 @@ long gb_reply_number(gbClient *c){
 
 void gb_reply_multi(gbClient *c, gbMultiBuffer *b){
 	size_t i, klen, vsize;
+	gbEncoding enc;
+	gbBuffer *v;
 	unsigned char *p = c->reply.buffer;
 
 	b->count  = 0;
@@ -402,22 +407,27 @@ void gb_reply_multi(gbClient *c, gbMultiBuffer *b){
 	for( i = 0; i < b->count; i++ ){
 		GB_INIT_BUFFER( b->values[i] );
 
+		v = &b->values[i];
+
 		klen = *(size_t *)p; p += sizeof(size_t);
 
 		b->keys[i] = (char *)malloc( klen );
 
 		memcpy( b->keys[i], p, klen ); p += klen;
 
+		enc   = *(gbEncoding *)p; p += sizeof(gbEncoding);
+
 		vsize = *(size_t *)p; p += sizeof(size_t);
 
-		if( vsize > b->values[i].rsize ){
-			b->values[i].buffer = realloc( b->values[i].buffer, vsize );
-			b->values[i].rsize = vsize;
+		if( vsize > v->rsize ){
+			v->buffer = realloc( v->buffer, vsize );
+			v->rsize = vsize;
 		}
 
-		b->values[i].size = vsize;
+		v->encoding = enc;
+		v->size = vsize;
 
-		memcpy( b->values[i].buffer, p, vsize ); p += vsize;
+		memcpy( v->buffer, p, vsize ); p += vsize;
 	}
 }
 

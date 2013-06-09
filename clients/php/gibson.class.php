@@ -65,23 +65,16 @@ class Gibson
 	const REPL_VAL 		     = 6;
 	const REPL_KVAL			 = 7;
 	
+	// the item is in plain encoding and data points to its buffer
+	const ENC_PLAIN  = 0x00;
+	// PLAIN but compressed data with lzf
+	const ENC_LZF    = 0x01;
+	// the item contains a number and data pointer is actually that number
+	const ENC_NUMBER = 0x02;
+	
 	public function __construct( $address ){
 		$this->sd 		  = @fsockopen( $address, NULL );
 		$this->last_error = self::REPL_OK;
-		$this->unpackers  = array
-		(
-			self::CMD_INC  => 'I',
-			self::CMD_DEC  => 'I',
-			self::CMD_MSET => 'I',
-			self::CMD_MTTL => 'I',
-			self::CMD_MDEL => 'I',
-			self::CMD_MINC => 'I',
-			self::CMD_MDEC => 'I',
-			self::CMD_MLOCK => 'I',
-			self::CMD_MUNLOCK => 'I',
-			self::CMD_COUNT => 'I',
-			self::CMD_STATS => 'I'
-		);
 	}
 	
 	public function getLastError(){
@@ -177,6 +170,16 @@ class Gibson
   		return $this->sendCommandAssert( self::CMD_QUIT, '', self::REPL_OK );
  	}
  	
+ 	private function decode( $encoding, $raw ){
+ 		if( $encoding == self::ENC_PLAIN || $encoding == self::ENC_LZF )
+ 			return strval($raw);
+
+ 		else {
+ 			$val = unpack( 'I', $raw );
+ 			return $val[1];
+ 		}
+ 	}
+ 	
  	private static function unpackKeyValueSet( $data ){
  		$set = array();
 
@@ -193,47 +196,35 @@ class Gibson
  			$key = substr( $data, 0, $klen );
  			$data = substr( $data, $klen );
  		
+ 			$encoding = unpack( 'C', $data );
+ 			$encoding = $encoding[1];
+ 			$data = substr( $data, 1 );
+ 			
  			$vlen = unpack( 'I', $data );
  			$vlen = $vlen[1];
  			$data = substr( $data, PHP_INT_SIZE );
+ 			
  			$val  = substr( $data, 0, $vlen );
  			$data = substr( $data, $vlen );
- 			 		
- 			$set[ $key ] = $val;
+
+ 			$set[ $key ] = $this->decode( $encoding, $val );
  		}
  		
  		return $set;
  	}
  	
  	private function sendCommandAssert( $op, $cmd, $code ){
- 		list( $opcode, $reply ) = $this->sendCommand( $op, $cmd );
+ 		list( $opcode, $encoding, $reply ) = $this->sendCommand( $op, $cmd );
  	
  		if( $opcode == $code )
  		{
  			if( $code == self::REPL_VAL )
  			{
- 				// any specific unpacker set ?
- 				if( isset( $this->unpackers[ $op ] ) )
- 				{
- 					$reply = unpack( $this->unpackers[ $op ], $reply );
- 					$reply = $reply[1];
- 				}
- 				
- 				return $reply;
+ 				return $this->decode( $encoding, $reply );
  			}
  			else if( $code == self::REPL_KVAL )
- 			{
- 				$reply = self::unpackKeyValueSet( $reply );
- 				// any specific unpacker set ?
- 				if( isset( $this->unpackers[ $op ] ) )
- 				{
- 					foreach( $reply as $key => $packed ){
- 						$unpacked = unpack( $this->unpackers[ $op ], $packed );
- 						$reply[$key] = $unpacked[1];
- 					}
- 				}
- 					
- 				return $reply;
+ 			{ 				
+ 				return self::unpackKeyValueSet( $reply );
  			}
  			else 
  				return TRUE;
@@ -244,7 +235,15 @@ class Gibson
  			return FALSE;
  		}
  	}
-
+ 	
+ 	private function readByte(){
+ 		$byte = fread( $this->sd, 1 );
+ 		$byte = unpack( 'C', $byte );
+ 		$byte = $byte[1];
+ 			
+ 		return $byte;
+ 	}
+ 	
  	private function readShort(){
  		$short = fread( $this->sd, 2 );
  		$short = unpack( 'S', $short );
@@ -272,9 +271,10 @@ class Gibson
 		    $reply = '';
 		    $data  = '';
 		
-		    $opcode = $this->readShort();
-		    $length = $this->readInt();
-
+		    $opcode   = $this->readShort();
+		    $encoding = $this->readByte();
+		    $length   = $this->readInt();
+		    
 		    $read = 0;
 		    
 		    while( $read < $length ){
@@ -282,10 +282,10 @@ class Gibson
 		    	$read = strlen($reply);
 		    }
 		    	
-		    return array( $opcode, $reply );
+		    return array( $opcode, $encoding, $reply );
 		}
 		else
-			return array( self::REPL_ERR, NULL );
+			return array( self::REPL_ERR, self::ENC_PLAIN, NULL );
 	}
 }
 

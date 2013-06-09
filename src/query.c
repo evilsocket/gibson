@@ -260,7 +260,7 @@ int gbQueryMultiSetHandler( gbClient *client, byte_t *p ){
 			ll_reset( server->m_keys );
 			ll_reset( server->m_values );
 
-			return gbClientEnqueueData( client, REPL_VAL, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 		}
 		else
 			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
@@ -323,7 +323,7 @@ int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 			ll_reset( server->m_keys );
 			ll_reset( server->m_values );
 
-			return gbClientEnqueueData( client, REPL_VAL, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 		}
 		else
 			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
@@ -455,7 +455,7 @@ int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 		ll_reset( server->m_keys );
 		ll_reset( server->m_values );
 
-		return gbClientEnqueueData( client, REPL_VAL, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+		return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 	}
 	else
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
@@ -562,7 +562,7 @@ int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
 		ll_reset( server->m_values );
 
 		if( found )
-			return gbClientEnqueueData( client, REPL_VAL, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 
 		else
 			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
@@ -626,7 +626,7 @@ int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
 			ll_reset( server->m_keys );
 			ll_reset( server->m_values );
 
-			return gbClientEnqueueData( client, REPL_VAL, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 		}
 		else
 			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
@@ -683,7 +683,7 @@ int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p ){
 		ll_reset( server->m_values );
 
 		if( found )
-			return gbClientEnqueueData( client, REPL_VAL, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 	}
 
 	return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
@@ -713,7 +713,7 @@ int gbQueryCountHandler( gbClient *client, byte_t *p ){
 		ll_reset( server->m_values );
 	}
 
-	return gbClientEnqueueData( client, REPL_VAL, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+	return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 }
 
 int gbQueryStatsHandler( gbClient *client, byte_t *p ){
