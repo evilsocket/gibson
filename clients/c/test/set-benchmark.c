@@ -13,12 +13,12 @@ unsigned long millis() {
 int main(int argc, char **argv) {
 	gbClient client;
 	int i = 0, ok = 0, ko = 0, verified = 0;
-	unsigned long start = 0, end = 0, run = 10000;
+	unsigned long start = 0, end = 0, run = 100000;
 	char key[0xFF] = {0},
 		 val[0xFF] = {0};
 
 	// printf("tcp connect  : %d\n", gb_tcp_connect(&client, NULL, 0, 1000));
-	printf("unix connect : %d\n", gb_unix_connect(&client, "../../../gibson.sock", 100 ) );
+	printf("unix connect : %d\n\n", gb_unix_connect(&client, "/var/run/gibson.sock", 100 ) );
 
 	start = millis();
 
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 
 	end = millis();
 
-	printf("created %d / %d in %dms\n", ok, run, (unsigned) (end - start));
+	printf("@ Created %d / %d in %dms\n", ok, run, (unsigned) (end - start));
 
 	start = millis();
 
@@ -57,7 +57,9 @@ int main(int argc, char **argv) {
 
 	end = millis();
 
-	printf( "verified : %d / %d in %dms\n", verified, run, (unsigned) (end - start) );
+	printf( "@ Verified : %d / %d in %dms\n\n", verified, run, (unsigned) (end - start) );
+
+    printf( "-- %f Req/s\n", run / ( ( end-start ) / 1000.0 ) );
 
 	gb_disconnect(&client);
 
