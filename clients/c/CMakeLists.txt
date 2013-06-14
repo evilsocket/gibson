@@ -45,6 +45,8 @@ set_target_properties( ${PROJECT} PROPERTIES
 					   # Install name directory (for Mac OS X install_name_tool)
 					   INSTALL_NAME_DIR /${PREFIX}/lib )
 
+install( FILES ${HEADERS} DESTINATION /${PREFIX}/include/ )
+
 install( TARGETS ${PROJECT} 
 		 DESTINATION /${PREFIX}/lib 
 		 PERMISSIONS
