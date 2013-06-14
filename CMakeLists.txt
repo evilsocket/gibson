@@ -8,6 +8,8 @@ OPTION( WITH_DEBUG "enable debug module" OFF )
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
+add_subdirectory(lib)
+
 # common compilation flags
 if (WITH_DEBUG)
 	message(STATUS "Configuring for debug")
