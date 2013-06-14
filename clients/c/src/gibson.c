@@ -411,7 +411,7 @@ void gb_reply_multi(gbClient *c, gbMultiBuffer *b){
 
 		klen = *(size_t *)p; p += sizeof(size_t);
 
-		b->keys[i] = (char *)malloc( klen );
+		b->keys[i] = (char *)calloc( 1, klen );
 
 		memcpy( b->keys[i], p, klen ); p += klen;
 
