@@ -266,7 +266,7 @@ int gb_send_command_assert( gbClient *c, short cmd, void *data, int len, short r
 		if( c->reply.code == reply )
 			c->error = 0;
 		else
-			c->error = -1;
+			c->error = c->reply.code;
 	}
 
 	return c->error;
