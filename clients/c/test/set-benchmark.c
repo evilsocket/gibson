@@ -36,7 +36,9 @@ int main(int argc, char **argv) {
 
 	end = millis();
 
-	printf("@ Created %d / %d in %dms\n", ok, run, (unsigned) (end - start));
+	printf("@ Created %d / %d in %dms\n\n", ok, run, (unsigned) (end - start));
+
+    printf( "-- %f Req/s\n\n", run / ( ( end-start ) / 1000.0 ) );
 
 	start = millis();
 
