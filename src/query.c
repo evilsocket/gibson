@@ -720,21 +720,21 @@ int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	size_t elems = 0;
 
-#define APPEND_STATS( key, value, size, encoding ) ++elems; \
-												   ll_append( server->m_keys, key ); \
-												   ll_append( server->m_values, gbCreateVolatileItem( (void *)(long)value, size, encoding ) )
+#define APPEND_STATS( key, value ) ++elems; \
+								   ll_append( server->m_keys, key ); \
+								   ll_append( server->m_values, gbCreateVolatileItem( (void *)(long)value, sizeof(long), GB_ENC_NUMBER ) )
 
-	APPEND_STATS( "server_started",         server->stats.started, sizeof(time_t), GB_ENC_NUMBER );
-	APPEND_STATS( "server_time",            server->stats.time, sizeof(time_t), GB_ENC_NUMBER );
-	APPEND_STATS( "first_item_seen",        server->stats.firstin, sizeof(time_t), GB_ENC_NUMBER );
-	APPEND_STATS( "last_item_seen",         server->stats.lastin, sizeof(time_t), GB_ENC_NUMBER );
-	APPEND_STATS( "total_items",            server->stats.nitems, sizeof(unsigned int), GB_ENC_NUMBER );
-	APPEND_STATS( "total_compressed_items", server->stats.ncompressed, sizeof(unsigned int), GB_ENC_NUMBER );
-	APPEND_STATS( "total_clients",          server->stats.nclients, sizeof(unsigned int), GB_ENC_NUMBER );
-	APPEND_STATS( "total_cron_done",        server->stats.crondone, sizeof(unsigned int), GB_ENC_NUMBER );
-	APPEND_STATS( "memory_used",            server->stats.memused, sizeof(unsigned long), GB_ENC_NUMBER );
-	APPEND_STATS( "memory_peak", 			server->stats.mempeak, sizeof(unsigned long), GB_ENC_NUMBER );
-	APPEND_STATS( "item_size_avg",          (unsigned int)server->stats.sizeavg, sizeof(unsigned int), GB_ENC_NUMBER );
+	APPEND_STATS( "server_started",         server->stats.started );
+	APPEND_STATS( "server_time",            server->stats.time );
+	APPEND_STATS( "first_item_seen",        server->stats.firstin );
+	APPEND_STATS( "last_item_seen",         server->stats.lastin );
+	APPEND_STATS( "total_items",            server->stats.nitems );
+	APPEND_STATS( "total_compressed_items", server->stats.ncompressed );
+	APPEND_STATS( "total_clients",          server->stats.nclients );
+	APPEND_STATS( "total_cron_done",        server->stats.crondone );
+	APPEND_STATS( "memory_used",            server->stats.memused );
+	APPEND_STATS( "memory_peak", 			server->stats.mempeak );
+	APPEND_STATS( "item_size_avg",          server->stats.sizeavg );
 
 #undef APPEND_STATS
 
