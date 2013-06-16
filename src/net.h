@@ -171,6 +171,8 @@ typedef struct
 	unsigned int nclients;
 	// number of cron loops performed
 	unsigned int crondone;
+	// total system available memory
+	unsigned long memavail;
 	// currently used memory
 	unsigned long memused;
 	// maximum memory peak

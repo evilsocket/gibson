@@ -27,6 +27,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "mem.h"
+#include <unistd.h>
+
+size_t gbMemAvailable(){
+	long pages = sysconf(_SC_PHYS_PAGES);
+	long page_size = sysconf(_SC_PAGE_SIZE);
+	return pages * page_size;
+}
 
 void gbMemFormat( unsigned long used, char *buffer, size_t size ){
 	memset( buffer, 0x00, size );

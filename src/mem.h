@@ -37,8 +37,9 @@
 #include <jemalloc/jemalloc.h>
 #endif
 
-void  gbMemFormat( unsigned long used, char *buffer, size_t size );
-void *gbMemDup( void *mem, size_t size );
-void *gbMemReuse( void *old, void *new, size_t size );
+size_t gbMemAvailable();
+void   gbMemFormat( unsigned long used, char *buffer, size_t size );
+void  *gbMemDup( void *mem, size_t size );
+void  *gbMemReuse( void *old, void *new, size_t size );
 
 #endif

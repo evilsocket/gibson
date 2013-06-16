@@ -732,6 +732,8 @@ int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	APPEND_STATS( "total_compressed_items", server->stats.ncompressed );
 	APPEND_STATS( "total_clients",          server->stats.nclients );
 	APPEND_STATS( "total_cron_done",        server->stats.crondone );
+	APPEND_STATS( "memory_available",       server->stats.memavail );
+	APPEND_STATS( "memory_usable",          server->limits.maxmem );
 	APPEND_STATS( "memory_used",            server->stats.memused );
 	APPEND_STATS( "memory_peak", 			server->stats.mempeak );
 	APPEND_STATS( "item_size_avg",          server->stats.sizeavg );

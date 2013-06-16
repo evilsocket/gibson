@@ -164,6 +164,7 @@ int main( int argc, char **argv)
 	server.limits.maxkeysize	  = gbConfigReadSize( &server.config, "max_key_size",      GB_DEFAULT_MAX_QUERY_KEY_SIZE );
 	server.limits.maxvaluesize	  = gbConfigReadSize( &server.config, "max_value_size",    GB_DEFAULT_MAX_QUERY_VALUE_SIZE );
 	server.limits.maxresponsesize = gbConfigReadSize( &server.config, "max_response_size", GB_DEFAULT_MAX_RESPONSE_SIZE );
+
 	// initialize server statistics
 	server.stats.started     =
 	server.stats.time	     = time(NULL);
@@ -176,6 +177,17 @@ int main( int argc, char **argv)
 	server.stats.nitems	     =
 	server.stats.ncompressed =
 	server.stats.sizeavg	 = 0;
+	server.stats.memavail    = gbMemAvailable();
+
+	if( server.limits.maxmem > server.stats.memavail ){
+		char drop[0xFF] = {0};
+
+		gbMemFormat( server.stats.memavail / 2, drop, 0xFF );
+
+		gbLog( WARNING, "max_memory setting is higher than total available memory, dropping to %s.", drop );
+
+		server.limits.maxmem = server.stats.memavail / 2;
+	}
 
 	server.compression = gbConfigReadSize( &server.config, "compression",	   GB_DEFAULT_COMPRESSION );
 	server.daemon	   = gbConfigReadInt( &server.config, "daemonize", 		   0 );
