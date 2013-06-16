@@ -331,6 +331,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
     	if( client->read == client->buffer_size ){
     		if( gbProcessQuery(client) != GB_OK ){
     			gbLog( WARNING, "Malformed query, dropping client." );
+    			gbLog( WARNING, "  Buffer size: %d opcode:%d", client->buffer_size, *(short *)&client->buffer[0] );
     			gbClientDestroy(client);
     		}
     	}
