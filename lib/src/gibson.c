@@ -272,15 +272,27 @@ int gb_send_command_assert( gbClient *c, short cmd, void *data, int len, short r
 	return c->error;
 }
 
-#define gb_snprintf( c, len, format, ... ) if( c->request.rsize < ( len ) ){ \
-										       c->request.buffer = realloc( c->request.buffer, len ); \
-										       c->request.rsize = ( len ); \
-										   } \
-										   c->request.size = ( len ); \
-										   snprintf( (char *)c->request.buffer, c->request.size + 1, format, __VA_ARGS__ )
+void gb_build_command(gbClient *c, size_t len, char *key, int klen, char *value, int vlen, int num ){
+	if( c->request.rsize < len ){
+	   c->request.buffer = realloc( c->request.buffer, len );
+	   c->request.rsize = len;
+    }
+	c->request.size = len;
+
+	unsigned char *p = c->request.buffer;
+
+	memcpy( p, key, klen ); p += klen;
+	memcpy( p, " ", 1 ); ++p;
+
+	if( value != NULL )
+		memcpy( p, value, vlen );
+
+	else
+		sprintf( (char *)p, "%d", num );
+}
 
 int gb_set(gbClient *c, char *key, int klen, char *value, int vlen, int ttl ) {
-	gb_snprintf( c, klen + 1 + vlen, "%s %s", key, value );
+	gb_build_command( c, klen + 1 + vlen, key, klen, value, vlen, 0 );
 
 	if( gb_send_command_assert( c, OP_SET, c->request.buffer, c->request.size, REPL_VAL ) == 0 )
 	{
@@ -301,19 +313,19 @@ int gb_digits(int number){
 }
 
 int gb_mset(gbClient *c, char *expr, int elen, char *value, int vlen ) {
-	gb_snprintf( c, elen + 1 + vlen, "%s %s", expr, value );
+	gb_build_command( c, elen + 1 + vlen, expr, elen, value, vlen, 0 );
 
 	return gb_send_command_assert( c, OP_MSET, c->request.buffer, c->request.size, REPL_VAL );
 }
 
 int gb_ttl( gbClient *c, char *key, int klen, int ttl ) {
-	gb_snprintf( c, klen + 1 + gb_digits(ttl), "%s %d", key, ttl );
+	gb_build_command( c, klen + 1 + gb_digits(ttl), key, klen, NULL, 0, ttl );
 
 	return gb_send_command_assert(c, OP_TTL, c->request.buffer, c->request.size, REPL_OK);
 }
 
 int gb_mttl(gbClient *c, char *expr, int elen, int ttl) {
-	gb_snprintf( c, elen + 1 + gb_digits(ttl), "%s %d", expr, ttl );
+	gb_build_command( c, elen + 1 + gb_digits(ttl), expr, elen, NULL, 0, ttl );
 
 	return gb_send_command_assert(c, OP_MTTL, c->request.buffer, c->request.size, REPL_VAL);
 }
@@ -351,13 +363,13 @@ int gb_mdec(gbClient *c, char *expr, int elen) {
 }
 
 int gb_lock(gbClient *c, char *key, int klen, int time) {
-	gb_snprintf( c, klen + 1 + gb_digits(time), "%s %d", key, time );
+	gb_build_command( c, klen + 1 + gb_digits(time), key, klen, NULL, 0, time );
 
 	return gb_send_command_assert(c, OP_LOCK, c->request.buffer, c->request.size, REPL_OK);
 }
 
 int gb_mlock(gbClient *c, char *expr, int elen, int time) {
-	gb_snprintf( c, elen + 1 + gb_digits(time), "%s %d", expr, time );
+	gb_build_command( c, elen + 1 + gb_digits(time), expr, elen, NULL, 0, time );
 
 	return gb_send_command_assert(c, OP_MLOCK, c->request.buffer, c->request.size, REPL_VAL);
 }
