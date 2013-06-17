@@ -294,7 +294,7 @@ void gb_build_command(gbClient *c, size_t len, char *key, int klen, char *value,
 }
 
 int gb_digits(int number){
-    int digits = number < 0 ? 1 : 0;
+    int digits = number <= 0 ? 1 : 0;
     while (number) {
         number /= 10;
         ++digits;
