@@ -272,12 +272,14 @@ int gb_send_command_assert( gbClient *c, short cmd, void *data, int len, short r
 	return c->error;
 }
 
+#define gb_realloc_if_needed( c, len ) if( (c)->request.rsize < (len) ){ \
+											(c)->request.buffer = realloc( (c)->request.buffer, (len) ); \
+											(c)->request.rsize  = (len); \
+										} \
+										(c)->request.size = (len)
+
 void gb_build_command(gbClient *c, size_t len, char *key, int klen, char *value, int vlen, int num ){
-	if( c->request.rsize < len ){
-	   c->request.buffer = realloc( c->request.buffer, len );
-	   c->request.rsize = len;
-    }
-	c->request.size = len;
+	gb_realloc_if_needed( c, len );
 
 	unsigned char *p = c->request.buffer;
 
@@ -291,8 +293,27 @@ void gb_build_command(gbClient *c, size_t len, char *key, int klen, char *value,
 		sprintf( (char *)p, "%d", num );
 }
 
+int gb_digits(int number){
+    int digits = number < 0 ? 1 : 0;
+    while (number) {
+        number /= 10;
+        ++digits;
+    }
+    return digits;
+}
+
 int gb_set(gbClient *c, char *key, int klen, char *value, int vlen, int ttl ) {
-	gb_build_command( c, klen + 1 + vlen, key, klen, value, vlen, 0 );
+	int digits = gb_digits(ttl);
+	size_t rsize = digits + 1 + klen + 1 + vlen;
+
+	gb_realloc_if_needed( c, rsize );
+
+	unsigned char *p = c->request.buffer;
+
+	sprintf( (char *)p, "%d ", ttl ); p += digits + 1;
+	memcpy( p, key, klen ); p += klen;
+	memcpy( p, " ", 1 ); ++p;
+	memcpy( p, value, vlen );
 
 	if( gb_send_command_assert( c, OP_SET, c->request.buffer, c->request.size, REPL_VAL ) == 0 )
 	{
@@ -301,15 +322,6 @@ int gb_set(gbClient *c, char *key, int klen, char *value, int vlen, int ttl ) {
 	}
 
 	return c->error;
-}
-
-int gb_digits(int number){
-    int digits = 0;
-    while (number) {
-        number /= 10;
-        ++digits;
-    }
-    return digits;
 }
 
 int gb_mset(gbClient *c, char *expr, int elen, char *value, int vlen ) {

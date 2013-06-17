@@ -185,6 +185,33 @@ void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ke
 	}
 }
 
+void gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ttl, byte_t **key, byte_t **value, size_t *ttllen, size_t *klen, size_t *vlen ){
+	byte_t *p = buffer;
+
+	*ttl = p;
+
+	size_t i = 0, end = min( size, server->limits.maxkeysize );
+	while( *p != ' ' && i++ < end ){
+		++p;
+	}
+
+	*ttllen = p++ - *ttl;
+
+	*key = p;
+	end = min( size, server->limits.maxkeysize );
+	while( *p != ' ' && i++ < end ){
+		++p;
+	}
+
+	*klen = p++ - *key;
+
+	if( value ){
+		*value = p;
+		*vlen  = size - *ttllen - *klen - 2;
+		*vlen  = min( *vlen, server->limits.maxvaluesize );
+	}
+}
+
 gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbServer *server ){
 	gbItemEncoding encoding = GB_ENC_PLAIN;
 	void *data = v;
@@ -221,18 +248,29 @@ gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbServer *s
 }
 
 int gbQuerySetHandler( gbClient *client, byte_t *p ){
-	byte_t *k = NULL,
+	byte_t *t = NULL,
+		   *k = NULL,
 		   *v = NULL;
-	size_t klen = 0, vlen = 0;
+	size_t ttllen = 0, klen = 0, vlen = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
+	long ttl;
 
 	if( server->stats.memused <= server->limits.maxmem ) {
-		gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
+		gbParseTtlKeyValue( server, p, client->buffer_size - sizeof(short), &t, &k, &v, &ttllen, &klen, &vlen );
+		if( gbQueryParseLong( t, ttllen, &ttl ) )
+		{
+			item = gbSingleSet( v, vlen, k, klen, server );
 
-		item = gbSingleSet( v, vlen, k, klen, server );
+			if( ttl > 0 ){
+				item->time = time(NULL);
+				item->ttl  = min( server->limits.maxitemttl, ttl );
+			}
 
-		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
+			return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
+		}
+		else
+			return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 	}
 	else
 		return gbClientEnqueueCode( client, REPL_ERR_MEM, gbWriteReplyHandler, 0 );
