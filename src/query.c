@@ -263,7 +263,7 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 			item = gbSingleSet( v, vlen, k, klen, server );
 
 			if( ttl > 0 ){
-				item->time = time(NULL);
+				item->time = server->stats.time;
 				item->ttl  = min( server->limits.maxitemttl, ttl );
 			}
 
@@ -322,7 +322,7 @@ int gbQueryTtlHandler( gbClient *client, byte_t *p ){
 	{
 		if( gbQueryParseLong( v, vlen, &ttl ) )
 		{
-			item->time = time(NULL);
+			item->time = server->stats.time;
 			item->ttl  = min( server->limits.maxitemttl, ttl );
 
 			return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
