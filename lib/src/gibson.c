@@ -315,13 +315,7 @@ int gb_set(gbClient *c, char *key, int klen, char *value, int vlen, int ttl ) {
 	memcpy( p, " ", 1 ); ++p;
 	memcpy( p, value, vlen );
 
-	if( gb_send_command_assert( c, OP_SET, c->request.buffer, c->request.size, REPL_VAL ) == 0 )
-	{
-		if( ttl > 0 )
-			gb_ttl( c, key, klen, ttl );
-	}
-
-	return c->error;
+	return gb_send_command_assert( c, OP_SET, c->request.buffer, c->request.size, REPL_VAL );
 }
 
 int gb_mset(gbClient *c, char *expr, int elen, char *value, int vlen ) {
