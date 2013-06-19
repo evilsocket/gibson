@@ -8,8 +8,6 @@ OPTION( WITH_DEBUG "enable debug module" OFF )
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
-add_subdirectory(lib)
-
 # common compilation flags
 if (WITH_DEBUG)
 	message(STATUS "Configuring for debug")
@@ -69,7 +67,7 @@ endif ( HAVE_JEMALLOC EQUAL 1 )
 
 install( TARGETS ${PROJECT} DESTINATION /${PREFIX}/sbin )
 install( FILES ${PROJECT}.conf DESTINATION /etc/gibson )
-install( FILES init.d/${PROJECT} DESTINATION /etc/init.d/ 
+install( FILES debian/init.d/${PROJECT} DESTINATION /etc/init.d/ 
 		 PERMISSIONS
 		 OWNER_READ 
 		 OWNER_WRITE 
