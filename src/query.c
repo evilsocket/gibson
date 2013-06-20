@@ -106,7 +106,8 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	server->stats.memused -= mem;
 	server->stats.sizeavg = server->stats.nitems == 1 ? 0 : server->stats.memused / --server->stats.nitems;
 
-	if( item->encoding == GB_ENC_LZF ) --server->stats.ncompressed;
+	if( item->encoding == GB_ENC_LZF )
+		--server->stats.ncompressed;
 
 	if( item->encoding != GB_ENC_NUMBER && item->data != NULL ){
 		free( item->data );
@@ -125,7 +126,8 @@ int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *server, int 
 		if( eta > item->ttl )
 		{
 			// item locked, skip
-			if( item->lock == -1 || eta < item->lock ) return 1;
+			if( item->lock == -1 || eta < item->lock )
+				return 1;
 
 			gbLog( DEBUG, "[ACCESS] TTL of %ds expired for item at %p.", item->ttl, item );
 
@@ -350,7 +352,7 @@ int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 		if( found ){
 			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 				item = vi->data;
-				item->time = time(NULL);
+				item->time = server->stats.time;
 				item->ttl  = min( server->limits.maxitemttl, ttl );
 
 				// free allocated key
@@ -461,18 +463,16 @@ int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 			atree_item_t *node = vi->data;
 
-			if( node && node->e_marker )
-			{
+			if( node && node->e_marker ){
 				item = node->e_marker;
 
 				time_t eta = server->stats.time - item->time;
 
-				if( item->lock == -1 || eta < item->lock )
-				{
+				// expired item
+				if( item->lock == -1 || eta < item->lock ){
 					--found;
 				}
-				else
-				{
+				else{
 					// Remove item from tree
 					node->e_marker = NULL;
 

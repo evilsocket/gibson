@@ -299,8 +299,8 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 	if( client->buffer_size < 0 && client->read >= sizeof( int ) ){
 		client->buffer_size = *(int *)client->buffer;
 		client->read = 0;
-
-		if( client->buffer_size > server->limits.maxrequestsize || client->buffer_size < 0 ){
+		// make sure the buffer is not too big or too small ( must be at least 2 bytes to contain the opcode )
+		if( client->buffer_size > server->limits.maxrequestsize || client->buffer_size < sizeof(short) ){
 			gbLog( WARNING, "Client request size %d invalid.", client->buffer_size );
 			gbClientDestroy(client);
 			return;
@@ -344,8 +344,8 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
     					++p;
     				}
     				else {
-    					sprintf( p, " %02X ", c );
-    					p += 4;
+    					sprintf( p, " %02X", c );
+    					p += 3;
     				}
     			}
 

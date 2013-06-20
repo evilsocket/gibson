@@ -31,14 +31,10 @@
  * Find next link with 'ascii' byte.
  */
 atree_item_t *at_find_next_link( atree_t *at, unsigned char ascii ){
-	int i, j, n_links = at->n_links, r_start = n_links - 1;
-
-	for( i = 0, j = r_start; i < n_links; ++i, --j ){
-		if( at->links[i].ascii == ascii ){
-			return at->links + i;
-		}
-		else if( at->links[j].ascii == ascii ){
-			return at->links + j;
+	int n = at->n_links;
+	while( --n >= 0 ){
+		if( at->links[n].ascii == ascii ){
+			return at->links + n;
 		}
 	}
 
@@ -51,7 +47,7 @@ void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 	/*
 	 * End of the chain, set the marker value and exit the recursion.
 	 */
-	if(!len){
+	if(len == 0){
 		void *old = at->e_marker;
 		at->e_marker = value;
 
