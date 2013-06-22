@@ -40,6 +40,8 @@ else (WITH_JEMALLOC)
 endif (WITH_JEMALLOC)
 
 # configure variables
+EXECUTE_PROCESS(COMMAND "date" "+%m/%d/%Y %H:%M:%S" OUTPUT_VARIABLE BUILD_DATETIME OUTPUT_STRIP_TRAILING_WHITESPACE)
+
 set( PREFIX usr )
 set( PROJECT "gibson" )
 set( AUTHOR "Simone Margaritelli <evilsocket at gmail dot com>" )
@@ -48,8 +50,6 @@ set( MAJOR_VERSION 1 )
 set( MINOR_VERSION 0 )
 set( PATCH_LEVEL   0 )
 set( VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL}b" )
-
-set( COMMON_CFLAGS "-Wall -Wno-unused-function -std=gnu99 -pedantic ${OPTIMIZATION}" )
 
 file( GLOB_RECURSE MAIN_SOURCES src/*.c )
 file( GLOB_RECURSE HEADERS src/*.h )

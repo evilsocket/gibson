@@ -1,6 +1,7 @@
 #cmakedefine AUTHOR  "@AUTHOR@"
 #cmakedefine LICENSE "@LICENSE@"
 #cmakedefine VERSION "@VERSION@"
+#cmakedefine BUILD_DATETIME "@BUILD_DATETIME@"
 #cmakedefine HAVE_JEMALLOC @HAVE_JEMALLOC@
 
 #if defined(__APPLE__) || defined(__linux__)

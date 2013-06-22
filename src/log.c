@@ -66,7 +66,7 @@ void gbLog( gbLogLevel level, const char *format, ... ){
 		time( &rawtime );
   		timeinfo = localtime( &rawtime );
 
-  		strftime( timestamp, 0xFF, "%d/%m/%Y %X", timeinfo );
+  		strftime( timestamp, 0xFF, "%m/%d/%Y %X", timeinfo );
 
 		switch( level )
 		{

@@ -30,6 +30,7 @@
 #include "log.h"
 #include "atree.h"
 #include "lzf.h"
+#include "configure.h"
 
 #if HAVE_JEMALLOC == 1
 #include <jemalloc/jemalloc.h>
@@ -758,25 +759,36 @@ int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	size_t elems = 0;
 
-#define APPEND_STATS( key, value ) ++elems; \
+#define APPEND_LONG_STAT( key, value ) ++elems; \
 								   ll_append( server->m_keys, key ); \
 								   ll_append( server->m_values, gbCreateVolatileItem( (void *)(long)value, sizeof(long), GB_ENC_NUMBER ) )
 
-	APPEND_STATS( "server_started",         server->stats.started );
-	APPEND_STATS( "server_time",            server->stats.time );
-	APPEND_STATS( "first_item_seen",        server->stats.firstin );
-	APPEND_STATS( "last_item_seen",         server->stats.lastin );
-	APPEND_STATS( "total_items",            server->stats.nitems );
-	APPEND_STATS( "total_compressed_items", server->stats.ncompressed );
-	APPEND_STATS( "total_clients",          server->stats.nclients );
-	APPEND_STATS( "total_cron_done",        server->stats.crondone );
-	APPEND_STATS( "memory_available",       server->stats.memavail );
-	APPEND_STATS( "memory_usable",          server->limits.maxmem );
-	APPEND_STATS( "memory_used",            server->stats.memused );
-	APPEND_STATS( "memory_peak", 			server->stats.mempeak );
-	APPEND_STATS( "item_size_avg",          server->stats.sizeavg );
+#define APPEND_STRING_STAT( key, value ) ++elems; \
+								   ll_append( server->m_keys, key ); \
+								   ll_append( server->m_values, gbCreateVolatileItem( value, strlen(value), GB_ENC_PLAIN ) )
 
-#undef APPEND_STATS
+	APPEND_STRING_STAT( "server_version",        VERSION );
+	APPEND_STRING_STAT( "server_build_datetime", BUILD_DATETIME );
+#if HAVE_JEMALLOC == 1
+	APPEND_STRING_STAT( "server_allocator", "jemalloc" );
+#else
+	APPEND_STRING_STAT( "server_allocator", "malloc" );
+#endif
+	APPEND_LONG_STAT( "server_started",         server->stats.started );
+	APPEND_LONG_STAT( "server_time",            server->stats.time );
+	APPEND_LONG_STAT( "first_item_seen",        server->stats.firstin );
+	APPEND_LONG_STAT( "last_item_seen",         server->stats.lastin );
+	APPEND_LONG_STAT( "total_items",            server->stats.nitems );
+	APPEND_LONG_STAT( "total_compressed_items", server->stats.ncompressed );
+	APPEND_LONG_STAT( "total_clients",          server->stats.nclients );
+	APPEND_LONG_STAT( "total_cron_done",        server->stats.crondone );
+	APPEND_LONG_STAT( "memory_available",       server->stats.memavail );
+	APPEND_LONG_STAT( "memory_usable",          server->limits.maxmem );
+	APPEND_LONG_STAT( "memory_used",            server->stats.memused );
+	APPEND_LONG_STAT( "memory_peak", 			server->stats.mempeak );
+	APPEND_LONG_STAT( "item_size_avg",          server->stats.sizeavg );
+
+#undef APPEND_LONG_STAT
 
 	int ret = gbClientEnqueueKeyValueSet( client, elems, gbWriteReplyHandler, 0 );
 

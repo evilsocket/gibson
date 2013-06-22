@@ -62,7 +62,7 @@ void gbProcessInit();
 void gbServerDestroy( gbServer *server );
 
 void gbHelpMenu( char **argv, int exitcode ){
-	printf( "Gibson cache server v%s\nCopyright %s\nReleased under %s\n\n", VERSION, AUTHOR, LICENSE );
+	printf( "Gibson cache server v%s ( built %s )\nCopyright %s\nReleased under %s\n\n", VERSION, BUILD_DATETIME, AUTHOR, LICENSE );
 
 	printf( "%s [-h|--help] [-c|--config FILE]\n\n", argv[0] );
 
