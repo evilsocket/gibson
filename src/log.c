@@ -85,7 +85,7 @@ void gbLog( gbLogLevel level, const char *format, ... ){
 }
 
 void gbLogDumpBuffer( gbLogLevel level, unsigned char *buffer, unsigned int size ){
-	char logline[300] = {0},
+	char *logline = alloca( size * 3 ),
 		*p = &logline[0];
 	unsigned char byte;
 	unsigned int i;
@@ -99,7 +99,7 @@ void gbLogDumpBuffer( gbLogLevel level, unsigned char *buffer, unsigned int size
 			prev_was_print = 1;
 		}
 		else {
-			sprintf( p, " %02X",byte );
+			sprintf( p, " %02X", byte );
 			p += 3;
 			prev_was_print = 0;
 		}
