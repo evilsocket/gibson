@@ -34,7 +34,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <getopt.h>
-#include <ctype.h>
 #if HAVE_BACKTRACE
 #include <execinfo.h>
 #endif
@@ -331,26 +330,12 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 
     	if( client->read == client->buffer_size ){
     		if( gbProcessQuery(client) != GB_OK ){
+    			size_t sz = client->buffer_size < 255 ? client->buffer_size : 255;
+
     			gbLog( WARNING, "Malformed query, dropping client." );
-
-    			char tmp[400] = {0},
-    			    *p = &tmp[0],
-    			    c;
-    			int i, sz = client->buffer_size < 100 ? client->buffer_size : 100;
-    			for( i = 0; i < sz; i++ ){
-    				c = client->buffer[i];
-    				if( isprint(c) ){
-    					sprintf( p, "%c", c );
-    					++p;
-    				}
-    				else {
-    					sprintf( p, " %02X", c );
-    					p += 3;
-    				}
-    			}
-
     			gbLog( WARNING, "  Buffer size: %d opcode:%d - First %d bytes:", client->buffer_size, *(short *)&client->buffer[0], sz );
-    			gbLog( WARNING, "  %s", tmp );
+    			gbLogDumpBuffer( WARNING, client->buffer, sz );
+
     			gbClientDestroy(client);
     		}
     	}

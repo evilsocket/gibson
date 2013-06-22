@@ -39,8 +39,9 @@ typedef enum
 }
 gbLogLevel;
 
-void gbLogInit( const char *filename, gbLogLevel level, int flushrate );
+void gbLogInit( const char *filename, gbLogLevel level, unsigned int flushrate );
 void gbLog( gbLogLevel level, const char *format, ... );
+void gbLogDumpBuffer( gbLogLevel level, unsigned char *buffer, unsigned int size );
 void gbLogFinalize();
 
 #endif

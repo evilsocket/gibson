@@ -31,13 +31,14 @@
 #include <stdarg.h>
 #include <time.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 static FILE 	  *__log_fp       = NULL;
 static gbLogLevel __log_level     = DEBUG;
 static int		  __log_flushrate = 1;
 static int		  __log_counter   = 0;
 
-void gbLogInit( const char *filename, gbLogLevel level, int flushrate ) {
+void gbLogInit( const char *filename, gbLogLevel level, unsigned int flushrate ) {
 	__log_fp = fopen( filename, "a+t" );
 	if( __log_fp == NULL ){
 		printf( "ERROR: Unable to open logfile %s!\n", filename );
@@ -81,6 +82,30 @@ void gbLog( gbLogLevel level, const char *format, ... ){
 		if( ( ++__log_counter % __log_flushrate ) == 0 )
 			fflush(__log_fp);
     }
+}
+
+void gbLogDumpBuffer( gbLogLevel level, unsigned char *buffer, unsigned int size ){
+	char logline[300] = {0},
+		*p = &logline[0];
+	unsigned char byte;
+	unsigned int i;
+	unsigned char prev_was_print = 1;
+
+	for( i = 0; i < size; i++ ){
+		byte = buffer[i];
+		if( isprint(byte) ){
+			sprintf( p, "%s%c", prev_was_print ? "" : " ", byte );
+			p += prev_was_print ? 1 : 2;
+			prev_was_print = 1;
+		}
+		else {
+			sprintf( p, " %02X",byte );
+			p += 3;
+			prev_was_print = 0;
+		}
+	}
+
+	gbLog( level, "%s", logline );
 }
 
 void gbLogFinalize(){

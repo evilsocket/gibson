@@ -32,9 +32,12 @@
  */
 atree_item_t *at_find_next_link( atree_t *at, unsigned char ascii ){
 	int n = at->n_links;
+	atree_t *node = NULL;
+
 	while( --n >= 0 ){
-		if( at->links[n].ascii == ascii ){
-			return at->links + n;
+		node = at->links + n;
+		if( node->ascii == ascii ){
+			return node;
 		}
 	}
 
