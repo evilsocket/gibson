@@ -765,7 +765,7 @@ int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 
 #define APPEND_STRING_STAT( key, value ) ++elems; \
 								   ll_append( server->m_keys, key ); \
-								   ll_append( server->m_values, gbCreateVolatileItem( value, strlen(value), GB_ENC_PLAIN ) )
+								   ll_append( server->m_values, gbCreateVolatileItem( strdup(value), strlen(value), GB_ENC_PLAIN ) )
 
 	APPEND_STRING_STAT( "server_version",        VERSION );
 	APPEND_STRING_STAT( "server_build_datetime", BUILD_DATETIME );
