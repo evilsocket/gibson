@@ -307,7 +307,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 	}
 
 	toread = client->buffer_size >= 0 ? client->buffer_size : sizeof( int );
-	nread =  read( fd, client->buffer + client->read, toread );
+	nread  = read( fd, client->buffer + client->read, toread - client->read );
 
 	if (nread == -1){
 		if (errno == EAGAIN){
