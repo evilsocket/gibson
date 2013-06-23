@@ -50,7 +50,7 @@ __inline__ __attribute__((always_inline)) short gbQueryParseLong( byte_t *v, siz
 	return ( *p == '\0' );
 }
 
-gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding encoding ) {
+static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding encoding ) {
 	gbItem *item = ( gbItem * )malloc( sizeof( gbItem ) );
 
 	item->data 	   = data;
@@ -64,7 +64,7 @@ gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding encoding )
 }
 
 
-void gbDestroyVolatileItem( gbItem *item ){
+static void gbDestroyVolatileItem( gbItem *item ){
 	if( item->encoding != GB_ENC_NUMBER && item->data != NULL ){
 		free( item->data );
 		item->data = NULL;
@@ -74,7 +74,7 @@ void gbDestroyVolatileItem( gbItem *item ){
 	item = NULL;
 }
 
-gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl ) {
+static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl ) {
 	gbItem *item = ( gbItem * )malloc( sizeof( gbItem ) );
 	unsigned long mem = size + sizeof( gbItem );
 
@@ -119,7 +119,7 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	item = NULL;
 }
 
-int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *server, int remove ){
+static int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *server, int remove ){
 	time_t eta = server->stats.time - item->time;
 
 	if( item->ttl > 0 )
@@ -145,7 +145,7 @@ int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *server, int 
 	return 1;
 }
 
-int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *key, size_t klen, int remove ) {
+static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *key, size_t klen, int remove ) {
 	time_t eta = server->stats.time - item->time;
 
 	if( item->ttl > 0 )
@@ -169,7 +169,7 @@ int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *key, size
 	return 1;
 }
 
-void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen ){
+static void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen ){
 	byte_t *p = buffer;
 
 	*key = p;
@@ -188,7 +188,7 @@ void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ke
 	}
 }
 
-void gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ttl, byte_t **key, byte_t **value, size_t *ttllen, size_t *klen, size_t *vlen ){
+static void gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ttl, byte_t **key, byte_t **value, size_t *ttllen, size_t *klen, size_t *vlen ){
 	byte_t *p = buffer;
 
 	*ttl = p;
@@ -215,7 +215,7 @@ void gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t *
 	}
 }
 
-gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbServer *server ){
+static gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbServer *server ){
 	gbItemEncoding encoding = GB_ENC_PLAIN;
 	void *data = v;
 	size_t comprlen = vlen, needcompr = vlen - 4; // compress at least of 4 bytes
@@ -250,7 +250,7 @@ gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbServer *s
 	return item;
 }
 
-int gbQuerySetHandler( gbClient *client, byte_t *p ){
+static int gbQuerySetHandler( gbClient *client, byte_t *p ){
 	byte_t *t = NULL,
 		   *k = NULL,
 		   *v = NULL;
@@ -279,7 +279,7 @@ int gbQuerySetHandler( gbClient *client, byte_t *p ){
 		return gbClientEnqueueCode( client, REPL_ERR_MEM, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryMultiSetHandler( gbClient *client, byte_t *p ){
+static int gbQueryMultiSetHandler( gbClient *client, byte_t *p ){
 	byte_t *expr = NULL,
 		   *v = NULL;
 	size_t exprlen = 0, vlen = 0;
@@ -310,7 +310,7 @@ int gbQueryMultiSetHandler( gbClient *client, byte_t *p ){
 		return gbClientEnqueueCode( client, REPL_ERR_MEM, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryTtlHandler( gbClient *client, byte_t *p ){
+static int gbQueryTtlHandler( gbClient *client, byte_t *p ){
 	byte_t *k = NULL,
 		   *v = NULL;
 	size_t klen = 0, vlen = 0;
@@ -337,7 +337,7 @@ int gbQueryTtlHandler( gbClient *client, byte_t *p ){
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
+static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 	byte_t *expr = NULL,
 		   *v = NULL;
 	size_t exprlen = 0, vlen = 0;
@@ -373,7 +373,7 @@ int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 		return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryGetHandler( gbClient *client, byte_t *p ){
+static int gbQueryGetHandler( gbClient *client, byte_t *p ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
@@ -391,7 +391,7 @@ int gbQueryGetHandler( gbClient *client, byte_t *p ){
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryMultiGetHandler( gbClient *client, byte_t *p ){
+static int gbQueryMultiGetHandler( gbClient *client, byte_t *p ){
 	byte_t *expr = NULL;
 	size_t exprlen = 0;
 	gbServer *server = client->server;
@@ -417,7 +417,7 @@ int gbQueryMultiGetHandler( gbClient *client, byte_t *p ){
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryDelHandler( gbClient *client, byte_t *p ){
+static int gbQueryDelHandler( gbClient *client, byte_t *p ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
@@ -452,7 +452,7 @@ int gbQueryDelHandler( gbClient *client, byte_t *p ){
 	return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
+static int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 	byte_t *expr = NULL;
 	size_t exprlen = 0;
 	gbServer *server = client->server;
@@ -500,7 +500,7 @@ int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
+static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
@@ -551,7 +551,7 @@ int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 		return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
+static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
 	byte_t *expr = NULL;
 	size_t exprlen = 0;
 	gbServer *server = client->server;
@@ -610,7 +610,7 @@ int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryLockHandler( gbClient *client, byte_t *p ){
+static int gbQueryLockHandler( gbClient *client, byte_t *p ){
 	byte_t *k = NULL,
 		   *v = NULL;
 	size_t klen = 0, vlen = 0;
@@ -638,7 +638,7 @@ int gbQueryLockHandler( gbClient *client, byte_t *p ){
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
+static int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
 	byte_t *expr = NULL,
 		   *v = NULL;
 	size_t exprlen = 0, vlen = 0;
@@ -674,7 +674,7 @@ int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
 		return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryUnlockHandler( gbClient *client, byte_t *p ){
+static int gbQueryUnlockHandler( gbClient *client, byte_t *p ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
@@ -694,7 +694,7 @@ int gbQueryUnlockHandler( gbClient *client, byte_t *p ){
 	return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p ){
+static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p ){
 	byte_t *expr = NULL;
 	size_t exprlen = 0;
 	gbServer *server = client->server;
@@ -728,7 +728,7 @@ int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p ){
 	return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 }
 
-int gbQueryCountHandler( gbClient *client, byte_t *p ){
+static int gbQueryCountHandler( gbClient *client, byte_t *p ){
 	byte_t *expr = NULL;
 	size_t exprlen = 0;
 	gbServer *server = client->server;
@@ -755,7 +755,7 @@ int gbQueryCountHandler( gbClient *client, byte_t *p ){
 	return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 }
 
-int gbQueryStatsHandler( gbClient *client, byte_t *p ){
+static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	size_t elems = 0;
 

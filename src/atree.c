@@ -28,54 +28,10 @@
  */
 #include "atree.h"
 
-#define NODE_SET(a,b) (a)->ascii    = (b)->ascii; \
-					  (a)->e_marker = (b)->e_marker; \
-					  (a)->links    = (b)->links; \
-				      (a)->n_links  = (b)->n_links
-
-static void at_swap( atree_item_t *v, int ai, int bi ){
-	atree_item_t tmp, *a = v + ai, *b = v + bi;
-
-	NODE_SET( &tmp, a );
-	NODE_SET( a, b );
-	NODE_SET( b, &tmp );
-}
-
-static int at_partition( atree_item_t *a, int left, int right, int pindex ){
-  char pivot = a[pindex].ascii;
-  int  sindex = left,
-       i;
-
-  at_swap( a, pindex, right );
-
-  for( i = left; i < right; i++ ){
-    if( a[i].ascii <= pivot ){
-    	at_swap( a, i, sindex++ );
-    }
-  }
-
-  at_swap( a, sindex, right );
-
-  return sindex;
-}
-
-static void at_quicksort( atree_item_t *a, int left, int right ){
-  int pindex;
-
-  if( left < right ){
-    pindex = left + ( right - left ) / 2;
-
-    pindex = at_partition( a, left, right, pindex  );
-
-    at_quicksort( a, left, pindex - 1 );
-    at_quicksort( a, pindex + 1, right );
-  }
-}
-
 /*
  * Find next link with 'ascii' byte.
  */
-atree_item_t *at_find_next_link( atree_t *at, unsigned char ascii ){
+static atree_item_t *at_find_next_link( atree_t *at, unsigned char ascii ){
 	int n = at->n_links;
 	atree_t *node = NULL;
 
@@ -177,7 +133,7 @@ struct at_search_data {
 	size_t   total;
 };
 
-void at_search_recursive_handler(atree_item_t *node, size_t level, void *data){
+static void at_search_recursive_handler(atree_item_t *node, size_t level, void *data){
 	struct at_search_data *search = data;
 
 	search->current[ level ] = node->ascii;
@@ -222,7 +178,7 @@ struct at_search_nodes_data {
 	size_t   total;
 };
 
-void at_search_nodes_recursive_handler(atree_item_t *node, size_t level, void *data){
+static void at_search_nodes_recursive_handler(atree_item_t *node, size_t level, void *data){
 	struct at_search_nodes_data *search = data;
 
 	search->current[ level ] = node->ascii;

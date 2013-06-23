@@ -73,8 +73,7 @@
 #define REPL_VAL 		   6
 #define REPL_KVAL		   7
 
-gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl );
-void    gbDestroyItem( gbServer *server, gbItem *item );
-int     gbProcessQuery( gbClient *client );
+void gbDestroyItem( gbServer *server, gbItem *item );
+int  gbProcessQuery( gbClient *client );
 
 #endif
