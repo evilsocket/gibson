@@ -27,53 +27,97 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "atree.h"
-/*
- * Find next link with 'ascii' byte.
- */
-atree_item_t *at_find_next_link( atree_t *at, unsigned char ascii ){
-	int n = at->n_links;
-	atree_t *node = NULL;
 
-	while( --n >= 0 ){
-		node = at->links + n;
-		if( node->ascii == ascii ){
-			return node;
-		}
+#define NODE_SET(a,b) (a)->ascii    = (b)->ascii; \
+					  (a)->e_marker = (b)->e_marker; \
+					  (a)->links    = (b)->links; \
+				      (a)->n_links  = (b)->n_links
+
+// swap two nodes inside the array
+__inline__ __attribute__((always_inline)) void at_swap( atree_item_t *v, int ai, int bi ){
+	atree_item_t tmp, *a = v + ai, *b = v + bi;
+
+	NODE_SET( &tmp, a );
+	NODE_SET( a, b );
+	NODE_SET( b, &tmp );
+}
+
+// create partitions around the pivot index
+static int at_partition( atree_item_t *a, int left, int right, int pindex ){
+  char pivot = a[pindex].ascii;
+  int  sindex = left,
+       i;
+
+  at_swap( a, pindex, right );
+
+  for( i = left; i < right; i++ ){
+    if( a[i].ascii <= pivot ){
+    	at_swap( a, i, sindex++ );
+    }
+  }
+
+  at_swap( a, sindex, right );
+
+  return sindex;
+}
+
+// perform a quicksort
+static void at_quicksort( atree_item_t *a, int left, int right ){
+  int pindex;
+
+  if( left < right ){
+    pindex = left + ( right - left ) / 2;
+
+    pindex = at_partition( a, left, right, pindex  );
+
+    at_quicksort( a, left, pindex - 1 );
+    at_quicksort( a, pindex + 1, right );
+  }
+}
+
+// Find next link with 'ascii' byte using iterative binary search
+static atree_item_t *at_find_next_link( atree_t *at, unsigned char ascii ){
+	int left = 0, right = at->n_links - 1, mid;
+	atree_item_t *node = NULL;
+
+	// continually narrow search until just one element remains
+	while( left < right ){
+		mid = ( left + right ) >> 1;
+		// reduce
+		if( at->links[mid].ascii < ascii )
+			left = mid + 1;
+		else
+			right = mid;
 	}
 
-	return NULL;
+	if( left == right && ( node = at->links + left )->ascii == ascii )
+		return node;
+
+	else
+		return NULL;
 }
 
 void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 	unsigned char first = key[0];
 
-	/*
-	 * End of the chain, set the marker value and exit the recursion.
-	 */
+	// End of the chain, set the marker value and exit the recursion.
 	if(len == 0){
 		void *old = at->e_marker;
 		at->e_marker = value;
 
 		return old;
 	}
-	/*
-	 * Has the item a link with given byte?
-	 */
+	// Has the item a link with given byte?
 	atree_item_t *link = at_find_next_link( at, first );
 	if( link ){
-		/*
-		 * Next recursion, search next byte,
-		 */
+		// Next recursion, search next byte,
 		return at_insert( link, ++key, --len, value );
 	}
-	/*
-	 * Nothing found.
-	 */
+	// Nothing found.
 	else{
 		unsigned short current = at->n_links;
-		/*
-		 * Allocate, initialize and append a new link.
-		 */
+
+		// Allocate, initialize and append a new link.
 		at->links = realloc( at->links, sizeof(atree_t) * ++at->n_links );
 
 		link = at->links + current;
@@ -81,9 +125,10 @@ void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 		link->e_marker =
 		link->links    = NULL;
 		link->n_links  = 0;
-		/*
-		 * Continue with next byte.
-		 */
+		// NOTE: We need a sorted list since the node lookup is performed with binary search.
+		at_quicksort( at->links, 0, at->n_links - 1 );
+
+		//  Continue with next byte.
 		return at_insert( link, ++key, --len, value );
 	}
 
@@ -95,9 +140,7 @@ atree_t *at_find_node( atree_t *at, unsigned char *key, int len ){
 	int i = 0;
 
 	do{
-		/*
-		 * Find next link ad continue.
-		 */
+		// Find next link ad continue.
 		link = at_find_next_link( link, key[i++] );
 	}
 	while( --len && link );
