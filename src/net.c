@@ -67,15 +67,15 @@
 /* Include the best multiplexing layer supported by this system.
  * The following should be ordered by performances, descending. */
 #ifdef HAVE_EVPORT
-#include "evport.c"
+#include "mux/evport.c"
 #else
     #ifdef HAVE_EPOLL
-    #include "epoll.c"
+    #include "mux/epoll.c"
     #else
         #ifdef HAVE_KQUEUE
-        #include "kqueue.c"
+        #include "mux/kqueue.c"
         #else
-        #include "select.c"
+        #include "mux/select.c"
         #endif
     #endif
 #endif

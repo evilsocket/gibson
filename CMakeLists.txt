@@ -51,8 +51,8 @@ set( MINOR_VERSION 0 )
 set( PATCH_LEVEL   0 )
 set( VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL}b" )
 
-file( GLOB_RECURSE MAIN_SOURCES src/*.c )
-file( GLOB_RECURSE HEADERS src/*.h )
+file( GLOB MAIN_SOURCES src/*.c )
+file( GLOB HEADERS src/*.h )
 
 # configure.h generation
 configure_file( src/configure.h.in src/configure.h )

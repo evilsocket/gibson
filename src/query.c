@@ -81,7 +81,7 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
 	item->data 	   = data;
 	item->size 	   = size;
 	item->encoding = encoding;
-	item->time	   = time(NULL);
+	item->time	   = server->stats.time;
 	item->ttl	   = ttl;
 	item->lock	   = 0;
 

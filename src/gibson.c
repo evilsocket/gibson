@@ -524,14 +524,26 @@ void gbDaemonize(){
     }
 }
 
+static char *gbSignalDescription(int sig){
+	switch(sig){
+		case SIGABRT : return "ABNORMAL TERMINATION";
+		case SIGFPE	 : return "FLOATING POINT EXCEPTION";
+		case SIGILL	 : return "ILLEGAL INSTRUCTION";
+		case SIGINT	 : return "INTERRUPT SIGNAL";
+		case SIGSEGV : return "SEGMENTATION VIOLATION";
+		case SIGTERM : return "TERMINATION REQUEST";
+		default      : return "UNKNOWN SIGNAL";
+	}
+}
+
 static void gbSignalHandler(int sig) {
 	if( sig == SIGTERM ){
 		gbLog( WARNING, "Received SIGTERM, scheduling shutdown..." );
 		server.shutdown = 1;
 	}
-	else if( sig == SIGSEGV ){
+	else {
 		gbLog( CRITICAL, "" );
-		gbLog( CRITICAL, "********* SEGMENTATION FAULT *********" );
+		gbLog( CRITICAL, "********* %s *********", gbSignalDescription(sig) );
 		gbLog( CRITICAL, "" );
 
 		void *trace[32];
@@ -589,6 +601,9 @@ void gbProcessInit(){
 
 	sigaction( SIGTERM, &act, NULL );
 	sigaction( SIGSEGV, &act, NULL );
+	sigaction( SIGILL,  &act, NULL );
+	sigaction( SIGFPE,  &act, NULL );
+	sigaction( SIGABRT, &act, NULL );
 
 	FILE *fp = fopen(server.pidfile,"w+t");
 	if (fp) {
