@@ -255,91 +255,124 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
     gbClient *client = privdata;
     size_t nwrote = 0, towrite = 0;
 
-    towrite = client->buffer_size - client->wrote;
-    nwrote  = write( client->fd, client->buffer + client->wrote, towrite );
+    if( client->status == STATUS_SENDING_REPLY ){
+		towrite = client->buffer_size - client->wrote;
+		nwrote  = write( client->fd, client->buffer + client->wrote, towrite );
 
-    if (nwrote == -1){
-		if (errno == EAGAIN){
-			nwrote = 0;
+		if (nwrote == -1){
+			if (errno == EAGAIN){
+				nwrote = 0;
+			}
+			else{
+				gbLog( WARNING, "Error writing to client: %s",strerror(errno));
+				gbClientDestroy(client);
+				return;
+			}
 		}
-		else{
-			gbLog( WARNING, "Error writing to client: %s",strerror(errno));
+		else if (nwrote == 0){
+			gbLog( DEBUG, "Client closed connection.");
 			gbClientDestroy(client);
 			return;
 		}
-	}
-	else if (nwrote == 0){
-		gbLog( DEBUG, "Client closed connection.");
-		gbClientDestroy(client);
-		return;
-	}
-	else{
-		client->wrote += nwrote;
-		client->seen = client->server->stats.time;
+		else{
+			client->wrote += nwrote;
+			client->seen = client->server->stats.time;
 
-		if( client->wrote == client->buffer_size ){
-			if( client->shutdown )
-				gbClientDestroy(client);
+			if( client->wrote == client->buffer_size ){
+				if( client->shutdown )
+					gbClientDestroy(client);
 
-			else{
-				gbClientReset(client);
-				gbDeleteFileEvent( client->server->events, client->fd, GB_WRITABLE );
+				else{
+					gbClientReset(client);
+					gbDeleteFileEvent( client->server->events, client->fd, GB_WRITABLE );
+				}
 			}
-		}
 
-	}
+		}
+    }
+    else {
+    	gbLog( WARNING, "Unexpected status %d for client while sending response.", client->status );
+    	gbClientDestroy(client);
+    }
 }
 
 void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 	gbClient *client = ( gbClient * )privdata;
 	gbServer *server = client->server;
+	byte_t   *p = NULL;
 	int nread, toread;
 
-	if( client->buffer_size < 0 && client->read >= sizeof( int ) ){
-		client->buffer_size = *(int *)client->buffer;
-		client->read = 0;
-		// make sure the buffer is not too big or too small ( must be at least 2 bytes to contain the opcode )
-		if( client->buffer_size > server->limits.maxrequestsize || client->buffer_size < sizeof(short) ){
-			gbLog( WARNING, "Client request size %d invalid.", client->buffer_size );
+	// we're still readying the buffer size from the socket
+	if( client->status == STATUS_WAITING_SIZE ){
+		toread = sizeof(int) - client->read;
+		// keep reading it
+		if( toread > 0 ){
+			p = (byte_t *)( &client->buffer_size + client->read );
+		}
+		// we're done, start reading the buffer
+		else {
+			client->read   = 0;
+			client->status = STATUS_WAITING_BUFFER;
+			// make sure the buffer is not too big or too small ( must be at least 2 bytes to contain the opcode )
+			if( client->buffer_size > server->limits.maxrequestsize || client->buffer_size < sizeof(short) ){
+				gbLog( WARNING, "Client request size %d invalid.", client->buffer_size );
+				gbClientDestroy(client);
+				return;
+			}
+		}
+	}
+
+	// we are reading the buffer ( of client->buffer_size total bytes )
+	if( client->status == STATUS_WAITING_BUFFER ){
+		toread = client->buffer_size - client->read;
+		if( toread > 0 ){
+			p = client->buffer + client->read;
+		}
+		else {
+			client->read   = 0;
+			client->status = STATUS_SENDING_REPLY;
+		}
+	}
+
+	// if we still have something to read
+	if( client->status != STATUS_SENDING_REPLY ){
+		nread = read( fd, p, toread );
+		if (nread == -1){
+			// try again, operation failed
+			if (errno == EAGAIN){
+				nread = 0;
+			}
+			else{
+				gbLog( WARNING, "Error reading from client: %s",strerror(errno));
+				gbClientDestroy(client);
+				return;
+			}
+		// bye bye dear client ^_^
+		}
+		else if (nread == 0){
+			gbLog( DEBUG, "Client closed connection.");
 			gbClientDestroy(client);
 			return;
 		}
 	}
 
-	toread = client->buffer_size >= 0 ? client->buffer_size : sizeof( int );
-	nread  = read( fd, client->buffer + client->read, toread - client->read );
+	client->read += nread;
+	client->seen = client->server->stats.time;
 
-	if (nread == -1){
-		if (errno == EAGAIN){
-			nread = 0;
-		}
-		else{
-			gbLog( WARNING, "Error reading from client: %s",strerror(errno));
+	// process the query only if we were reading it and the request is complete
+	if( client->status == STATUS_WAITING_BUFFER && client->read == client->buffer_size ){
+		client->status = STATUS_SENDING_REPLY;
+
+		if( gbProcessQuery(client) != GB_OK ){
+			size_t sz = client->buffer_size < 255 ? client->buffer_size : 255;
+
+			gbLog( WARNING, "Malformed query, dropping client." );
+			gbLog( WARNING, "  Buffer size: %d opcode:%d - First %d bytes:", client->buffer_size, *(short *)&client->buffer[0], sz );
+			gbLogDumpBuffer( WARNING, client->buffer, sz );
+
 			gbClientDestroy(client);
-			return;
 		}
 	}
-	else if (nread == 0){
-		gbLog( DEBUG, "Client closed connection.");
-		gbClientDestroy(client);
-		return;
-	}
-	else{
-    	client->read += nread;
-    	client->seen = client->server->stats.time;
-
-    	if( client->read == client->buffer_size ){
-    		if( gbProcessQuery(client) != GB_OK ){
-    			size_t sz = client->buffer_size < 255 ? client->buffer_size : 255;
-
-    			gbLog( WARNING, "Malformed query, dropping client." );
-    			gbLog( WARNING, "  Buffer size: %d opcode:%d - First %d bytes:", client->buffer_size, *(short *)&client->buffer[0], sz );
-    			gbLogDumpBuffer( WARNING, client->buffer, sz );
-
-    			gbClientDestroy(client);
-    		}
-    	}
-    }
 }
 
 void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
@@ -370,6 +403,7 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 	    gbClient *client = gbClientCreate(client_fd,server);
 
 		if( gbCreateFileEvent( e, client_fd, GB_READABLE, gbReadQueryHandler, client ) == GB_ERR ) {
+			gbLog( WARNING, "Unable to wait for client readable state." );
 			gbClientDestroy( client );
 			close(client_fd);
 			return;

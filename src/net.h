@@ -231,6 +231,10 @@ typedef struct gbServer
 }
 gbServer;
 
+#define STATUS_WAITING_SIZE   0x00
+#define STATUS_WAITING_BUFFER 0x01
+#define STATUS_SENDING_REPLY  0x02
+
 typedef struct gbClient
 {
 	// main client file descriptor
@@ -243,6 +247,8 @@ typedef struct gbClient
 	int		  read;
 	// number of bytes currently wrote
 	int 	  wrote;
+	// client read status
+	byte_t	  status;
 	// last time this client was seen alive
 	time_t    seen;
 	// pointer to the main server structure

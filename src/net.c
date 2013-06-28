@@ -874,7 +874,8 @@ gbClient* gbClientCreate( int fd, gbServer *server  ){
 
 	client->fd 			= fd;
 	client->buffer 		= malloc( server->limits.maxrequestsize );
-	client->buffer_size = -1;
+	client->buffer_size = 0;
+	client->status		= STATUS_WAITING_SIZE;
 	client->read 		= 0;
 	client->wrote 		= 0;
 	client->server 		= server;
@@ -888,7 +889,8 @@ gbClient* gbClientCreate( int fd, gbServer *server  ){
 }
 
 void gbClientReset( gbClient *client ){
-	client->buffer_size = -1;
+	client->buffer_size = 0;
+	client->status		= STATUS_WAITING_SIZE;
 	client->read 		= 0;
 	client->wrote 		= 0;
 	client->shutdown 	= 0;
