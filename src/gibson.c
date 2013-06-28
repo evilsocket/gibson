@@ -264,7 +264,7 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 				nwrote = 0;
 			}
 			else{
-				gbLog( WARNING, "Error writing to client: %s",strerror(errno));
+				gbLog( DEBUG, "Error writing to client: %s",strerror(errno));
 				gbClientDestroy(client);
 				return;
 			}
