@@ -1,4 +1,5 @@
-<?php 
+#!/usr/bin/env php
+<?php
 
 if( !class_exists('Gibson') ) die( "You will need the Gibson PHP extension to run the tests.\n" );
 

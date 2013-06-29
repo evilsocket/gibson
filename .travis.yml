@@ -1,7 +1,4 @@
 language: c
-php:
-  - 5.3
-  - 5.4
 compiler:
   - gcc
-script: cmake . && make && php tests/run_tests.php
+script: cmake . && make && ./tests/run_tests.php
