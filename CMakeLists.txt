@@ -19,6 +19,8 @@ else (WITH_DEBUG)
 	set( OPTIMIZATION "-g -O3" )
 endif (WITH_DEBUG)
 
+set( COMMON_FLAGS "-Wall ${OPTIMIZATION}" )
+
 set(HAVE_JEMALLOC 0)
 
 if (WITH_JEMALLOC)
