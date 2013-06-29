@@ -10,7 +10,6 @@ gibson
 .settings
 # Misc
 *.log
-tests
 src/configure.h
 build
 CMakeCache.txt
