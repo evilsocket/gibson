@@ -119,7 +119,7 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	item = NULL;
 }
 
-static int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *server, int remove ){
+static int gbIsNodeStillValid( anode_t *node, gbItem *item, gbServer *server, int remove ){
 	time_t eta = server->stats.time - item->time;
 
 	if( item->ttl > 0 )
@@ -136,7 +136,7 @@ static int gbIsNodeStillValid( atree_item_t *node, gbItem *item, gbServer *serve
 
 			// remove from container
 			if( remove )
-				node->e_marker = NULL;
+				node->marker = NULL;
 
 			return 0;
 		}
@@ -377,14 +377,14 @@ static int gbQueryGetHandler( gbClient *client, byte_t *p ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
-	atree_item_t *node = NULL;
+	anode_t *node = NULL;
 	gbItem *item = NULL;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
 	node = at_find_node( &server->tree, k, klen );
 
-	if( node && ( item = node->e_marker ) && gbIsNodeStillValid( node, node->e_marker, server, 1 ) )
+	if( node && ( item = node->marker ) && gbIsNodeStillValid( node, node->marker, server, 1 ) )
 		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 
 	else
@@ -425,10 +425,10 @@ static int gbQueryDelHandler( gbClient *client, byte_t *p ){
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
-	atree_item_t *node = at_find_node( &server->tree, k, klen );
-	if( node && node->e_marker )
+	anode_t *node = at_find_node( &server->tree, k, klen );
+	if( node && node->marker )
 	{
-		item = node->e_marker;
+		item = node->marker;
 
 		time_t eta = server->stats.time - item->time;
 
@@ -442,7 +442,7 @@ static int gbQueryDelHandler( gbClient *client, byte_t *p ){
 			gbDestroyItem( server, item );
 
 			// Remove item from tree
-			node->e_marker = NULL;
+			node->marker = NULL;
 
 			if( valid )
 				return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
@@ -462,10 +462,10 @@ static int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 	size_t found = at_search_nodes( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
 	if( found ){
 		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-			atree_item_t *node = vi->data;
+			anode_t *node = vi->data;
 
-			if( node && node->e_marker ){
-				item = node->e_marker;
+			if( node && node->marker ){
+				item = node->marker;
 
 				time_t eta = server->stats.time - item->time;
 
@@ -475,7 +475,7 @@ static int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 				}
 				else{
 					// Remove item from tree
-					node->e_marker = NULL;
+					node->marker = NULL;
 
 					int valid = gbIsNodeStillValid( node, item, server, 0 );
 
@@ -504,7 +504,7 @@ static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
-	atree_item_t *node = NULL;
+	anode_t *node = NULL;
 	gbItem *item = NULL;
 	long num = 0;
 
@@ -512,12 +512,12 @@ static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 
 	node = at_find_node( &server->tree, k, klen );
 
-	item = node ? node->e_marker : NULL;
+	item = node ? node->marker : NULL;
 	if( item == NULL ) {
 		item = gbCreateItem( server, (void *)1, sizeof( long ), GB_ENC_NUMBER, -1 );
 		// just reuse the node
 		if( node )
-			node->e_marker = item;
+			node->marker = item;
 		else
 			at_insert( &server->tree, k, klen, item );
 
@@ -615,14 +615,14 @@ static int gbQueryLockHandler( gbClient *client, byte_t *p ){
 		   *v = NULL;
 	size_t klen = 0, vlen = 0;
 	gbServer *server = client->server;
-	atree_item_t *node = NULL;
+	anode_t *node = NULL;
 	gbItem *item = NULL;
 	long locktime;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
 
 	node = at_find_node( &server->tree, k, klen );
-	if( node && ( item = node->e_marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
+	if( node && ( item = node->marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
 	{
 		if( gbQueryParseLong( v, vlen, &locktime ) )
 		{
@@ -678,13 +678,13 @@ static int gbQueryUnlockHandler( gbClient *client, byte_t *p ){
 	byte_t *k = NULL;
 	size_t klen = 0;
 	gbServer *server = client->server;
-	atree_item_t *node = NULL;
+	anode_t *node = NULL;
 	gbItem *item = NULL;
 
 	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
 
 	node = at_find_node( &server->tree, k, klen );
-	if( node && ( item = node->e_marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
+	if( node && ( item = node->marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
 	{
 		item->lock = 0;
 

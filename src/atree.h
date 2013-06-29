@@ -38,41 +38,41 @@
 #endif
 
 /*
- * Implementation of an n-ary tree, where each link is represented
- * by a char of a key and its links by next chars.
+ * Implementation of an n-ary tree, where each node is represented
+ * by a char of a key and its children by next chars.
  */
 typedef struct _atree {
 	/*
-	 * The byte value of this link.
+	 * The byte value of this node.
 	 */
 	unsigned char ascii;
 	/*
-	 * Value of the link (end marker of a chain).
+	 * Value of the node (end marker of a chain).
 	 */
-	void*   	  e_marker;
+	void*   	  marker;
 	/*
-	 * Number of sub links.
+	 * Number of children.
 	 */
-	unsigned short n_links;
+	unsigned short n_nodes;
 	/*
-	 * Sub links dynamic array.
+	 * Child nodes dynamic array.
 	 */
-	struct _atree *links;
+	struct _atree *nodes;
 }
 __attribute__((packed)) atree_t;
 
-typedef atree_t atree_item_t;
+typedef atree_t anode_t;
 
 /*
  * Initialize the head of the tree.
  */
-#define at_init_tree( t )    (t).n_links  = 0; \
-						     (t).e_marker = 0; \
-						     (t).links    = NULL
+#define at_init_tree( t )    (t).n_nodes = 0; \
+						     (t).marker  = 0; \
+						     (t).nodes   = NULL
 /*
- * Allocate and initialize a link of the tree.
+ * Allocate and initialize a node of the tree.
  */
-#define at_init_link( l, k ) l = (atree_t *)calloc( 1, sizeof(atree_t) ); \
+#define at_init_node( l, k ) l = (atree_t *)calloc( 1, sizeof(atree_t) ); \
 						     l->ascii = k[0]
 
 #define at_clear at_free
@@ -91,7 +91,7 @@ atree_t *at_find_node( atree_t *at, unsigned char *key, int len );
  */
 void *at_find( atree_t *at, unsigned char *key, int len );
 
-typedef void (*at_recurse_handler)(atree_item_t *, size_t, void *);
+typedef void (*at_recurse_handler)(anode_t *, size_t, void *);
 
 void at_recurse( atree_t *at, at_recurse_handler handler, void *data, size_t level );
 

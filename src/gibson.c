@@ -55,7 +55,7 @@ static gbServer server;
 void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask );
 void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask );
 void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask);
-void gbMemoryFreeHandler( atree_item_t *elem, size_t level, void *data );
+void gbMemoryFreeHandler( anode_t *elem, size_t level, void *data );
 int  gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data);
 void gbDaemonize();
 void gbProcessInit();
@@ -411,9 +411,9 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 	}
 }
 
-void gbMemoryFreeHandler( atree_item_t *elem, size_t level, void *data ) {
+void gbMemoryFreeHandler( anode_t *elem, size_t level, void *data ) {
 	gbServer *server = data;
-	gbItem	 *item = elem->e_marker;
+	gbItem	 *item = elem->marker;
 	time_t	  eta = item ? ( server->stats.time - item->time ) : 0;
 
 	// item is older enough to be deleted
@@ -422,15 +422,15 @@ void gbMemoryFreeHandler( atree_item_t *elem, size_t level, void *data ) {
 		if( item->lock == -1 || eta < item->lock ) return;
 
 		// item is freeable
-		elem->e_marker = NULL;
+		elem->marker = NULL;
 
 		gbDestroyItem( server, item );
 	}
 }
 
-void gbHandleDeadTTLHandler( atree_item_t *elem, size_t level, void *data ){
+void gbHandleDeadTTLHandler( anode_t *elem, size_t level, void *data ){
 	gbServer *server = data;
-	gbItem	 *item = elem->e_marker;
+	gbItem	 *item = elem->marker;
 	time_t	  eta = item ? ( server->stats.time - item->time ) : 0;
 
 	// item is older enough to be deleted
@@ -443,7 +443,7 @@ void gbHandleDeadTTLHandler( atree_item_t *elem, size_t level, void *data ){
 		gbDestroyItem( server, item );
 
 		// item is freeable
-		elem->e_marker = NULL;
+		elem->marker = NULL;
 	}
 }
 
@@ -648,14 +648,14 @@ void gbProcessInit(){
 		gbLog( WARNING, "Error creating pid file %s.", server.pidfile );
 }
 
-void gbObjectDestroyHandler( atree_item_t *elem, size_t level, void *data ){
-	gbItem *item = elem->e_marker;
+void gbObjectDestroyHandler( anode_t *elem, size_t level, void *data ){
+	gbItem *item = elem->marker;
 	if( item )
 		gbDestroyItem( data, item );
 }
 
-void gbConfigDestroyHandler( atree_item_t *elem, size_t level, void *data ){
-	char *item = elem->e_marker;
+void gbConfigDestroyHandler( anode_t *elem, size_t level, void *data ){
+	char *item = elem->marker;
 	if( item )
 		free( item );
 }
