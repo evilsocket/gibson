@@ -32,7 +32,12 @@ foreach( glob("*.test.php" ) as $testfile ){
 
 $end = microtime(TRUE);
 
+system("killall gibson");
+
 printf( "\n%d passed, %d failed ( %s )\n", $passed, $failed, format_timespan( $end - $start ) );
+
+if( $failed > 0 )
+	exit(1);
 
 function format_timespan( $delta ){
   $ms = $delta * 1000.0;
@@ -45,7 +50,5 @@ function format_timespan( $delta ){
   else 
     return number_format( $ms / 60000, 2 )." m";
 }
-
-system("killall gibson");
 
 ?>
