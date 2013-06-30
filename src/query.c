@@ -126,10 +126,6 @@ static int gbIsNodeStillValid( anode_t *node, gbItem *item, gbServer *server, in
 	{
 		if( eta > item->ttl )
 		{
-			// item locked, skip
-			if( item->lock == -1 || eta < item->lock )
-				return 1;
-
 			gbLog( DEBUG, "[ACCESS] TTL of %ds expired for item at %p.", item->ttl, item );
 
 			gbDestroyItem( server, item );
