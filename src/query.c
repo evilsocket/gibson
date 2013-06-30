@@ -171,7 +171,7 @@ static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *ke
 	return 1;
 }
 
-static void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen ){
+static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen ){
 	byte_t *p = buffer;
 
 	*key = p;
@@ -188,9 +188,18 @@ static void gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte
 		*vlen  = size - *klen - 1;
 		*vlen  = min( *vlen, server->limits.maxvaluesize );
 	}
+
+	if( *klen <= 0 )
+		return 0;
+
+	else if( value && vlen <= 0 )
+		return 0;
+
+	else
+		return 1;
 }
 
-static void gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ttl, byte_t **key, byte_t **value, size_t *ttllen, size_t *klen, size_t *vlen ){
+static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ttl, byte_t **key, byte_t **value, size_t *ttllen, size_t *klen, size_t *vlen ){
 	byte_t *p = buffer;
 
 	*ttl = p;
@@ -215,6 +224,18 @@ static void gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, b
 		*vlen  = size - *ttllen - *klen - 2;
 		*vlen  = min( *vlen, server->limits.maxvaluesize );
 	}
+
+	if( *ttllen <= 0 )
+		return 0;
+
+	else if( *klen <= 0 )
+		return 0;
+
+	else if( value && vlen <= 0 )
+		return 0;
+
+	else
+		return 1;
 }
 
 static gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbServer *server ){
@@ -262,25 +283,28 @@ static int gbQuerySetHandler( gbClient *client, byte_t *p ){
 	long ttl;
 
 	if( server->stats.memused <= server->limits.maxmem ) {
-		gbParseTtlKeyValue( server, p, client->buffer_size - sizeof(short), &t, &k, &v, &ttllen, &klen, &vlen );
-		if( gbQueryParseLong( t, ttllen, &ttl ) )
-		{
-			item = at_find( &server->tree, k, klen );
-			// locked item
-			if( item && gbItemIsLocked( item, server, 0 ) )
-				return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
+		if( gbParseTtlKeyValue( server, p, client->buffer_size - sizeof(short), &t, &k, &v, &ttllen, &klen, &vlen ) ){
+			if( gbQueryParseLong( t, ttllen, &ttl ) )
+			{
+				item = at_find( &server->tree, k, klen );
+				// locked item
+				if( item && gbItemIsLocked( item, server, 0 ) )
+					return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 
-			item = gbSingleSet( v, vlen, k, klen, server );
+				item = gbSingleSet( v, vlen, k, klen, server );
 
-			if( ttl > 0 ){
-				item->time = server->stats.time;
-				item->ttl  = min( server->limits.maxitemttl, ttl );
+				if( ttl > 0 ){
+					item->time = server->stats.time;
+					item->ttl  = min( server->limits.maxitemttl, ttl );
+				}
+
+				return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 			}
-
-			return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
+			else
+				return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 		}
 		else
-			return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
+			return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 	}
 	else
 		return gbClientEnqueueCode( client, REPL_ERR_MEM, gbWriteReplyHandler, 0 );
@@ -294,34 +318,36 @@ static int gbQueryMultiSetHandler( gbClient *client, byte_t *p ){
 	gbItem *item = NULL;
 
 	if( server->stats.memused <= server->limits.maxmem ) {
-		gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen );
+		if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen ) ){
+			size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+			if( found ){
+				ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+					item = ((gbItem *)vi->data);
 
-		size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-		if( found ){
-			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-				item = ((gbItem *)vi->data);
+					if( gbItemIsLocked( item, server, 0 ) )
+						--found;
 
-				if( gbItemIsLocked( item, server, 0 ) )
-					--found;
+					else
+						gbSingleSet( v, vlen, ki->data, strlen(ki->data), server );
 
+					// free allocated key
+					free( ki->data );
+					ki->data = NULL;
+				}
+
+				ll_reset( server->m_keys );
+				ll_reset( server->m_values );
+
+				if( found )
+					return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 				else
-					gbSingleSet( v, vlen, ki->data, strlen(ki->data), server );
-
-				// free allocated key
-				free( ki->data );
-				ki->data = NULL;
+					return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 			}
-
-			ll_reset( server->m_keys );
-			ll_reset( server->m_values );
-
-			if( found )
-				return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 			else
-				return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
+				return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 		}
 		else
-			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+			return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 	}
 	else
 		return gbClientEnqueueCode( client, REPL_ERR_MEM, gbWriteReplyHandler, 0 );
@@ -335,23 +361,25 @@ static int gbQueryTtlHandler( gbClient *client, byte_t *p ){
 	gbItem *item = NULL;
 	long ttl;
 
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
-
-	item = at_find( &server->tree, k, klen );
-	if( item )
-	{
-		if( gbQueryParseLong( v, vlen, &ttl ) )
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen ) ){
+		item = at_find( &server->tree, k, klen );
+		if( item )
 		{
-			item->time = server->stats.time;
-			item->ttl  = min( server->limits.maxitemttl, ttl );
+			if( gbQueryParseLong( v, vlen, &ttl ) )
+			{
+				item->time = server->stats.time;
+				item->ttl  = min( server->limits.maxitemttl, ttl );
 
-			return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+				return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+			}
+			else
+				return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 		}
 		else
-			return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
+			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
 	else
-		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
@@ -362,16 +390,150 @@ static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 	gbItem *item = NULL;
 	long ttl;
 
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen );
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen ) ){
+		if( gbQueryParseLong( v, vlen, &ttl ) )
+		{
+			size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+			if( found ){
+				ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+					item = vi->data;
+					item->time = server->stats.time;
+					item->ttl  = min( server->limits.maxitemttl, ttl );
 
-	if( gbQueryParseLong( v, vlen, &ttl ) )
-	{
+					// free allocated key
+					free( ki->data );
+					ki->data = NULL;
+				}
+
+				ll_reset( server->m_keys );
+				ll_reset( server->m_values );
+
+				return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+			}
+			else
+				return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+		}
+		else
+			return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+}
+
+static int gbQueryGetHandler( gbClient *client, byte_t *p ){
+	byte_t *k = NULL;
+	size_t klen = 0;
+	gbServer *server = client->server;
+	anode_t *node = NULL;
+	gbItem *item = NULL;
+
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL ) ){
+		node = at_find_node( &server->tree, k, klen );
+
+		if( node && ( item = node->marker ) && gbIsNodeStillValid( node, node->marker, server, 1 ) )
+			return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
+
+		else
+			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+}
+
+static int gbQueryMultiGetHandler( gbClient *client, byte_t *p ){
+	byte_t *expr = NULL;
+	size_t exprlen = 0;
+	gbServer *server = client->server;
+
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) ){
 		size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
 		if( found ){
+			int ret = gbClientEnqueueKeyValueSet( client, found, gbWriteReplyHandler, 0 );
+
 			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-				item = vi->data;
-				item->time = server->stats.time;
-				item->ttl  = min( server->limits.maxitemttl, ttl );
+				// free allocated key
+				free( ki->data );
+				ki->data = NULL;
+			}
+
+			ll_reset( server->m_keys );
+			ll_reset( server->m_values );
+
+			return ret;
+		}
+		else
+			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+}
+
+static int gbQueryDelHandler( gbClient *client, byte_t *p ){
+	byte_t *k = NULL;
+	size_t klen = 0;
+	gbServer *server = client->server;
+	gbItem *item = NULL;
+
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL ) ){
+		anode_t *node = at_find_node( &server->tree, k, klen );
+		if( node && node->marker )
+		{
+			item = node->marker;
+
+			if( gbItemIsLocked( item, server, 0 ) )
+				return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
+
+			else
+			{
+				int valid = gbIsNodeStillValid( node, item, server, 0 );
+
+				gbDestroyItem( server, item );
+
+				// Remove item from tree
+				node->marker = NULL;
+
+				if( valid )
+					return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+			}
+		}
+
+		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+}
+
+static int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
+	byte_t *expr = NULL;
+	size_t exprlen = 0;
+	gbServer *server = client->server;
+	gbItem *item = NULL;
+
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) ){
+		size_t found = at_search_nodes( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+		if( found ){
+			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+				anode_t *node = vi->data;
+
+				if( node && node->marker ){
+					item = node->marker;
+
+					// locked item
+					if( gbItemIsLocked( item, server, 0 )){
+						--found;
+					}
+					else{
+						// Remove item from tree
+						node->marker = NULL;
+
+						int valid = gbIsNodeStillValid( node, item, server, 0 );
+
+						gbDestroyItem( server, item );
+
+						if( !valid )
+							--found;
+					}
+				}
 
 				// free allocated key
 				free( ki->data );
@@ -387,130 +549,7 @@ static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
 	else
-		return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
-}
-
-static int gbQueryGetHandler( gbClient *client, byte_t *p ){
-	byte_t *k = NULL;
-	size_t klen = 0;
-	gbServer *server = client->server;
-	anode_t *node = NULL;
-	gbItem *item = NULL;
-
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
-
-	node = at_find_node( &server->tree, k, klen );
-
-	if( node && ( item = node->marker ) && gbIsNodeStillValid( node, node->marker, server, 1 ) )
-		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
-
-	else
-		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
-}
-
-static int gbQueryMultiGetHandler( gbClient *client, byte_t *p ){
-	byte_t *expr = NULL;
-	size_t exprlen = 0;
-	gbServer *server = client->server;
-
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL );
-
-	size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-	if( found ){
-		int ret = gbClientEnqueueKeyValueSet( client, found, gbWriteReplyHandler, 0 );
-
-		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-			// free allocated key
-			free( ki->data );
-			ki->data = NULL;
-		}
-
-		ll_reset( server->m_keys );
-		ll_reset( server->m_values );
-
-		return ret;
-	}
-	else
-		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
-}
-
-static int gbQueryDelHandler( gbClient *client, byte_t *p ){
-	byte_t *k = NULL;
-	size_t klen = 0;
-	gbServer *server = client->server;
-	gbItem *item = NULL;
-
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
-
-	anode_t *node = at_find_node( &server->tree, k, klen );
-	if( node && node->marker )
-	{
-		item = node->marker;
-
-		if( gbItemIsLocked( item, server, 0 ) )
-			return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
-
-		else
-		{
-			int valid = gbIsNodeStillValid( node, item, server, 0 );
-
-			gbDestroyItem( server, item );
-
-			// Remove item from tree
-			node->marker = NULL;
-
-			if( valid )
-				return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
-		}
-	}
-
-	return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
-}
-
-static int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
-	byte_t *expr = NULL;
-	size_t exprlen = 0;
-	gbServer *server = client->server;
-	gbItem *item = NULL;
-
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL );
-	size_t found = at_search_nodes( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-	if( found ){
-		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-			anode_t *node = vi->data;
-
-			if( node && node->marker ){
-				item = node->marker;
-
-				// locked item
-				if( gbItemIsLocked( item, server, 0 )){
-					--found;
-				}
-				else{
-					// Remove item from tree
-					node->marker = NULL;
-
-					int valid = gbIsNodeStillValid( node, item, server, 0 );
-
-					gbDestroyItem( server, item );
-
-					if( !valid )
-						--found;
-				}
-			}
-
-			// free allocated key
-			free( ki->data );
-			ki->data = NULL;
-		}
-
-		ll_reset( server->m_keys );
-		ll_reset( server->m_values );
-
-		return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
-	}
-	else
-		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
@@ -521,52 +560,54 @@ static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 	gbItem *item = NULL;
 	long num = 0;
 
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL ) ){
+		node = at_find_node( &server->tree, k, klen );
 
-	node = at_find_node( &server->tree, k, klen );
-
-	item = node ? node->marker : NULL;
-	if( item == NULL ) {
-		item = gbCreateItem( server, (void *)1, sizeof( long ), GB_ENC_NUMBER, -1 );
-		// just reuse the node
-		if( node )
-			node->marker = item;
-		else
-			at_insert( &server->tree, k, klen, item );
-
-		return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
-	}
-	else if( gbIsNodeStillValid( node, item, server, 1 ) == 0 ){
-		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
-	}
-	else {
-		if( gbItemIsLocked( item, server, 0 ) )
-			return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
-
-		if( item->encoding == GB_ENC_NUMBER ){
-			item->data = (void *)( (long)item->data + delta );
+		item = node ? node->marker : NULL;
+		if( item == NULL ) {
+			item = gbCreateItem( server, (void *)1, sizeof( long ), GB_ENC_NUMBER, -1 );
+			// just reuse the node
+			if( node )
+				node->marker = item;
+			else
+				at_insert( &server->tree, k, klen, item );
 
 			return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 		}
-		else if( item->encoding == GB_ENC_PLAIN && gbQueryParseLong( item->data, item->size, &num ) ){
-			num += delta;
+		else if( gbIsNodeStillValid( node, item, server, 1 ) == 0 ){
+			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+		}
+		else {
+			if( gbItemIsLocked( item, server, 0 ) )
+				return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 
-			server->stats.memused -= ( item->size - sizeof(long) );
+			if( item->encoding == GB_ENC_NUMBER ){
+				item->data = (void *)( (long)item->data + delta );
 
-			if( item->data != NULL ){
-				free( item->data );
-				item->data = NULL;
+				return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 			}
+			else if( item->encoding == GB_ENC_PLAIN && gbQueryParseLong( item->data, item->size, &num ) ){
+				num += delta;
 
-			item->encoding = GB_ENC_NUMBER;
-			item->data	   = (void *)num;
-			item->size	   = sizeof(long);
+				server->stats.memused -= ( item->size - sizeof(long) );
 
-			return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
+				if( item->data != NULL ){
+					free( item->data );
+					item->data = NULL;
+				}
+
+				item->encoding = GB_ENC_NUMBER;
+				item->data	   = (void *)num;
+				item->size	   = sizeof(long);
+
+				return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
+			}
+			else
+				return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 		}
-		else
-			return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta ){
@@ -576,59 +617,61 @@ static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 	gbItem *item = NULL;
 	long num = 0;
 
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL );
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) ){
+		size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+		if( found ){
+			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+				item = vi->data;
 
-	size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-	if( found ){
-		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-			item = vi->data;
-
-			if( gbItemIsLocked( item, server, 0 ) ){
-				--found;
-			}
-			if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) == 0 ){
-				--found;
-			}
-			else if( item->encoding == GB_ENC_NUMBER ){
-				item->data = (void *)( (long)item->data + delta );
-			}
-			else if( item->encoding == GB_ENC_PLAIN ){
-
-				if( gbQueryParseLong( item->data, item->size, &num ) )
-				{
-					num += delta;
-
-					server->stats.memused -= ( item->size - sizeof(long) );
-
-					if( item->data != NULL ){
-						free( item->data );
-						item->data = NULL;
-					}
-
-					item->encoding = GB_ENC_NUMBER;
-					item->data	   = (void *)num;
-					item->size	   = sizeof(long);
-				}
-				else
+				if( gbItemIsLocked( item, server, 0 ) ){
 					--found;
+				}
+				if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) == 0 ){
+					--found;
+				}
+				else if( item->encoding == GB_ENC_NUMBER ){
+					item->data = (void *)( (long)item->data + delta );
+				}
+				else if( item->encoding == GB_ENC_PLAIN ){
+
+					if( gbQueryParseLong( item->data, item->size, &num ) )
+					{
+						num += delta;
+
+						server->stats.memused -= ( item->size - sizeof(long) );
+
+						if( item->data != NULL ){
+							free( item->data );
+							item->data = NULL;
+						}
+
+						item->encoding = GB_ENC_NUMBER;
+						item->data	   = (void *)num;
+						item->size	   = sizeof(long);
+					}
+					else
+						--found;
+				}
+
+				// free allocated key
+				free( ki->data );
+				ki->data = NULL;
 			}
 
-			// free allocated key
-			free( ki->data );
-			ki->data = NULL;
-		}
+			ll_reset( server->m_keys );
+			ll_reset( server->m_values );
 
-		ll_reset( server->m_keys );
-		ll_reset( server->m_values );
-
-		if( found )
-			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+			if( found )
+				return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 
 		else
 			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
 	else
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 static int gbQueryLockHandler( gbClient *client, byte_t *p ){
@@ -640,23 +683,25 @@ static int gbQueryLockHandler( gbClient *client, byte_t *p ){
 	gbItem *item = NULL;
 	long locktime;
 
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen );
-
-	node = at_find_node( &server->tree, k, klen );
-	if( node && ( item = node->marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
-	{
-		if( gbQueryParseLong( v, vlen, &locktime ) )
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &v, &klen, &vlen ) ){
+		node = at_find_node( &server->tree, k, klen );
+		if( node && ( item = node->marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
 		{
-			item->time = server->stats.time;
-			item->lock = locktime;
+			if( gbQueryParseLong( v, vlen, &locktime ) )
+			{
+				item->time = server->stats.time;
+				item->lock = locktime;
 
-			return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+				return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+			}
+			else
+				return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 		}
 		else
-			return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
+			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
 	else
-		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 static int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
@@ -667,32 +712,34 @@ static int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
 	gbItem *item = NULL;
 	long locktime;
 
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen );
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen ) ){
+		if( gbQueryParseLong( v, vlen, &locktime ) )
+		{
+			size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+			if( found ){
+				ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+					item = vi->data;
+					item->time = server->stats.time;
+					item->lock = locktime;
 
-	if( gbQueryParseLong( v, vlen, &locktime ) )
-	{
-		size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-		if( found ){
-			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-				item = vi->data;
-				item->time = server->stats.time;
-				item->lock = locktime;
+					// free allocated key
+					free( ki->data );
+					ki->data = NULL;
+				}
 
-				// free allocated key
-				free( ki->data );
-				ki->data = NULL;
+				ll_reset( server->m_keys );
+				ll_reset( server->m_values );
+
+				return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 			}
-
-			ll_reset( server->m_keys );
-			ll_reset( server->m_values );
-
-			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+			else
+				return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 		}
 		else
-			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+			return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
 	}
 	else
-		return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 static int gbQueryUnlockHandler( gbClient *client, byte_t *p ){
@@ -702,17 +749,19 @@ static int gbQueryUnlockHandler( gbClient *client, byte_t *p ){
 	anode_t *node = NULL;
 	gbItem *item = NULL;
 
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL );
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL ) ){
+		node = at_find_node( &server->tree, k, klen );
+		if( node && ( item = node->marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
+		{
+			item->lock = 0;
 
-	node = at_find_node( &server->tree, k, klen );
-	if( node && ( item = node->marker ) && gbIsNodeStillValid( node, item, server, 1 ) )
-	{
-		item->lock = 0;
+			return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+		}
 
-		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
-
-	return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p ){
@@ -721,32 +770,34 @@ static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	gbItem *item = NULL;
 
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL );
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) ){
+		size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+		if( found ){
+			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+				item = vi->data;
 
-	size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-	if( found ){
-		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-			item = vi->data;
+				if( gbIsItemStillValid( item, server, expr, exprlen, 1 ) )
+					item->lock = 0;
 
-			if( gbIsItemStillValid( item, server, expr, exprlen, 1 ) )
-				item->lock = 0;
+				else
+					--found;
 
-			else
-				--found;
+				// free allocated key
+				free( ki->data );
+				ki->data = NULL;
+			}
 
-			// free allocated key
-			free( ki->data );
-			ki->data = NULL;
+			ll_reset( server->m_keys );
+			ll_reset( server->m_values );
+
+			if( found )
+				return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 		}
 
-		ll_reset( server->m_keys );
-		ll_reset( server->m_values );
-
-		if( found )
-			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
-
-	return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 static int gbQueryCountHandler( gbClient *client, byte_t *p ){
@@ -755,25 +806,27 @@ static int gbQueryCountHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	gbItem *item = NULL;
 
-	gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL );
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) ){
+		size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+		if( found ){
+			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+				item = vi->data;
+				if( !gbIsItemStillValid( item, server, expr, exprlen, 1 ) )
+					--found;
 
-	size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-	if( found ){
-		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-			item = vi->data;
-			if( !gbIsItemStillValid( item, server, expr, exprlen, 1 ) )
-				--found;
+				// free allocated key
+				free( ki->data );
+				ki->data = NULL;
+			}
 
-			// free allocated key
-			free( ki->data );
-			ki->data = NULL;
+			ll_reset( server->m_keys );
+			ll_reset( server->m_values );
 		}
 
-		ll_reset( server->m_keys );
-		ll_reset( server->m_values );
+		return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 	}
-
-	return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
