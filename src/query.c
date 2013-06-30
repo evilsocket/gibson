@@ -63,7 +63,6 @@ static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding enc
 	return item;
 }
 
-
 static void gbDestroyVolatileItem( gbItem *item ){
 	if( item->encoding != GB_ENC_NUMBER && item->data != NULL ){
 		free( item->data );
@@ -124,7 +123,7 @@ static int gbIsNodeStillValid( anode_t *node, gbItem *item, gbServer *server, in
 
 	if( item->ttl > 0 )
 	{
-		if( eta > item->ttl )
+		if( eta >= item->ttl )
 		{
 			gbLog( DEBUG, "[ACCESS] TTL of %ds expired for item at %p.", item->ttl, item );
 
@@ -141,6 +140,12 @@ static int gbIsNodeStillValid( anode_t *node, gbItem *item, gbServer *server, in
 	return 1;
 }
 
+static int gbItemIsLocked( gbItem *item, gbServer *server, time_t eta ){
+	eta = eta == 0 ? server->stats.time - item->time : eta;
+
+	return ( item->lock == -1 || eta < item->lock );
+}
+
 static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *key, size_t klen, int remove ) {
 	time_t eta = server->stats.time - item->time;
 
@@ -149,7 +154,8 @@ static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *ke
 		if( eta > item->ttl )
 		{
 			// item locked, skip
-			if( item->lock == -1 || eta < item->lock ) return 1;
+			if( gbItemIsLocked( item, server, eta ) )
+				return 1;
 
 			gbLog( DEBUG, "TTL of %ds expired for item at %p.", item->ttl, item );
 
@@ -260,12 +266,9 @@ static int gbQuerySetHandler( gbClient *client, byte_t *p ){
 		if( gbQueryParseLong( t, ttllen, &ttl ) )
 		{
 			item = at_find( &server->tree, k, klen );
-			if( item ){
-				time_t eta = server->stats.time - item->time;
-
-				if( item->lock == -1 || eta < item->lock )
-					return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
-			}
+			// locked item
+			if( item && gbItemIsLocked( item, server, 0 ) )
+				return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 
 			item = gbSingleSet( v, vlen, k, klen, server );
 
@@ -298,9 +301,7 @@ static int gbQueryMultiSetHandler( gbClient *client, byte_t *p ){
 			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 				item = ((gbItem *)vi->data);
 
-				time_t eta = server->stats.time - item->time;
-
-				if( item->lock == -1 || eta < item->lock )
+				if( gbItemIsLocked( item, server, 0 ) )
 					--found;
 
 				else
@@ -446,9 +447,7 @@ static int gbQueryDelHandler( gbClient *client, byte_t *p ){
 	{
 		item = node->marker;
 
-		time_t eta = server->stats.time - item->time;
-
-		if( item->lock == -1 || eta < item->lock )
+		if( gbItemIsLocked( item, server, 0 ) )
 			return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 
 		else
@@ -483,10 +482,8 @@ static int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 			if( node && node->marker ){
 				item = node->marker;
 
-				time_t eta = server->stats.time - item->time;
-
-				// expired item
-				if( item->lock == -1 || eta < item->lock ){
+				// locked item
+				if( gbItemIsLocked( item, server, 0 )){
 					--found;
 				}
 				else{
@@ -543,9 +540,7 @@ static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
 	else {
-		time_t eta = server->stats.time - item->time;
-
-		if( item->lock == -1 || eta < item->lock )
+		if( gbItemIsLocked( item, server, 0 ) )
 			return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 
 		if( item->encoding == GB_ENC_NUMBER ){
@@ -588,9 +583,7 @@ static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 		ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 			item = vi->data;
 
-			time_t eta = server->stats.time - item->time;
-
-			if( item->lock == -1 || eta < item->lock ){
+			if( gbItemIsLocked( item, server, 0 ) ){
 				--found;
 			}
 			if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) == 0 ){
@@ -654,7 +647,7 @@ static int gbQueryLockHandler( gbClient *client, byte_t *p ){
 	{
 		if( gbQueryParseLong( v, vlen, &locktime ) )
 		{
-			item->time = time(NULL);
+			item->time = server->stats.time;
 			item->lock = locktime;
 
 			return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
@@ -682,7 +675,7 @@ static int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
 		if( found ){
 			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 				item = vi->data;
-				item->time = time(NULL);
+				item->time = server->stats.time;
 				item->lock = locktime;
 
 				// free allocated key

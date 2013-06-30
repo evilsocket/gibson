@@ -14,7 +14,7 @@ fail_if( $g->set( "fuu", "new" ) != FALSE, "Value should be locked" );
 
 fail_if( $g->munlock( "f" )           == FALSE, "Unexpected MUNLOCK reply" );
 
-fail_if( $g->set( "foo", "new" ) == FALSE, "Value should be unlocked ".$g->getLastError() );
+fail_if( $g->set( "foo", "new" ) == FALSE, "Value should be unlocked" );
 fail_if( $g->set( "fuu", "new" ) == FALSE, "Value should be unlocked" );
 
 $g->quit();

@@ -8,7 +8,7 @@ fail_if( $g->connect(GIBSON_SOCKET) == FALSE, "Could not connect to test instanc
 fail_if( $g->set( "foo", "bar" ) == FALSE, "Unexpected SET reply" );
 fail_if( $g->ttl( "foo", 1 )     == FALSE, "Unexpected TTL reply" );
 
-sleep(2);
+sleep(1);
 
 fail_if( $g->get( "foo" ) !== FALSE, "Value should be expired" );
 

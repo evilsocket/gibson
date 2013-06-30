@@ -12,7 +12,7 @@ fail_if( $g->mlock( "f", 1 )           == FALSE, "Unexpected MLOCK reply" );
 fail_if( $g->set( "foo", "new" ) != FALSE, "Value should be locked" );
 fail_if( $g->set( "fuu", "new" ) != FALSE, "Value should be locked" );
 
-sleep(2);
+sleep(1);
 
 fail_if( $g->set( "foo", "new" ) == FALSE, "Value should be unlocked" );
 fail_if( $g->set( "fuu", "new" ) == FALSE, "Value should be unlocked" );

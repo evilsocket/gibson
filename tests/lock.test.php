@@ -10,7 +10,7 @@ fail_if( $g->lock( "foo", 1 )          == FALSE, "Unexpected LOCK reply" );
 
 fail_if( $g->set( "foo", "new" ) != FALSE, "Value should be locked" );
 
-sleep(2);
+sleep(1);
 
 fail_if( $g->set( "foo", "new" ) == FALSE, "Value should be unlocked" );
 
