@@ -62,7 +62,7 @@ void gbProcessInit();
 void gbServerDestroy( gbServer *server );
 
 void gbHelpMenu( char **argv, int exitcode ){
-	printf( "Gibson cache server v%s ( built %s )\nCopyright %s\nReleased under %s\n\n", VERSION, BUILD_DATETIME, AUTHOR, LICENSE );
+	printf( "Gibson cache server v%s %s ( built %s )\nCopyright %s\nReleased under %s\n\n", VERSION, BUILD_GIT_BRANCH, BUILD_DATETIME, AUTHOR, LICENSE );
 
 	printf( "%s [-h|--help] [-c|--config FILE]\n\n", argv[0] );
 
@@ -219,6 +219,7 @@ int main( int argc, char **argv)
 	gbMemFormat( server.compression, compr, 0xFF );
 
 	gbLog( INFO, "Server starting ..." );
+	gbLog( INFO, "Git Branch       : '%s'", BUILD_GIT_BRANCH );
 	gbLog( INFO, "Multiplexing API : '%s'", aeApiName() );
 #if HAVE_JEMALLOC == 1
 	const char *p;
@@ -598,6 +599,8 @@ static void gbSignalHandler(int sig) {
 		gbLog( CRITICAL, "INFO:" );
 		gbLog( CRITICAL, "" );
 
+		gbLog( CRITICAL, "  Git Branch      : %s", BUILD_GIT_BRANCH );
+		gbLog( CRITICAL, "  Git HEAD Rev.   : %s", BUILD_GIT_SHA1 );
 		gbLog( CRITICAL, "  Uptime          : %s", uptime );
 		gbLog( CRITICAL, "  Memory Used     : %s/%s", used, max );
 		gbLog( CRITICAL, "  Current Items   : %d", server.stats.nitems );
