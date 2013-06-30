@@ -929,6 +929,9 @@ int gbProcessQuery( gbClient *client ) {
 	else if( op == OP_STATS ){
 		return gbQueryStatsHandler( client, p );
 	}
+	else if( op == OP_PING ){
+		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+	}
 	else if( op == OP_END ){
 		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 1 );
 	}
