@@ -142,7 +142,6 @@ static int gbIsNodeStillValid( anode_t *node, gbItem *item, gbServer *server, in
 
 static int gbItemIsLocked( gbItem *item, gbServer *server, time_t eta ){
 	eta = eta == 0 ? server->stats.time - item->time : eta;
-
 	return ( item->lock == -1 || eta < item->lock );
 }
 

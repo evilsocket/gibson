@@ -280,7 +280,7 @@ typedef struct
 	// TTL of this item
 	short		   ttl;
 	// flag to lock the item
-	char		   lock;
+	time_t		   lock;
 }
 __attribute__((packed)) gbItem;
 
