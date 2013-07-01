@@ -989,6 +989,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 	byte_t *data = server->m_buffer,
 		   *p = data,
 		   *v = NULL;
+	gbItemEncoding encoding;
 	long num;
 
 #define CHECK_SPACE(needed) if( needed > space ){ \
@@ -1001,7 +1002,8 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 	SAFE_MEMCPY( p, &elements, sz );
 
 	ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-		item = vi->data;
+		item 	 = vi->data;
+		encoding = item->encoding;
 
 		// write key size + key
 		sz = strlen( ki->data );
@@ -1010,11 +1012,12 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 		SAFE_MEMCPY( p, ki->data, sz );
 
 		// write value size + value
-		if( item->encoding == GB_ENC_PLAIN ){
+		if( encoding == GB_ENC_PLAIN ){
 			vsize = item->size;
 			v	  = item->data;
 		}
-		else if( item->encoding == GB_ENC_LZF ){
+		else if( encoding == GB_ENC_LZF ){
+			encoding = GB_ENC_PLAIN;
 			vsize = lzf_decompress
 			(
 				item->data,
@@ -1031,9 +1034,9 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 			vsize = item->size;
 		}
 
-		SAFE_MEMCPY( p, &item->encoding, sizeof( gbItemEncoding ) );
-		SAFE_MEMCPY( p, &vsize,			 sizeof(size_t) );
-		SAFE_MEMCPY( p, v, 				 vsize );
+		SAFE_MEMCPY( p, &encoding, sizeof( gbItemEncoding ) );
+		SAFE_MEMCPY( p, &vsize,	   sizeof(size_t) );
+		SAFE_MEMCPY( p, v, 		   vsize );
 	}
 
 	int ret = gbClientEnqueueData( client, REPL_KVAL, GB_ENC_PLAIN, data, p - data, proc, shutdown );
