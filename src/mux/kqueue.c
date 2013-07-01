@@ -64,6 +64,13 @@ static int aeApiCreate(gbEventLoop *eventLoop) {
     return 0;
 }
 
+static int aeApiResize(gbEventLoop *eventLoop, int setsize) {
+    aeApiState *state = eventLoop->apidata;
+
+    state->events = realloc(state->events, sizeof(struct kevent)*setsize);
+    return 0;
+}
+
 static void aeApiFree(gbEventLoop *eventLoop) {
     aeApiState *state = eventLoop->apidata;
 

@@ -111,6 +111,39 @@ err:
     return NULL;
 }
 
+int gbGetSetSize(gbEventLoop *eventLoop) {
+    return eventLoop->setsize;
+}
+
+/* Resize the maximum set size of the event loop.
+ * If the requested set size is smaller than the current set size, but
+ * there is already a file descriptor in use that is >= the requested
+ * set size minus one, GB_ERR is returned and the operation is not
+ * performed at all.
+ *
+ * Otherwise GB_OK is returned and the operation is successful. */
+int gbResizeSetSize(gbEventLoop *eventLoop, int setsize) {
+    int i;
+
+    if( setsize == eventLoop->setsize )
+    	return GB_OK;
+    else if( eventLoop->maxfd >= setsize )
+    	return GB_ERR;
+    else if( aeApiResize(eventLoop,setsize) == -1 )
+    	return GB_ERR;
+
+    eventLoop->events  = realloc( eventLoop->events, sizeof(gbFileEvent) * setsize );
+    eventLoop->fired   = realloc( eventLoop->fired, sizeof(gbFiredEvent) * setsize );
+    eventLoop->setsize = setsize;
+
+    /* Make sure that if we created new slots, they are initialized with
+     * an AE_NONE mask. */
+    for (i = eventLoop->maxfd+1; i < setsize; i++)
+        eventLoop->events[i].mask = GB_NONE;
+
+    return GB_OK;
+}
+
 void gbDeleteEventLoop(gbEventLoop *eventLoop) {
     aeApiFree(eventLoop);
     free(eventLoop->events);

@@ -297,6 +297,8 @@ int gbWaitEvents(int fd, int mask, long long milliseconds);
 void gbEventLoopMain(gbEventLoop *eventLoop);
 char *gbGetEventApiName(void);
 void gbSetBeforeSleepProc(gbEventLoop *eventLoop, gbBeforeSleepProc *beforesleep);
+int gbGetSetSize(gbEventLoop *eventLoop);
+int gbResizeSetSize(gbEventLoop *eventLoop, int setsize);
 
 int gbNetTcpConnect(char *err, char *addr, int port);
 int gbNetTcpNonBlockConnect(char *err, char *addr, int port);
