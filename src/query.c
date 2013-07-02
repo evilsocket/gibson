@@ -723,10 +723,14 @@ static int gbQueryLockHandler( gbClient *client, byte_t *p ){
 		{
 			if( gbQueryParseLong( v, vlen, &locktime ) )
 			{
-				item->time = server->stats.time;
-				item->lock = locktime;
+				if( gbItemIsLocked( item, server, 0 ) == 0 ){
+					item->time = server->stats.time;
+					item->lock = locktime;
 
-				return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+					return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+				}
+				else
+					return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 			}
 			else
 				return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
@@ -754,7 +758,7 @@ static int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
 				ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 					item = vi->data;
 
-					if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) ){
+					if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) && gbItemIsLocked( item, server, 0 ) == 0 ){
 						item->time = server->stats.time;
 						item->lock = locktime;
 					}
