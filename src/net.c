@@ -1035,41 +1035,44 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 	SAFE_MEMCPY( p, &elements, sz );
 
 	ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-		item 	 = vi->data;
-		encoding = item->encoding;
+		// handle expired/nulled items
+		if( vi->data != NULL ){
+			item 	 = vi->data;
+			encoding = item->encoding;
 
-		// write key size + key
-		sz = strlen( ki->data );
+			// write key size + key
+			sz = strlen( ki->data );
 
-		SAFE_MEMCPY( p, &sz, sizeof(size_t) );
-		SAFE_MEMCPY( p, ki->data, sz );
+			SAFE_MEMCPY( p, &sz, sizeof(size_t) );
+			SAFE_MEMCPY( p, ki->data, sz );
 
-		// write value size + value
-		if( encoding == GB_ENC_PLAIN ){
-			vsize = item->size;
-			v	  = item->data;
+			// write value size + value
+			if( encoding == GB_ENC_PLAIN ){
+				vsize = item->size;
+				v	  = item->data;
+			}
+			else if( encoding == GB_ENC_LZF ){
+				encoding = GB_ENC_PLAIN;
+				vsize = lzf_decompress
+				(
+					item->data,
+					item->size,
+					client->server->lzf_buffer,
+					client->server->limits.maxrequestsize
+				);
+
+				v = server->lzf_buffer;
+			}
+			else if( item->encoding == GB_ENC_NUMBER ){
+				num = (long)item->data;
+				v   = (byte_t *)&num;
+				vsize = item->size;
+			}
+
+			SAFE_MEMCPY( p, &encoding, sizeof( gbItemEncoding ) );
+			SAFE_MEMCPY( p, &vsize,	   sizeof(size_t) );
+			SAFE_MEMCPY( p, v, 		   vsize );
 		}
-		else if( encoding == GB_ENC_LZF ){
-			encoding = GB_ENC_PLAIN;
-			vsize = lzf_decompress
-			(
-				item->data,
-				item->size,
-				client->server->lzf_buffer,
-				client->server->limits.maxrequestsize
-			);
-
-			v = server->lzf_buffer;
-		}
-		else if( item->encoding == GB_ENC_NUMBER ){
-			num = (long)item->data;
-			v   = (byte_t *)&num;
-			vsize = item->size;
-		}
-
-		SAFE_MEMCPY( p, &encoding, sizeof( gbItemEncoding ) );
-		SAFE_MEMCPY( p, &vsize,	   sizeof(size_t) );
-		SAFE_MEMCPY( p, v, 		   vsize );
 	}
 
 	int ret = gbClientEnqueueData( client, REPL_KVAL, GB_ENC_PLAIN, data, p - data, proc, shutdown );
