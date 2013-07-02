@@ -82,3 +82,13 @@ install( FILES debian/etc/init.d/${PROJECT} DESTINATION /etc/init.d/
 		 WORLD_READ 
 		 WORLD_EXECUTE
 )
+
+# tests
+find_program( PHP_FOUND NAMES php )	
+if ( NOT PHP_FOUND )
+	message( STATUS "-- Could not find php, tests disabled")
+else ( NOT PHP_FOUND )
+	message( "-- Found php : ${PHP_FOUND}\n-- Run 'make test' to execute testsuite" )
+	
+	add_custom_target( test COMMAND ./tests/run_tests.php )
+endif ( NOT PHP_FOUND )
