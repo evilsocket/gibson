@@ -395,7 +395,7 @@ static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 			size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
 			if( found ){
 				ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-					item = vi->data;
+					item 	   = vi->data;
 					item->time = server->stats.time;
 					item->ttl  = min( server->limits.maxitemttl, ttl );
 
@@ -876,6 +876,78 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	return ret;
 }
 
+static int gbQuerySizeOfHandler( gbClient *client, byte_t *p ){
+	byte_t *k = NULL;
+	size_t klen = 0;
+	gbServer *server = client->server;
+	anode_t *node = NULL;
+	gbItem *item = NULL;
+
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL ) ){
+		node = at_find_node( &server->tree, k, klen );
+
+		if( node && ( item = node->marker ) && gbIsNodeStillValid( node, node->marker, server, 1 ) )
+			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&item->size, sizeof(size_t), gbWriteReplyHandler, 0 );
+
+		else
+			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+}
+
+static int gbQueryMultiSizeOfHandler( gbClient *client, byte_t *p ){
+	byte_t *expr = NULL;
+	size_t exprlen = 0, msize = 0;
+	gbServer *server = client->server;
+	gbItem *item = NULL;
+
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) ){
+		size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+		if( found ){
+			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+				item = (gbItem *)vi->data;
+				if( gbIsItemStillValid( item, server, NULL, 0, 1 ) ){
+					msize += item->size;
+				}
+
+				// free allocated key
+				free( ki->data );
+				ki->data = NULL;
+			}
+
+			ll_reset( server->m_keys );
+			ll_reset( server->m_values );
+
+			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&msize, sizeof(size_t), gbWriteReplyHandler, 0 );
+		}
+		else
+			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+}
+
+static int gbQueryEncOfHandler( gbClient *client, byte_t *p ){
+	byte_t *k = NULL;
+	size_t klen = 0;
+	gbServer *server = client->server;
+	anode_t *node = NULL;
+	gbItem *item = NULL;
+
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL ) ){
+		node = at_find_node( &server->tree, k, klen );
+
+		if( node && ( item = node->marker ) && gbIsNodeStillValid( node, node->marker, server, 1 ) ){
+			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&item->encoding, sizeof(gbItemEncoding), gbWriteReplyHandler, 0 );
+		}
+		else
+			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+}
+
 int gbProcessQuery( gbClient *client ) {
 
 	short  op = *(short *)&client->buffer[0];
@@ -931,6 +1003,15 @@ int gbProcessQuery( gbClient *client ) {
 	}
 	else if( op == OP_PING ){
 		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+	}
+	else if( op == OP_SIZEOF ){
+		return gbQuerySizeOfHandler( client, p );
+	}
+	else if( op == OP_MSIZEOF ){
+		return gbQueryMultiSizeOfHandler( client, p );
+	}
+	else if( op == OP_ENCOF ){
+		return gbQueryEncOfHandler( client, p );
 	}
 	else if( op == OP_END ){
 		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 1 );

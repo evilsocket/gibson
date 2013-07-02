@@ -58,6 +58,9 @@
 #define OP_COUNT   17
 #define OP_STATS   18
 #define OP_PING    19
+#define OP_SIZEOF  20
+#define OP_MSIZEOF 21
+#define OP_ENCOF   22
 
 #define OP_END    0xFF
 
