@@ -3,6 +3,8 @@
 *.lo
 *.so
 *.so.*
+*.swp
+tags
 gibson
 # Eclipse files and directories
 .cproject

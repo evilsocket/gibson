@@ -179,6 +179,8 @@ typedef struct
 	unsigned long mempeak;
 	// average object size
 	double sizeavg;
+    // average compression rate
+    double compravg;
 }
 gbServerStats;
 

@@ -40,14 +40,26 @@
 
 extern void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask );
 
-__inline__ __attribute__((always_inline)) short gbQueryParseLong( byte_t *v, size_t vlen, long *l ){
-	char *p;
+__inline__ __attribute__((always_inline)) unsigned int gbQueryParseLong( byte_t *v, size_t vlen, long *l ){
+	register size_t i;
+    register long n = 0;
+    register char c;
 
-	// make sure v is null terminated, strtol is such a bitch!
-	*( v + vlen ) = 0x00;
-	*l = strtol( (const char *)v, &p, 10 );
+    for( i = 0; i < vlen; ++i ){
+        c = v[i];
+        if( c >= '0' && c <= '9' ){
+            n = ( n * 10 ) + ( c - '0' );
+        }
+        else if( c == '-' && i == 0 ){
+            n = -n;
+        }
+        else
+            return 0;
+    }
 
-	return ( *p == '\0' );
+    *l = n;
+    
+    return 1;
 }
 
 static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding encoding ) {
@@ -84,8 +96,9 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
 	item->ttl	   = ttl;
 	item->lock	   = 0;
 
-	if( encoding == GB_ENC_LZF )
-		++server->stats.ncompressed;
+	if( encoding == GB_ENC_LZF ){
+		server->stats.compravg /= ++server->stats.ncompressed;
+    }
 
 	if( server->stats.firstin == 0 )
 		server->stats.firstin = server->stats.time;
@@ -106,8 +119,9 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	server->stats.memused -= mem;
 	server->stats.sizeavg = server->stats.nitems == 1 ? 0 : server->stats.memused / --server->stats.nitems;
 
-	if( item->encoding == GB_ENC_LZF )
+	if( item->encoding == GB_ENC_LZF ){
 		--server->stats.ncompressed;
+    }
 
 	if( item->encoding != GB_ENC_NUMBER && item->data != NULL ){
 		free( item->data );
@@ -118,76 +132,70 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	item = NULL;
 }
 
-static int gbIsNodeStillValid( anode_t *node, gbItem *item, gbServer *server, int remove ){
-	time_t eta = server->stats.time - item->time;
-
-	if( item->ttl > 0 )
-	{
-		if( eta >= item->ttl )
-		{
-			gbLog( DEBUG, "[ACCESS] TTL of %ds expired for item at %p.", item->ttl, item );
-
-			gbDestroyItem( server, item );
-
-			// remove from container
-			if( remove )
-				node->marker = NULL;
-
-			return 0;
-		}
-	}
-
-	return 1;
-}
-
 static int gbItemIsLocked( gbItem *item, gbServer *server, time_t eta ){
 	eta = eta == 0 ? server->stats.time - item->time : eta;
 	return ( item->lock == -1 || eta < item->lock );
 }
 
-static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *key, size_t klen, int remove ) {
-	time_t eta = server->stats.time - item->time;
+static int gbIsNodeStillValid( anode_t *node, gbItem *item, gbServer *server, int remove ){
+	register time_t eta = server->stats.time - item->time,
+                    ttl = item->ttl;
 
-	if( item->ttl > 0 )
+	if( ttl > 0 && eta >= ttl )
 	{
-		if( eta >= item->ttl )
-		{
-			// item locked, skip
-			if( gbItemIsLocked( item, server, eta ) )
-				return 1;
+		gbLog( DEBUG, "[ACCESS] TTL of %ds expired for item at %p.", ttl, item );
 
-			gbLog( DEBUG, "TTL of %ds expired for item at %p.", item->ttl, item );
+		if( remove )
+			node->marker = NULL;
 
-			if( remove )
-				at_remove( &server->tree, key, klen );
+		gbDestroyItem( server, item );
 
-			gbDestroyItem( server, item );
+	    return 0;
+	}
 
-			return 0;
-		}
+	return 1;
+}
+
+static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *key, size_t klen, int remove ) {
+	register time_t eta = server->stats.time - item->time,
+                    ttl = item->ttl;
+
+	if( ttl > 0 && eta >= ttl )
+	{
+		gbLog( DEBUG, "[ACCESS] TTL of %ds expired for item at %p.", ttl, item );
+            
+		if( remove )
+            at_remove( &server->tree, key, klen );
+
+		gbDestroyItem( server, item );
+
+		return 0;
 	}
 
 	return 1;
 }
 
 static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen ){
-	byte_t *p = buffer;
+	register byte_t *p = buffer;
+    register size_t i = 0, end;
 
+    // parse the key, the end marker is the minimum among total request size and maxkeysize
 	*key = p;
-
-	size_t i = 0, end = min( size, server->limits.maxkeysize );
-	while( *p != ' ' && i++ < end ){
+    end  = min( size, server->limits.maxkeysize );
+    while( *p != ' ' && i++ < end ){
 		++p;
 	}
 
 	*klen = p++ - *key;
-
+    
+    // if the value should be parsed ...
 	if( value ){
 		*value = p;
 		*vlen  = size - *klen - 1;
 		*vlen  = min( *vlen, server->limits.maxvaluesize );
 	}
 
+    // check if length conditions are verified
 	if( *klen <= 0 )
 		return 0;
 
@@ -199,17 +207,19 @@ static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_
 }
 
 static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ttl, byte_t **key, byte_t **value, size_t *ttllen, size_t *klen, size_t *vlen ){
-	byte_t *p = buffer;
+	register byte_t *p = buffer;
+    register size_t i = 0, end;
 
+    // parse the ttl value
 	*ttl = p;
-
-	size_t i = 0, end = min( size, server->limits.maxkeysize );
+	end = min( size, server->limits.maxkeysize );
 	while( *p != ' ' && i++ < end ){
 		++p;
 	}
 
 	*ttllen = p++ - *ttl;
-
+    
+    // parse the key
 	*key = p;
 	end = min( size, server->limits.maxkeysize );
 	while( *p != ' ' && i++ < end ){
@@ -218,12 +228,14 @@ static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, by
 
 	*klen = p++ - *key;
 
+    // finally parse the value if needed
 	if( value ){
 		*value = p;
 		*vlen  = size - *ttllen - *klen - 2;
 		*vlen  = min( *vlen, server->limits.maxvaluesize );
 	}
 
+    // check length conditions
 	if( *ttllen <= 0 )
 		return 0;
 
@@ -253,6 +265,8 @@ static gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbSe
 		}
 		// succesfully compressed
 		else {
+            server->stats.compravg += 100.0 - ( ( comprlen * 100.0 ) / vlen );
+
 			encoding = GB_ENC_LZF;
 			vlen 	 = comprlen;
 			data 	 = gbMemDup( server->lzf_buffer, comprlen );
@@ -266,7 +280,7 @@ static gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbSe
 	item = gbCreateItem( server, data, vlen, encoding, -1 );
 	old = at_insert( &server->tree, k, klen, item );
 	if( old ){
-		gbDestroyItem( server, old );
+	    gbDestroyItem( server, old );
 	}
 
 	return item;
@@ -291,7 +305,6 @@ static int gbQuerySetHandler( gbClient *client, byte_t *p ){
 					return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 
 				item = gbSingleSet( v, vlen, k, klen, server );
-
 				if( ttl > 0 ){
 					item->time = server->stats.time;
 					item->ttl  = min( server->limits.maxitemttl, ttl );
@@ -518,18 +531,14 @@ static int gbQueryDelHandler( gbClient *client, byte_t *p ){
 			if( gbItemIsLocked( item, server, 0 ) )
 				return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
 
-			else
-			{
-				int valid = gbIsNodeStillValid( node, item, server, 0 );
+			else if( gbIsNodeStillValid( node, item, server, 1 ) ){
+    			gbDestroyItem( server, item );
 
-				gbDestroyItem( server, item );
+	    		// Remove item from tree
+		    	node->marker = NULL;
 
-				// Remove item from tree
-				node->marker = NULL;
-
-				if( valid )
-					return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
-			}
+			    return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
+            }
 		}
 
 		return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
@@ -557,17 +566,12 @@ static int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 					if( gbItemIsLocked( item, server, 0 )){
 						--found;
 					}
-					else{
-						// Remove item from tree
-						node->marker = NULL;
-
-						int valid = gbIsNodeStillValid( node, item, server, 0 );
-
-						gbDestroyItem( server, item );
-
-						if( !valid )
-							--found;
-					}
+					else if( gbIsNodeStillValid( node, item, server, 1 ) ){
+                        node->marker = NULL;
+                        gbDestroyItem( server, item );
+                    }
+                    else
+                        --found;
 				}
 
 				// free allocated key
@@ -907,8 +911,10 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	APPEND_LONG_STAT( "memory_used",            server->stats.memused );
 	APPEND_LONG_STAT( "memory_peak", 			server->stats.mempeak );
 	APPEND_LONG_STAT( "item_size_avg",          server->stats.sizeavg );
+    APPEND_LONG_STAT( "compr_rate_avg",         server->stats.compravg );
 
 #undef APPEND_LONG_STAT
+#undef APPEND_STRING_STAT
 
 	int ret = gbClientEnqueueKeyValueSet( client, elems, gbWriteReplyHandler, 0 );
 

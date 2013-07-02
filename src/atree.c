@@ -74,7 +74,7 @@ void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 	}
 
 	void *old = node->marker;
-	node->marker = value;
+    node->marker = value;
 
 	return old;
 }

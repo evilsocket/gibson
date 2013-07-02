@@ -65,7 +65,7 @@ llist_t;
  * if during a loop the list is modified (i.e. an element is removed),
  * you have to MANUALLY fix the pointers.
  */
-#define ll_foreach( ll, item ) ll_item_t *item = NULL; for( item = (ll)->head; item && item->data; item = item->next )
+#define ll_foreach( ll, item ) ll_item_t *item = NULL; for( item = (ll)->head; item; item = item->next )
 /*
  * Same as ll_foreach but on two lists.
  */

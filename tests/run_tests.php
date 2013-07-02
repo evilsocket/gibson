@@ -38,7 +38,7 @@ $start  = microtime(TRUE);
 foreach( $tests as $testfile ){
 	$name = strtoupper( str_replace( '.test.php', '', $testfile ) );
 	
-	printf( "Running %10s test ...", $name );
+    printf( "Running %15s test ...", $name );
   
  	$t_start = microtime(TRUE);
 	$output  = trim( shell_exec("php $testfile") );

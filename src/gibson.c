@@ -176,7 +176,8 @@ int main( int argc, char **argv)
 	server.stats.nclients    =
 	server.stats.nitems	     =
 	server.stats.ncompressed =
-	server.stats.sizeavg	 = 0;
+	server.stats.sizeavg	 = 
+    server.stats.compravg    = 0;
 	server.stats.memavail    = gbMemAvailable();
 
 	if( server.limits.maxmem > server.stats.memavail ){
@@ -419,32 +420,25 @@ void gbMemoryFreeHandler( anode_t *elem, size_t level, void *data ) {
 
 	// item is older enough to be deleted
 	if( eta && eta >= server->gcdelta ) {
-		// item locked, skip
-		if( item->lock == -1 || eta < item->lock ) return;
-
 		// item is freeable
 		elem->marker = NULL;
-
 		gbDestroyItem( server, item );
 	}
 }
 
-void gbHandleDeadTTLHandler( anode_t *elem, size_t level, void *data ){
+void gbHandleDeadTTLHandler( anode_t *node, size_t level, void *data ){
 	gbServer *server = data;
-	gbItem	 *item = elem->marker;
+	gbItem	 *item = node->marker;
 	time_t	  eta = item ? ( server->stats.time - item->time ) : 0;
 
 	// item is older enough to be deleted
 	if( item && item->ttl > 0 && eta >= item->ttl ) {
-		// item locked, skip
-		if( item->lock == -1 || eta < item->lock ) return;
-
 		gbLog( DEBUG, "[CRON] TTL of %ds expired for item at %p.", item->ttl, item );
 
-		gbDestroyItem( server, item );
-
 		// item is freeable
-		elem->marker = NULL;
+		node->marker = NULL;
+
+		gbDestroyItem( server, item );
 	}
 }
 
