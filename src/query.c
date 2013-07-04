@@ -97,7 +97,7 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
 	item->lock	   = 0;
 
 	if( encoding == GB_ENC_LZF ){
-		server->stats.compravg /= ++server->stats.ncompressed;
+	    ++server->stats.ncompressed;
     }
 
 	if( server->stats.firstin == 0 )
@@ -265,9 +265,14 @@ static gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbSe
 		}
 		// succesfully compressed
 		else {
-            server->stats.compravg += 100.0 - ( ( comprlen * 100.0 ) / vlen );
+            double rate = 100.0 - ( ( comprlen * 100.0 ) / vlen );
 
-			encoding = GB_ENC_LZF;
+            if( server->stats.compravg == 0 )
+                server->stats.compravg = rate;
+            else
+                server->stats.compravg = ( server->stats.compravg + rate ) / 2.0;
+
+            encoding = GB_ENC_LZF;
 			vlen 	 = comprlen;
 			data 	 = gbMemDup( server->lzf_buffer, comprlen );
 		}
