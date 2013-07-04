@@ -70,7 +70,7 @@ if ( HAVE_JEMALLOC EQUAL 1 )
 	target_link_libraries( ${PROJECT} jemalloc )
 endif ( HAVE_JEMALLOC EQUAL 1 )
 
-install( TARGETS ${PROJECT} DESTINATION /${PREFIX}/sbin )
+install( TARGETS ${PROJECT} DESTINATION /${PREFIX}/bin )
 install( FILES debian/etc/${PROJECT}/${PROJECT}.conf DESTINATION /etc/${PROJECT}/ )
 install( FILES debian/etc/init.d/${PROJECT} DESTINATION /etc/init.d/ 
 		 PERMISSIONS
