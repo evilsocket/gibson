@@ -49,8 +49,7 @@ llist_t *ll_prealloc( size_t elements ){
 void ll_append( llist_t *ll, void *data ){
 	ll_item_t *item;
 	for( item = ll->head; item; item = item->next ){
-		if( item->data == NULL )
-		{
+		if( item->data == NULL ){
 			item->data = data;
 			return;
 		}
