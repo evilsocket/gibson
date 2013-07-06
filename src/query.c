@@ -44,21 +44,25 @@ __inline__ __attribute__((always_inline)) unsigned int gbQueryParseLong( byte_t 
 	register size_t i;
     register long n = 0;
     register char c;
+    int sign = 1;
+    int start = 0;
 
-    for( i = 0; i < vlen; ++i ){
+    if( v[0] == '-' ){
+        sign = -1;
+        start = 1;
+    }
+
+    for( i = start; i < vlen; ++i ){
         c = v[i];
         if( c >= '0' && c <= '9' ){
             n = ( n * 10 ) + ( c - '0' );
-        }
-        else if( c == '-' && i == 0 ){
-            n = -n;
         }
         else
             return 0;
     }
 
-    *l = n;
-    
+    *l = n * sign;
+
     return 1;
 }
 
@@ -315,7 +319,7 @@ static int gbQuerySetHandler( gbClient *client, byte_t *p ){
 					item->ttl  = min( server->limits.maxitemttl, ttl );
 				}
 
-				return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
+                return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
 			}
 			else
 				return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
