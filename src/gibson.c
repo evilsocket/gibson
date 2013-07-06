@@ -401,6 +401,7 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 	if (client_fd != -1) {
 		gbNetNonBlock(NULL,client_fd);
 		gbNetEnableTcpNoDelay(NULL,client_fd);
+        gbNetKeepAlive(NULL,client_fd,server->limits.maxidletime);        
 
 	    gbClient *client = gbClientCreate(client_fd,server);
 
@@ -490,24 +491,6 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 			gbLog( INFO, "Freed %s, left %d items.", freed, server->stats.nitems );
 
 			server->gcdelta = 0;
-		}
-	}
-
-	CRON_EVERY( server->idlecron ) {
-		// Check for clients in idle state for too long.
-		ll_foreach( server->clients, llitem )
-		{
-			gbClient *client = ll_data( gbClient *, llitem );
-			if( client != NULL && ( now - client->seen ) > server->limits.maxidletime )
-			{
-				gbLog( WARNING, "Removing dead client.", client );
-				gbClientDestroy(client);
-				// Do not break the loop but start again.
-				llitem = server->clients->head;
-				// Have we removed the only client?
-				if( !llitem )
-					break;
-			}
 		}
 	}
 
