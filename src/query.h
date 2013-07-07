@@ -32,10 +32,7 @@
 #include <unistd.h>
 #include "net.h"
 #include "default.h"
-
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
-#endif
+#include "zmalloc.h"
 
 // single
 #define OP_SET     1

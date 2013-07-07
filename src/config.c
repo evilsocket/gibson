@@ -84,7 +84,7 @@ void gbConfigLoad( atree_t *config, char *filename )
 				pd = &value[0];
 				while( !isspace( *p ) && *p ) *pd++ = *p++;
 
-				at_insert( config, (unsigned char *)key, strlen(key), strdup( value ) );
+				at_insert( config, (unsigned char *)key, strlen(key), zstrdup( value ) );
 			}
 		}
 

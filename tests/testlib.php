@@ -6,7 +6,7 @@ function fail_if( $cond, $mess ){
 	global $g;
 	
 	if( $cond == TRUE )
-		die( "$mess ( client last error: '".$g->getLastError()."' )\n" );
+		die( "$mess\n" );
 }
 
 

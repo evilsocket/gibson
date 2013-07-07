@@ -56,6 +56,9 @@ set( MINOR_VERSION 0 )
 set( PATCH_LEVEL   0 )
 set( VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL}b" )
 
+# this is needed for Mac OS X compilation compatibility
+include_directories("${PROJECT_SOURCE_DIR}/src")
+
 file( GLOB MAIN_SOURCES src/*.c )
 file( GLOB HEADERS src/*.h )
 

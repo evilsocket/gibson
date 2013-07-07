@@ -32,8 +32,8 @@
 #if HAVE_SELECT
 #include "net.h"
 
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
+#if HAVE_JEzmalloc == 1
+#include <jezmalloc/jezmalloc.h>
 #endif
 
 typedef struct aeApiState {
@@ -44,7 +44,7 @@ typedef struct aeApiState {
 } aeApiState;
 
 static int aeApiCreate(gbEventLoop *eventLoop) {
-    aeApiState *state = malloc(sizeof(aeApiState));
+    aeApiState *state = zmalloc(sizeof(aeApiState));
 
     if (!state) return -1;
     FD_ZERO(&state->rfds);
@@ -60,7 +60,7 @@ static int aeApiResize(gbEventLoop *eventLoop, int setsize) {
 }
 
 static void aeApiFree(gbEventLoop *eventLoop) {
-    free(eventLoop->apidata);
+    zfree(eventLoop->apidata);
 }
 
 static int aeApiAddEvent(gbEventLoop *eventLoop, int fd, int mask) {

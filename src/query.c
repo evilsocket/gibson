@@ -32,10 +32,6 @@
 #include "lzf.h"
 #include "configure.h"
 
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
-#endif
-
 #define min(a,b) ( a < b ? a : b )
 
 extern void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask );
@@ -67,7 +63,7 @@ __inline__ __attribute__((always_inline)) unsigned int gbQueryParseLong( byte_t 
 }
 
 static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding encoding ) {
-	gbItem *item = ( gbItem * )malloc( sizeof( gbItem ) );
+	gbItem *item = ( gbItem * )zmalloc( sizeof( gbItem ) );
 
 	item->data 	   = data;
 	item->size 	   = size;
@@ -81,17 +77,16 @@ static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding enc
 
 static void gbDestroyVolatileItem( gbItem *item ){
 	if( item->encoding != GB_ENC_NUMBER && item->data != NULL ){
-		free( item->data );
+		zfree( item->data );
 		item->data = NULL;
 	}
 
-	free( item );
+	zfree( item );
 	item = NULL;
 }
 
 static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl ) {
-	gbItem *item = ( gbItem * )malloc( sizeof( gbItem ) );
-	unsigned long mem = size + sizeof( gbItem );
+	gbItem *item = ( gbItem * )zmalloc( sizeof( gbItem ) );
 
 	item->data 	   = data;
 	item->size 	   = size;
@@ -108,8 +103,8 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
 		server->stats.firstin = server->stats.time;
 
 	server->stats.lastin  = server->stats.time;
-	server->stats.memused += mem;
-	server->stats.sizeavg = server->stats.memused / ++server->stats.nitems;
+	server->stats.memused = zmalloc_used_memory(); 
+    server->stats.sizeavg = server->stats.memused / ++server->stats.nitems;
 
 	if( server->stats.memused > server->stats.mempeak )
 		server->stats.mempeak = server->stats.memused;
@@ -118,22 +113,20 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
 }
 
 void gbDestroyItem( gbServer *server, gbItem *item ){
-	unsigned long mem = item->size + sizeof( gbItem );
-
-	server->stats.memused -= mem;
-	server->stats.sizeavg = server->stats.nitems == 1 ? 0 : server->stats.memused / --server->stats.nitems;
-
 	if( item->encoding == GB_ENC_LZF ){
 		--server->stats.ncompressed;
     }
 
 	if( item->encoding != GB_ENC_NUMBER && item->data != NULL ){
-		free( item->data );
+		zfree( item->data );
 		item->data = NULL;
 	}
 
-	free( item );
+	zfree( item );
 	item = NULL;
+
+   	server->stats.memused = zmalloc_used_memory();	
+    server->stats.sizeavg = server->stats.nitems == 1 ? 0 : server->stats.memused / --server->stats.nitems;
 }
 
 static int gbItemIsLocked( gbItem *item, gbServer *server, time_t eta ){
@@ -355,7 +348,7 @@ static int gbQueryMultiSetHandler( gbClient *client, byte_t *p ){
 						gbSingleSet( v, vlen, ki->data, strlen(ki->data), server );
 
 					// free allocated key
-					free( ki->data );
+					zfree( ki->data );
 					ki->data = NULL;
 				}
 
@@ -431,7 +424,7 @@ static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p ){
 					}
 
 					// free allocated key
-					free( ki->data );
+					zfree( ki->data );
 					ki->data = NULL;
 				}
 
@@ -496,7 +489,7 @@ static int gbQueryMultiGetHandler( gbClient *client, byte_t *p ){
 
 				ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 					// free allocated key
-					free( ki->data );
+					zfree( ki->data );
 					ki->data = NULL;
 				}
 
@@ -508,7 +501,7 @@ static int gbQueryMultiGetHandler( gbClient *client, byte_t *p ){
 			else {
 				ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 					// free allocated key
-					free( ki->data );
+					zfree( ki->data );
 					ki->data = NULL;
 				}
 
@@ -584,7 +577,7 @@ static int gbQueryMultiDelHandler( gbClient *client, byte_t *p ){
 				}
 
 				// free allocated key
-				free( ki->data );
+				zfree( ki->data );
 				ki->data = NULL;
 			}
 
@@ -637,12 +630,12 @@ static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 			else if( item->encoding == GB_ENC_PLAIN && gbQueryParseLong( item->data, item->size, &num ) ){
 				num += delta;
 
-				server->stats.memused -= ( item->size - sizeof(long) );
-
 				if( item->data != NULL ){
-					free( item->data );
+					zfree( item->data );
 					item->data = NULL;
 				}
+                
+				server->stats.memused = zmalloc_used_memory();
 
 				item->encoding = GB_ENC_NUMBER;
 				item->data	   = (void *)num;
@@ -686,12 +679,12 @@ static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 					{
 						num += delta;
 
-						server->stats.memused -= ( item->size - sizeof(long) );
-
 						if( item->data != NULL ){
-							free( item->data );
+							zfree( item->data );
 							item->data = NULL;
 						}
+
+                        server->stats.memused = zmalloc_used_memory();
 
 						item->encoding = GB_ENC_NUMBER;
 						item->data	   = (void *)num;
@@ -702,7 +695,7 @@ static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 				}
 
 				// free allocated key
-				free( ki->data );
+				zfree( ki->data );
 				ki->data = NULL;
 			}
 
@@ -779,7 +772,7 @@ static int gbQueryMultiLockHandler( gbClient *client, byte_t *p ){
 						--found;
 
 					// free allocated key
-					free( ki->data );
+					zfree( ki->data );
 					ki->data = NULL;
 				}
 
@@ -842,7 +835,7 @@ static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p ){
 					--found;
 
 				// free allocated key
-				free( ki->data );
+				zfree( ki->data );
 				ki->data = NULL;
 			}
 
@@ -874,7 +867,7 @@ static int gbQueryCountHandler( gbClient *client, byte_t *p ){
 					--found;
 
 				// free allocated key
-				free( ki->data );
+				zfree( ki->data );
 				ki->data = NULL;
 			}
 
@@ -898,7 +891,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 
 #define APPEND_STRING_STAT( key, value ) ++elems; \
 								   ll_append( server->m_keys, key ); \
-								   ll_append( server->m_values, gbCreateVolatileItem( strdup(value), strlen(value), GB_ENC_PLAIN ) )
+								   ll_append( server->m_values, gbCreateVolatileItem( zstrdup(value), strlen(value), GB_ENC_PLAIN ) )
 
 	APPEND_STRING_STAT( "server_version",        VERSION );
 	APPEND_STRING_STAT( "server_build_datetime", BUILD_DATETIME );
@@ -928,8 +921,12 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	int ret = gbClientEnqueueKeyValueSet( client, elems, gbWriteReplyHandler, 0 );
 
 	ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-		gbDestroyVolatileItem( vi->data );
-		vi->data = NULL;
+        if( vi->data != NULL ){
+		    gbDestroyVolatileItem( vi->data );
+		    vi->data = NULL;
+        }
+
+        // no need to free ki->data since it's static 
 	}
 
 	ll_reset( server->m_keys );
@@ -974,7 +971,7 @@ static int gbQueryMultiSizeOfHandler( gbClient *client, byte_t *p ){
 				}
 
 				// free allocated key
-				free( ki->data );
+				zfree( ki->data );
 				ki->data = NULL;
 			}
 

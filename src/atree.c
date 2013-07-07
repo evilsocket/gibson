@@ -61,7 +61,7 @@ void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 			 * at_find_next_node would be O(log N) instead of O(N).
 			 */
 			current_size  = parent->n_nodes;
-			parent->nodes = realloc( parent->nodes, sizeof(atree_t) * ++parent->n_nodes );
+			parent->nodes = zrealloc( parent->nodes, sizeof(atree_t) * ++parent->n_nodes );
 			node		  = parent->nodes + current_size;
 
 			node->ascii   = ascii;
@@ -128,7 +128,7 @@ static void at_search_recursive_handler(anode_t *node, size_t level, void *data)
 		++search->total;
 		search->current[ level + 1 ] = '\0';
 
-		ll_append( *search->keys,   strdup( search->current ) );
+		ll_append( *search->keys,   zstrdup( search->current ) );
 		ll_append( *search->values, node->marker );
 	}
 }
@@ -138,19 +138,15 @@ size_t at_search( atree_t *at, unsigned char *prefix, int len, int maxkeylen, ll
 
 	searchdata.keys    = keys;
 	searchdata.values  = values;
-	searchdata.current = NULL;
+	searchdata.current = alloca( maxkeylen );
 	searchdata.total   = 0;
 
 	anode_t *start = at_find_node( at, prefix, len );
 
 	if( start ){
-		searchdata.current = calloc( 1, maxkeylen );
-
 		strncpy( searchdata.current, (char *)prefix, len );
 
 		at_recurse( start, at_search_recursive_handler, &searchdata, len - 1 );
-
-		free( searchdata.current );
 	}
 
 	return searchdata.total;
@@ -173,7 +169,7 @@ static void at_search_nodes_recursive_handler(anode_t *node, size_t level, void 
 		++search->total;
 		search->current[ level + 1 ] = '\0';
 
-		ll_append( *search->keys,  strdup( search->current ) );
+		ll_append( *search->keys,  zstrdup( search->current ) );
 		ll_append( *search->nodes, node );
 	}
 }
@@ -189,13 +185,13 @@ size_t at_search_nodes( atree_t *at, unsigned char *prefix, int len, int maxkeyl
 	anode_t *start = at_find_node( at, prefix, len );
 
 	if( start ){
-		searchdata.current = calloc( 1, maxkeylen );
+		searchdata.current = zcalloc( maxkeylen );
 
 		strncpy( searchdata.current, (char *)prefix, len );
 
 		at_recurse( start, at_search_nodes_recursive_handler, &searchdata, len - 1 );
 
-		free( searchdata.current );
+		zfree( searchdata.current );
 	}
 
 	return searchdata.total;
@@ -244,7 +240,7 @@ void at_free( atree_t *at ){
 		/*
 		 * Free the node itself.
 		 */
-		free( at->nodes );
+		zfree( at->nodes );
 		at->nodes = NULL;
 	}
 }

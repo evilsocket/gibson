@@ -43,10 +43,7 @@
 #include "query.h"
 #include "config.h"
 #include "default.h"
-
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
-#endif
+#include "zmalloc.h"
 
 extern char *aeApiName();
 
@@ -199,8 +196,8 @@ int main( int argc, char **argv)
 	server.m_keys	   = ll_prealloc( 255 );
 	server.m_values	   = ll_prealloc( 255 );
 	server.idlecron	   = server.limits.maxidletime * 1000;
-	server.lzf_buffer  = calloc( 1, server.limits.maxrequestsize );
-	server.m_buffer	   = calloc( 1, server.limits.maxresponsesize );
+	server.lzf_buffer  = zcalloc( server.limits.maxrequestsize );
+	server.m_buffer	   = zcalloc( server.limits.maxresponsesize );
 	server.shutdown	   = 0;
 
 	at_init_tree( server.tree );
@@ -637,7 +634,7 @@ void gbObjectDestroyHandler( anode_t *elem, size_t level, void *data ){
 void gbConfigDestroyHandler( anode_t *elem, size_t level, void *data ){
 	char *item = elem->marker;
 	if( item )
-		free( item );
+		zfree( item );
 }
 
 void gbServerDestroy( gbServer *server ){
@@ -655,8 +652,8 @@ void gbServerDestroy( gbServer *server ){
 	ll_destroy( server->m_keys );
 	ll_destroy( server->m_values );
 
-	free( server->m_buffer );
-	free( server->lzf_buffer );
+	zfree( server->m_buffer );
+	zfree( server->lzf_buffer );
 
 	at_recurse( &server->tree, gbObjectDestroyHandler, server, 0 );
 	at_recurse( &server->config, gbConfigDestroyHandler, NULL, 0 );

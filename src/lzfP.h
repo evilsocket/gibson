@@ -155,9 +155,7 @@ typedef const u8 *LZF_STATE[1 << (HLOG)];
 # endif
 #endif
 
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
-#endif
+#include "zmalloc.h"
 
 #endif
 

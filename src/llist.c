@@ -59,7 +59,7 @@ void ll_append( llist_t *ll, void *data ){
 }
 
 void ll_append_new( llist_t *ll, void *data ){
-	ll_item_t *item = (ll_item_t *)calloc( 1, sizeof(ll_item_t) );
+	ll_item_t *item = (ll_item_t *)zcalloc( sizeof(ll_item_t) );
 
 	item->data = data;
 
@@ -75,7 +75,7 @@ void ll_append_new( llist_t *ll, void *data ){
 }
 
 void ll_prepend( llist_t *ll, void *data ){
-	ll_item_t *item = (ll_item_t *)calloc( 1, sizeof(ll_item_t) );
+	ll_item_t *item = (ll_item_t *)zcalloc( sizeof(ll_item_t) );
 
 	item->data = data;
 
@@ -174,7 +174,7 @@ void ll_remove( llist_t *ll, ll_item_t *item ){
 		item->next->prev = item->prev;
 	}
 
-	free(item);
+	zfree(item);
 }
 
 void ll_clear( llist_t *ll ){
@@ -183,7 +183,7 @@ void ll_clear( llist_t *ll ){
 
 	while(item){
 		next = item->next;
-		free(item);
+		zfree(item);
 		item = next;
 	}
 

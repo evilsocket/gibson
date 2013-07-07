@@ -41,8 +41,8 @@
 
 #include <stdio.h>
 
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
+#if HAVE_JEzmalloc == 1
+#include <jezmalloc/jezmalloc.h>
 #endif
 
 static int evport_debug = 0;
@@ -81,12 +81,12 @@ typedef struct aeApiState {
 
 static int aeApiCreate(gbEventLoop *eventLoop) {
     int i;
-    aeApiState *state = malloc(sizeof(aeApiState));
+    aeApiState *state = zmalloc(sizeof(aeApiState));
     if (!state) return -1;
 
     state->portfd = port_create();
     if (state->portfd == -1) {
-        free(state);
+        zfree(state);
         return -1;
     }
 
@@ -110,7 +110,7 @@ static void aeApiFree(gbEventLoop *eventLoop) {
     aeApiState *state = eventLoop->apidata;
 
     close(state->portfd);
-    free(state);
+    zfree(state);
 }
 
 static int aeApiLookupPending(aeApiState *state, int fd) {

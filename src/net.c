@@ -60,10 +60,6 @@
 #include <errno.h>
 #include <stdarg.h>
 
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
-#endif
-
 /* Include the best multiplexing layer supported by this system.
  * The following should be ordered by performances, descending. */
 #ifdef HAVE_EVPORT
@@ -84,9 +80,9 @@ gbEventLoop *gbCreateEventLoop(int setsize) {
     gbEventLoop *eventLoop;
     int i;
 
-    if ((eventLoop = malloc(sizeof(*eventLoop))) == NULL) goto err;
-    eventLoop->events = malloc(sizeof(gbFileEvent)*setsize);
-    eventLoop->fired = malloc(sizeof(gbFiredEvent)*setsize);
+    if ((eventLoop = zmalloc(sizeof(*eventLoop))) == NULL) goto err;
+    eventLoop->events = zmalloc(sizeof(gbFileEvent)*setsize);
+    eventLoop->fired = zmalloc(sizeof(gbFiredEvent)*setsize);
     if (eventLoop->events == NULL || eventLoop->fired == NULL) goto err;
     eventLoop->setsize = setsize;
     eventLoop->lastTime = time(NULL);
@@ -104,9 +100,9 @@ gbEventLoop *gbCreateEventLoop(int setsize) {
 
 err:
     if (eventLoop) {
-        free(eventLoop->events);
-        free(eventLoop->fired);
-        free(eventLoop);
+        zfree(eventLoop->events);
+        zfree(eventLoop->fired);
+        zfree(eventLoop);
     }
     return NULL;
 }
@@ -146,9 +142,9 @@ int gbResizeSetSize(gbEventLoop *eventLoop, int setsize) {
 
 void gbDeleteEventLoop(gbEventLoop *eventLoop) {
     aeApiFree(eventLoop);
-    free(eventLoop->events);
-    free(eventLoop->fired);
-    free(eventLoop);
+    zfree(eventLoop->events);
+    zfree(eventLoop->fired);
+    zfree(eventLoop);
 }
 
 void gbStopEventLoop(gbEventLoop *eventLoop) {
@@ -229,7 +225,7 @@ long long gbCreateTimeEvent(gbEventLoop *eventLoop, long long milliseconds,
     long long id = eventLoop->timeEventNextId++;
     gbTimeEvent *te;
 
-    te = malloc(sizeof(*te));
+    te = zmalloc(sizeof(*te));
     if (te == NULL) return GB_ERR;
     te->id = id;
     gbAddMillisecondsToNow(milliseconds,&te->when_sec,&te->when_ms);
@@ -254,7 +250,7 @@ int gbDeleteTimeEvent(gbEventLoop *eventLoop, long long id)
                 prev->next = te->next;
             if (te->finalizerProc)
                 te->finalizerProc(eventLoop, te->clientData);
-            free(te);
+            zfree(te);
             return GB_OK;
         }
         prev = te;
@@ -903,10 +899,10 @@ void gbServerFormatUptime( gbServer *server, char *s ){
 }
 
 gbClient* gbClientCreate( int fd, gbServer *server  ){
-	gbClient *client = (gbClient *)malloc( sizeof( gbClient ) );
+	gbClient *client = (gbClient *)zmalloc( sizeof( gbClient ) );
 
 	client->fd 			= fd;
-	client->buffer 		= malloc( server->limits.maxrequestsize );
+	client->buffer 		= zmalloc( server->limits.maxrequestsize );
 	client->buffer_size = 0;
 	client->status		= STATUS_WAITING_SIZE;
 	client->read 		= 0;
@@ -914,7 +910,7 @@ gbClient* gbClientCreate( int fd, gbServer *server  ){
 	client->server 		= server;
 	client->shutdown 	= 0;
 
-	ll_append( server->clients, client );
+    ll_append( server->clients, client );
 
 	++server->stats.nclients;
 
@@ -933,7 +929,7 @@ void gbClientDestroy( gbClient *client ){
 	gbServer *server = client->server;
 
 	if( client->buffer != NULL ){
-		free( client->buffer );
+		zfree( client->buffer );
 		client->buffer = NULL;
 	}
 
@@ -947,14 +943,15 @@ void gbClientDestroy( gbClient *client ){
 	for( item = server->clients->head; item; item = item->next ){
 		if( ll_data( gbClient *, item ) == client )
 		{
-			ll_remove( server->clients, item );
+            // do not free the list item itself
+            item->data = NULL;
 			break;
 		}
 	}
 
 	--server->stats.nclients;
 
-	free( client );
+	zfree( client );
 	client = NULL;
 }
 

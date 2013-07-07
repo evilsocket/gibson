@@ -32,10 +32,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
-#endif
+#include "zmalloc.h"
 
 /*
  * Linked list generic item container.
@@ -81,7 +78,7 @@ llist_t;
 /*
  * Allocate and initialize a new linked list.
  */
-#define ll_create() (llist_t *)calloc( 1, sizeof(llist_t) )
+#define ll_create() (llist_t *)zcalloc( sizeof(llist_t) )
 
 llist_t *ll_prealloc( size_t elements );
 
@@ -155,7 +152,7 @@ void 	ll_clear( llist_t *ll );
  * created with the ll_create macro.
  */
 #define ll_destroy( ll ) ll_clear( (ll) ); \
-						 free(ll)
+						 zfree(ll)
 
 void ll_init_space( llist_t *ll, size_t elements );
 

@@ -51,7 +51,7 @@ void gbMemFormat( unsigned long used, char *buffer, size_t size ){
 }
 
 void *gbMemDup( void *mem, size_t size ){
-	unsigned char *dup = malloc( size );
+	unsigned char *dup = zmalloc( size );
 
 	memcpy( dup, mem, size );
 
@@ -59,7 +59,7 @@ void *gbMemDup( void *mem, size_t size ){
 }
 
 void *gbMemReuse( void *old, void *new, size_t size ){
-	old = realloc( old, size );
+	old = zrealloc( old, size );
 
 	memset( old, 0x00, size );
 	memcpy( old, new, size );

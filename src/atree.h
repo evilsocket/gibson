@@ -33,10 +33,6 @@
 #include <string.h>
 #include "llist.h"
 
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
-#endif
-
 /*
  * Implementation of an n-ary tree, where each node is represented
  * by a char of a key and its children by next chars.
@@ -72,7 +68,7 @@ typedef atree_t anode_t;
 /*
  * Allocate and initialize a node of the tree.
  */
-#define at_init_node( l, k ) l = (atree_t *)calloc( 1, sizeof(atree_t) ); \
+#define at_init_node( l, k ) l = (atree_t *)zcalloc( sizeof(atree_t) ); \
 						     l->ascii = k[0]
 
 #define at_clear at_free

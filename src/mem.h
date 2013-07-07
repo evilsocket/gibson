@@ -32,10 +32,7 @@
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
-#endif
+#include "zmalloc.h"
 
 size_t gbMemAvailable();
 void   gbMemFormat( unsigned long used, char *buffer, size_t size );

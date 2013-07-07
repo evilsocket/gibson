@@ -33,8 +33,8 @@
 
 #include <sys/epoll.h>
 
-#if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
+#if HAVE_JEzmalloc == 1
+#include <jezmalloc/jezmalloc.h>
 #endif
 
 typedef struct aeApiState {
@@ -43,18 +43,18 @@ typedef struct aeApiState {
 } aeApiState;
 
 static int aeApiCreate(gbEventLoop *eventLoop) {
-    aeApiState *state = malloc(sizeof(aeApiState));
+    aeApiState *state = zmalloc(sizeof(aeApiState));
 
     if (!state) return -1;
-    state->events = malloc(sizeof(struct epoll_event)*eventLoop->setsize);
+    state->events = zmalloc(sizeof(struct epoll_event)*eventLoop->setsize);
     if (!state->events) {
-        free(state);
+        zfree(state);
         return -1;
     }
     state->epfd = epoll_create(1024); /* 1024 is just an hint for the kernel */
     if (state->epfd == -1) {
-        free(state->events);
-        free(state);
+        zfree(state->events);
+        zfree(state);
         return -1;
     }
     eventLoop->apidata = state;
@@ -64,7 +64,7 @@ static int aeApiCreate(gbEventLoop *eventLoop) {
 static int aeApiResize(gbEventLoop *eventLoop, int setsize) {
     aeApiState *state = eventLoop->apidata;
 
-    state->events = realloc(state->events, sizeof(struct epoll_event)*setsize);
+    state->events = zrealloc(state->events, sizeof(struct epoll_event)*setsize);
     return 0;
 }
 
@@ -72,8 +72,8 @@ static void aeApiFree(gbEventLoop *eventLoop) {
     aeApiState *state = eventLoop->apidata;
 
     close(state->epfd);
-    free(state->events);
-    free(state);
+    zfree(state->events);
+    zfree(state);
 }
 
 static int aeApiAddEvent(gbEventLoop *eventLoop, int fd, int mask) {
