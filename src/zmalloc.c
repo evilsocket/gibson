@@ -55,15 +55,17 @@ void zlibc_free(void *ptr) {
 #   endif
 #endif
 
+#define SIZE_OF_LONG_MASK (sizeof(long)-1)
+
 #define update_zmalloc_stat_alloc(__n) do { \
     size_t _n = (__n); \
-    if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
-        used_memory += _n; \
+    if( _n & SIZE_OF_LONG_MASK ) _n += sizeof(long) - ( _n & SIZE_OF_LONG_MASK ); \
+    used_memory += _n; \
 } while(0)
 
 #define update_zmalloc_stat_free(__n) do { \
     size_t _n = (__n); \
-    if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
+    if( _n & SIZE_OF_LONG_MASK ) _n += sizeof(long) - ( _n & SIZE_OF_LONG_MASK ); \
     used_memory -= _n; \
 } while(0)
 
@@ -143,7 +145,8 @@ size_t zmalloc_size(void *ptr) {
     size_t size = *((size_t*)realptr);
     /* Assume at least that all the allocations are padded at sizeof(long) by
      * the underlying allocator. */
-    if (size&(sizeof(long)-1)) size += sizeof(long)-(size&(sizeof(long)-1));
+    if( size & SIZE_OF_LONG_MASK ) size += sizeof(long) - ( size & SIZE_OF_LONG_MASK );
+    
     return size+PREFIX_SIZE;
 }
 #endif
