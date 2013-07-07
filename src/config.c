@@ -118,7 +118,7 @@ unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long 
 	{
 		size_t len = strlen(value);
 		char unit = value[len - 1];
-		long mul = 1;
+		long mul = 0;
 
 		if( unit == 'B' || unit == 'b' )
 			mul = 1;
@@ -134,6 +134,8 @@ unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long 
 
 		if( mul )
 			value[ len - 1 ] = 0x00;
+        else
+            mul = 1;
 
 		char * p;
 		long l = strtol( value, &p, 10 );
