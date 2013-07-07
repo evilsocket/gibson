@@ -179,19 +179,15 @@ size_t at_search_nodes( atree_t *at, unsigned char *prefix, int len, int maxkeyl
 
 	searchdata.keys    = keys;
 	searchdata.nodes   = nodes;
-	searchdata.current = NULL;
+	searchdata.current = alloca( maxkeylen );
 	searchdata.total   = 0;
 
 	anode_t *start = at_find_node( at, prefix, len );
 
 	if( start ){
-		searchdata.current = zcalloc( maxkeylen );
-
 		strncpy( searchdata.current, (char *)prefix, len );
 
 		at_recurse( start, at_search_nodes_recursive_handler, &searchdata, len - 1 );
-
-		zfree( searchdata.current );
 	}
 
 	return searchdata.total;

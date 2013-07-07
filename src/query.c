@@ -884,6 +884,9 @@ static int gbQueryCountHandler( gbClient *client, byte_t *p ){
 static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	gbServer *server = client->server;
 	size_t elems = 0;
+    char s[0xFF] = {0};
+
+    sprintf( s, "%f", zmalloc_get_fragmentation_ratio() );
 
 #define APPEND_LONG_STAT( key, value ) ++elems; \
 								   ll_append( server->m_keys, key ); \
@@ -912,6 +915,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	APPEND_LONG_STAT( "memory_usable",          server->limits.maxmem );
 	APPEND_LONG_STAT( "memory_used",            server->stats.memused );
 	APPEND_LONG_STAT( "memory_peak", 			server->stats.mempeak );
+    APPEND_STRING_STAT( "memory_fragmentation", s );
 	APPEND_LONG_STAT( "item_size_avg",          server->stats.sizeavg );
     APPEND_LONG_STAT( "compr_rate_avg",         server->stats.compravg );
 

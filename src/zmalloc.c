@@ -42,78 +42,35 @@ void zlibc_free(void *ptr) {
 }
 
 #include <string.h>
-#include <pthread.h>
 #include "config.h"
 #include "zmalloc.h"
 
 #ifdef HAVE_MALLOC_SIZE
-#define PREFIX_SIZE (0)
+#   define PREFIX_SIZE (0)
 #else
-#if defined(__sun) || defined(__sparc) || defined(__sparc__)
-#define PREFIX_SIZE (sizeof(long long))
-#else
-#define PREFIX_SIZE (sizeof(size_t))
-#endif
-#endif
-
-/* Explicitly override malloc/free etc when using tcmalloc. */
-#if defined(HAVE_TCMALLOC)
-#define malloc(size) tc_malloc(size)
-#define calloc(count,size) tc_calloc(count,size)
-#define realloc(ptr,size) tc_realloc(ptr,size)
-#define free(ptr) tc_free(ptr)
-#elif defined(HAVE_JEMALLOC)
-#define malloc(size) je_malloc(size)
-#define calloc(count,size) je_calloc(count,size)
-#define realloc(ptr,size) je_realloc(ptr,size)
-#define free(ptr) je_free(ptr)
-#endif
-
-#ifdef HAVE_ATOMIC
-#define update_zmalloc_stat_add(__n) __sync_add_and_fetch(&used_memory, (__n))
-#define update_zmalloc_stat_sub(__n) __sync_sub_and_fetch(&used_memory, (__n))
-#else
-#define update_zmalloc_stat_add(__n) do { \
-    pthread_mutex_lock(&used_memory_mutex); \
-    used_memory += (__n); \
-    pthread_mutex_unlock(&used_memory_mutex); \
-} while(0)
-
-#define update_zmalloc_stat_sub(__n) do { \
-    pthread_mutex_lock(&used_memory_mutex); \
-    used_memory -= (__n); \
-    pthread_mutex_unlock(&used_memory_mutex); \
-} while(0)
-
+#   if defined(__sun) || defined(__sparc) || defined(__sparc__)
+#       define PREFIX_SIZE (sizeof(long long))
+#   else
+#       define PREFIX_SIZE (sizeof(size_t))
+#   endif
 #endif
 
 #define update_zmalloc_stat_alloc(__n) do { \
     size_t _n = (__n); \
     if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
-    if (zmalloc_thread_safe) { \
-        update_zmalloc_stat_add(_n); \
-    } else { \
         used_memory += _n; \
-    } \
 } while(0)
 
 #define update_zmalloc_stat_free(__n) do { \
     size_t _n = (__n); \
     if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
-    if (zmalloc_thread_safe) { \
-        update_zmalloc_stat_sub(_n); \
-    } else { \
-        used_memory -= _n; \
-    } \
+    used_memory -= _n; \
 } while(0)
 
 static size_t used_memory = 0;
-static int zmalloc_thread_safe = 0;
-pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void zmalloc_default_oom(size_t size) {
-    fprintf(stderr, "zmalloc: Out of memory trying to allocate %zu bytes\n",
-        size);
+    fprintf(stderr, "zmalloc: Out of memory trying to allocate %zu bytes\n",size);
     fflush(stderr);
     abort();
 }
@@ -218,26 +175,7 @@ char *zstrdup(const char *s) {
 }
 
 size_t zmalloc_used_memory(void) {
-    size_t um;
-
-    if (zmalloc_thread_safe) {
-#ifdef HAVE_ATOMIC
-        um = __sync_add_and_fetch(&used_memory, 0);
-#else
-        pthread_mutex_lock(&used_memory_mutex);
-        um = used_memory;
-        pthread_mutex_unlock(&used_memory_mutex);
-#endif
-    }
-    else {
-        um = used_memory;
-    }
-
-    return um;
-}
-
-void zmalloc_enable_thread_safeness(void) {
-    zmalloc_thread_safe = 1;
+    return used_memory;
 }
 
 void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
