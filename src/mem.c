@@ -101,15 +101,13 @@ size_t gbMemAvailable(){
 
 void gbMemFormat( unsigned long used, char *buffer, size_t size ){
 	memset( buffer, 0x00, size );
-
 	char *suffix[] = { "B", "KB", "MB", "GB", "TB" };
 	size_t i = 0;
 	double d = used;
-
-	while( d >= 1024 ){
-		d /= 1024.0;
-		++i;
-	}
+    
+    for( ; i < 5 && d >= 1024; ++i ){
+        d /= 1024.0;
+    }
 
 	sprintf( buffer, "%.1f%s", d, suffix[i] );
 }
