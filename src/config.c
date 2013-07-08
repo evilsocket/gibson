@@ -30,12 +30,10 @@
 #include <ctype.h>
 #include "config.h"
 
-void gbConfigLoad( atree_t *config, char *filename )
-{
+void gbConfigLoad( atree_t *config, char *filename ){
 	FILE *fp = fopen( filename, "rt" );
 
-	if( fp )
-	{
+	if( fp ){
 		at_init_tree( *config );
 
 		char line[0xFF] = {0},
@@ -46,8 +44,7 @@ void gbConfigLoad( atree_t *config, char *filename )
 		size_t lineno = 0;
 
 		while( !feof(fp) ){
-			if( fgets( line, 0xFF, fp ) )
-			{
+			if( fgets( line, 0xFF, fp ) ){
 				++lineno;
 
 				// skip comments
@@ -73,8 +70,7 @@ void gbConfigLoad( atree_t *config, char *filename )
 				// eat spaces
 				while( isspace( *p ) && *p ) ++p;
 
-				if( *p == 0x00 )
-				{
+				if( *p == 0x00 ){
 					fclose( fp );
 					printf( "Error on line %zu of %s, unexpected end of line.\n", lineno, filename );
 					exit( 1 );
@@ -90,18 +86,15 @@ void gbConfigLoad( atree_t *config, char *filename )
 
 		fclose ( fp );
 	}
-	else
-	{
+	else{
 		perror( filename );
 		exit( 1 );
 	}
 }
 
-int gbConfigReadInt( atree_t *config, const char *key, int def )
-{
+int gbConfigReadInt( atree_t *config, const char *key, int def ){
 	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
-	if( value )
-	{
+	if( value ){
 	    char * p;
 	    long l = strtol( value, &p, 10 );
 
@@ -111,11 +104,9 @@ int gbConfigReadInt( atree_t *config, const char *key, int def )
 	return def;
 }
 
-unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long def )
-{
+unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long def ){
 	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
-	if( value )
-	{
+	if( value ){
 		size_t len = strlen(value);
 		char unit = value[len - 1];
 		long mul = 0;
@@ -146,8 +137,40 @@ unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long 
 	return def;
 }
 
-const char *gbConfigReadString( atree_t *config, const char *key, const char *def )
-{
+time_t gbConfigReadTime( atree_t *config, const char *key, time_t def ){
+    char *value = at_find( config, (unsigned char *)key, strlen( key ) );
+	if( value ){
+		size_t len = strlen(value);
+		char unit = value[len - 1];
+		long mul = 0;
+
+		if( unit == 's' || unit == 'S' )
+			mul = 1;
+
+		else if( unit == 'm' || unit == 'M' )
+			mul = 60;
+
+		else if( unit == 'h' || unit == 'H' )
+			mul = 60 * 60;
+
+		else if( unit == 'd' || unit == 'd' )
+			mul = 60 * 60 * 24;
+
+		if( mul )
+			value[ len - 1 ] = 0x00;
+        else
+            mul = 1;
+
+		char * p;
+		time_t l = (time_t)strtol( value, &p, 10 );
+
+		return ( *p == '\0' ? l * mul : def );
+	}
+
+	return def;
+}
+
+const char *gbConfigReadString( atree_t *config, const char *key, const char *def ){
 	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
 
 	return value ? value : def;

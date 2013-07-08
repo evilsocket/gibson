@@ -217,8 +217,8 @@ typedef struct gbServer
 	byte_t *m_buffer;
 	// cron timed event id
 	long long cron_id;
-	// number of seconds less than an object will be freed if memused >= maxmem
-	time_t	 gcdelta;
+	// data that is not being accessed in the last 'gc_ratio' seconds get deleted if the server needs memory.	
+    time_t	 gc_ratio;
 	// flag to say the server to shutdown ASAP
 	int		 shutdown;
 	// plain configuration instance

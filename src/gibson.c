@@ -191,6 +191,7 @@ int main( int argc, char **argv)
 	server.daemon	   = gbConfigReadInt( &server.config, "daemonize", 		   0 );
 	server.cronperiod  = gbConfigReadInt( &server.config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
 	server.pidfile	   = gbConfigReadString( &server.config, "pidfile",        GB_DEFAULT_PID_FILE );
+    server.gc_ratio    = gbConfigReadTime( &server.config, "gc_ratio",         GB_DEFAULT_GC_RATIO );
 	server.events 	   = gbCreateEventLoop( server.limits.maxclients + 1024 );
 	server.clients 	   = ll_prealloc( server.limits.maxclients );
 	server.m_keys	   = ll_prealloc( 255 );
@@ -232,6 +233,7 @@ int main( int argc, char **argv)
 	gbLog( INFO, "Max clients      : %d", server.limits.maxclients );
 	gbLog( INFO, "Max request size : %s", reqsize );
 	gbLog( INFO, "Max memory       : %s", maxmem );
+    gbLog( INFO, "GC Ratio         : %ds", server.gc_ratio );
 	gbLog( INFO, "Max key size     : %s", maxkey );
 	gbLog( INFO, "Max value size   : %s", maxvalue );
 	gbLog( INFO, "Max resp. size   : %s", maxrespsize );
@@ -414,10 +416,10 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 void gbMemoryFreeHandler( anode_t *elem, size_t level, void *data ) {
 	gbServer *server = data;
 	gbItem	 *item = elem->marker;
-	time_t	  eta = item ? ( server->stats.time - item->time ) : 0;
+	time_t	  eta = item ? ( server->stats.time - item->last_access_time ) : 0;
 
 	// item is older enough to be deleted
-	if( eta && eta >= server->gcdelta ) {
+	if( eta && eta >= server->gc_ratio ) {
 		// item is freeable
 		elem->marker = NULL;
 		gbDestroyItem( server, item );
@@ -474,20 +476,16 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 
 	CRON_EVERY( 5000 ) {
 		if( server->stats.memused > server->limits.maxmem ){
-			// TODO: Implement a better algorithm for this!
-			server->gcdelta = ( server->stats.time - server->stats.firstin ) / 5.0;
 
 			before = server->stats.memused;
 
-			gbLog( WARNING, "Max memory exhausted, trying to free data older than %ds.", server->gcdelta );
+			gbLog( WARNING, "Max memory exhausted, trying to free data that was accessed not in the last %ds.", server->gc_ratio );
 
 			at_recurse( &server->tree, gbMemoryFreeHandler, server, 0 );
 
 			gbMemFormat( before - server->stats.memused, freed,  0xFF );
 
 			gbLog( INFO, "Freed %s, left %d items.", freed, server->stats.nitems );
-
-			server->gcdelta = 0;
 		}
 	}
 
