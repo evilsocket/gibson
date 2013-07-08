@@ -273,6 +273,8 @@ typedef struct
 	size_t 		   size;
 	// the item encoding
 	gbItemEncoding encoding;
+	// time the item was last accessed
+	time_t	last_access_time;
 	// time the item was created
 	time_t		   time;
 	// TTL of this item

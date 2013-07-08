@@ -41,10 +41,6 @@
 
 #include <stdio.h>
 
-#if HAVE_JEzmalloc == 1
-#include <jezmalloc/jezmalloc.h>
-#endif
-
 static int evport_debug = 0;
 
 /*

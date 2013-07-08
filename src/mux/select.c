@@ -32,10 +32,6 @@
 #if HAVE_SELECT
 #include "net.h"
 
-#if HAVE_JEzmalloc == 1
-#include <jezmalloc/jezmalloc.h>
-#endif
-
 typedef struct aeApiState {
     fd_set rfds, wfds;
     /* We need to have a copy of the fd sets as it's not safe to reuse

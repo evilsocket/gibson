@@ -33,10 +33,6 @@
 
 #include <sys/epoll.h>
 
-#if HAVE_JEzmalloc == 1
-#include <jezmalloc/jezmalloc.h>
-#endif
-
 typedef struct aeApiState {
     int epfd;
     struct epoll_event *events;
