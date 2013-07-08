@@ -30,10 +30,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #if HAVE_SELECT
-#include "net.h"
-
+	#include "net.h"
 #if HAVE_JEMALLOC == 1
-#include <jemalloc/jemalloc.h>
+	#include <jemalloc/jemalloc.h>
 #endif
 
 typedef struct aeApiState {

@@ -5,6 +5,7 @@ project(gibson)
 OPTION( WITH_DEBUG "enable debug module" OFF )
 
 # cmake needed modules
+include_directories("${PROJECT_SOURCE_DIR}/src")
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 
