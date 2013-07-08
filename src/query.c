@@ -105,7 +105,7 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
 		server->stats.firstin = server->stats.time;
 
 	server->stats.lastin  = server->stats.time;
-	server->stats.memused = zmalloc_used_memory(); 
+	server->stats.memused = zmem_used(); 
     server->stats.sizeavg = server->stats.memused / ++server->stats.nitems;
 
 	if( server->stats.memused > server->stats.mempeak )
@@ -127,7 +127,7 @@ void gbDestroyItem( gbServer *server, gbItem *item ){
 	zfree( item );
 	item = NULL;
 
-   	server->stats.memused = zmalloc_used_memory();	
+   	server->stats.memused = zmem_used();	
     server->stats.sizeavg = server->stats.nitems == 1 ? 0 : server->stats.memused / --server->stats.nitems;
 }
 
@@ -260,7 +260,7 @@ static gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbSe
 		// not enough compression
 		if( comprlen == 0 ){
 			encoding = GB_ENC_PLAIN;
-			data	 = gbMemDup( v, vlen );
+			data	 = zmemdup( v, vlen );
 		}
 		// succesfully compressed
 		else {
@@ -273,12 +273,12 @@ static gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbSe
 
             encoding = GB_ENC_LZF;
 			vlen 	 = comprlen;
-			data 	 = gbMemDup( server->lzf_buffer, comprlen );
+			data 	 = zmemdup( server->lzf_buffer, comprlen );
 		}
 	}
 	else {
 		encoding = GB_ENC_PLAIN;
-		data = gbMemDup( v, vlen );
+		data = zmemdup( v, vlen );
 	}
 
 	item = gbCreateItem( server, data, vlen, encoding, -1 );
@@ -648,7 +648,7 @@ static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta ){
 					item->data = NULL;
 				}
                 
-				server->stats.memused = zmalloc_used_memory();
+				server->stats.memused = zmem_used();
 
 				item->encoding = GB_ENC_NUMBER;
 				item->data	   = (void *)num;
@@ -698,7 +698,7 @@ static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 							item->data = NULL;
 						}
 
-                        server->stats.memused = zmalloc_used_memory();
+                        server->stats.memused = zmem_used();
 
 						item->encoding = GB_ENC_NUMBER;
 						item->data	   = (void *)num;
@@ -909,7 +909,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	size_t elems = 0;
     char s[0xFF] = {0};
 
-    sprintf( s, "%f", zmalloc_get_fragmentation_ratio() );
+    sprintf( s, "%f", zmem_fragmentation_ratio() );
 
 #define APPEND_LONG_STAT( key, value ) ++elems; \
 								   ll_append( server->m_keys, key ); \

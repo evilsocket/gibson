@@ -41,33 +41,111 @@ void zlibc_free(void *ptr) {
     free(ptr);
 }
 
-#include <string.h>
 #include "config.h"
-#include "zmalloc.h"
+#include "zmem.h"
+#include <string.h>
+#include <unistd.h>
+
+#if defined(_WIN32)
+	#include <Windows.h>
+#elif defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
+	#include <unistd.h>
+	#include <sys/types.h>
+	#include <sys/param.h>
+#endif	
+#if defined(BSD)
+	#include <sys/sysctl.h>
+#endif
 
 #ifdef HAVE_MALLOC_SIZE
-#   define PREFIX_SIZE (0)
+#   define ZMEM_PREFIX_SIZE (0)
 #else
 #   if defined(__sun) || defined(__sparc) || defined(__sparc__)
-#       define PREFIX_SIZE (sizeof(long long))
+#       define ZMEM_PREFIX_SIZE (sizeof(long long))
 #   else
-#       define PREFIX_SIZE (sizeof(size_t))
+#       define ZMEM_PREFIX_SIZE (sizeof(size_t))
 #   endif
 #endif
 
 #define SIZE_OF_LONG_MASK (sizeof(long)-1)
-
-#define update_zmalloc_stat_alloc(__n) do { \
+// increment used memory statistic by __n padded to sizeof(long)
+#define zmem_incr_mem(__n) do { \
     size_t _n = (__n); \
     if( _n & SIZE_OF_LONG_MASK ) _n += sizeof(long) - ( _n & SIZE_OF_LONG_MASK ); \
     used_memory += _n; \
 } while(0)
-
-#define update_zmalloc_stat_free(__n) do { \
+// decrement used memory statistic by __n padded to sizeof(long)
+#define zmem_decr_mem(__n) do { \
     size_t _n = (__n); \
     if( _n & SIZE_OF_LONG_MASK ) _n += sizeof(long) - ( _n & SIZE_OF_LONG_MASK ); \
     used_memory -= _n; \
 } while(0)
+// write the size to the first bytes of p internal pointer
+#define zmem_write_prefix(p,size) *((size_t *)(p)) = (size)
+// read the size from the first bytes of p
+#define zmem_read_prefix(p)       *((size_t *)(p))
+// userland ptr -> zmem prefixed ptr
+#define zmem_head_ptr(p) ((char *)(p) - ZMEM_PREFIX_SIZE)
+// zmem prefixed ptr -> userland ptr
+#define zmem_real_ptr(p) ((char *)(p) + ZMEM_PREFIX_SIZE)
+
+/* Author:  David Robert Nadeau */
+size_t zmem_available(){
+    #if defined(_WIN32) && (defined(__CYGWIN__) || defined(__CYGWIN32__))
+		MEMORYSTATUS status;
+		status.dwLength = sizeof(status);
+		GlobalMemoryStatus(&status);
+		return (size_t) status.dwTotalPhys;
+	#elif defined(_WIN32)
+		MEMORYSTATUSEX status;
+		status.dwLength = sizeof(status);
+		GlobalMemoryStatusEx( &status );
+		return (size_t)status.ullTotalPhys;
+	#elif defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
+		/* UNIX variants. ------------------------------------------- */
+		/* Prefer sysctl() over sysconf() except sysctl() HW_REALMEM and HW_PHYSMEM */
+
+	#if defined(CTL_HW) && (defined(HW_MEMSIZE) || defined(HW_PHYSMEM64))
+		int mib[2];
+		mib[0] = CTL_HW;
+	#if defined(HW_MEMSIZE)
+		mib[1] = HW_MEMSIZE;		/* OSX */ 
+	#elif defined(HW_PHYSMEM64)
+		mib[1] = HW_PHYSMEM64;		/* NetBSD, OpenBSD.*/
+	#endif
+		int64_t size = 0;		/* 64-bit */
+		size_t len = sizeof(size);
+		if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t) size;
+		return 0L;			/* Failed? */
+
+	#elif defined(_SC_AIX_REALMEM)
+		return (size_t)sysconf( _SC_AIX_REALMEM ) * (size_t)1024L;
+	#elif defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
+		/* FreeBSD, Linux, OpenBSD, and Solaris. */
+		return (size_t)sysconf( _SC_PHYS_PAGES ) * (size_t)sysconf( _SC_PAGESIZE );
+
+	#elif defined(_SC_PHYS_PAGES) && defined(_SC_PAGE_SIZE)
+		/* Legacy. */
+		return (size_t)sysconf( _SC_PHYS_PAGES ) * (size_t)sysconf( _SC_PAGE_SIZE );
+	#elif defined(CTL_HW) && (defined(HW_PHYSMEM) || defined(HW_REALMEM))
+		/* DragonFly BSD, FreeBSD, NetBSD, OpenBSD, and OSX. -------- */
+		int mib[2];
+		mib[0] = CTL_HW;
+	#if defined(HW_REALMEM)
+		mib[1] = HW_REALMEM;		/* FreeBSD. ----------------- */
+	#elif defined(HW_PYSMEM)
+		mib[1] = HW_PHYSMEM;		/* Others. ------------------ */
+	#endif
+		unsigned int size = 0;		/* 32-bit */
+		size_t len = sizeof( size );
+		if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t)size;
+		return 0L;			/* Failed? */
+	#endif /* sysctl and sysconf variants */
+
+	#else
+		return 0L;			/* Unknown OS. */
+	#endif
+}
 
 static size_t used_memory = 0;
 
@@ -80,30 +158,30 @@ static void zmalloc_default_oom(size_t size) {
 static void (*zmalloc_oom_handler)(size_t) = zmalloc_default_oom;
 
 void *zmalloc(size_t size) {
-    void *ptr = malloc(size+PREFIX_SIZE);
+    void *ptr = malloc(size+ZMEM_PREFIX_SIZE);
 
     if (!ptr) zmalloc_oom_handler(size);
 #ifdef HAVE_MALLOC_SIZE
-    update_zmalloc_stat_alloc(zmalloc_size(ptr));
+    zmem_incr_mem(zmalloc_size(ptr));
     return ptr;
 #else
-    *((size_t*)ptr) = size;
-    update_zmalloc_stat_alloc(size+PREFIX_SIZE);
-    return (char*)ptr+PREFIX_SIZE;
+    zmem_write_prefix(ptr,size);
+    zmem_incr_mem(size+ZMEM_PREFIX_SIZE);
+    return zmem_real_ptr(ptr);
 #endif
 }
 
 void *zcalloc(size_t size) {
-    void *ptr = calloc(1, size+PREFIX_SIZE);
+    void *ptr = calloc(1, size+ZMEM_PREFIX_SIZE);
 
     if (!ptr) zmalloc_oom_handler(size);
 #ifdef HAVE_MALLOC_SIZE
-    update_zmalloc_stat_alloc(zmalloc_size(ptr));
+    zmem_incr_mem(zmalloc_size(ptr));
     return ptr;
 #else
-    *((size_t*)ptr) = size;
-    update_zmalloc_stat_alloc(size+PREFIX_SIZE);
-    return (char*)ptr+PREFIX_SIZE;
+    zmem_write_prefix(ptr,size);
+    zmem_incr_mem(size+ZMEM_PREFIX_SIZE);
+    return zmem_real_ptr(ptr);
 #endif
 }
 
@@ -120,19 +198,19 @@ void *zrealloc(void *ptr, size_t size) {
     newptr = realloc(ptr,size);
     if (!newptr) zmalloc_oom_handler(size);
 
-    update_zmalloc_stat_free(oldsize);
-    update_zmalloc_stat_alloc(zmalloc_size(newptr));
+    zmem_decr_mem(oldsize);
+    zmem_incr_mem(zmalloc_size(newptr));
     return newptr;
 #else
-    realptr = (char*)ptr-PREFIX_SIZE;
-    oldsize = *((size_t*)realptr);
-    newptr = realloc(realptr,size+PREFIX_SIZE);
+    realptr = zmem_head_ptr(ptr);
+    oldsize = zmem_read_prefix(realptr);
+    newptr  = realloc(realptr,size+ZMEM_PREFIX_SIZE);
     if (!newptr) zmalloc_oom_handler(size);
 
-    *((size_t*)newptr) = size;
-    update_zmalloc_stat_free(oldsize);
-    update_zmalloc_stat_alloc(size);
-    return (char*)newptr+PREFIX_SIZE;
+    zmem_write_prefix(newptr,size);
+    zmem_decr_mem(oldsize);
+    zmem_incr_mem(size);
+    return zmem_real_ptr(newptr);
 #endif
 }
 
@@ -141,15 +219,23 @@ void *zrealloc(void *ptr, size_t size) {
  * information as the first bytes of every allocation. */
 #ifndef HAVE_MALLOC_SIZE
 size_t zmalloc_size(void *ptr) {
-    void *realptr = (char*)ptr-PREFIX_SIZE;
-    size_t size = *((size_t*)realptr);
-    /* Assume at least that all the allocations are padded at sizeof(long) by
-     * the underlying allocator. */
-    if( size & SIZE_OF_LONG_MASK ) size += sizeof(long) - ( size & SIZE_OF_LONG_MASK );
+    void *realptr = zmem_head_ptr(ptr);
+    size_t size   = zmem_read_prefix(realptr);
+    // assume at least that all the allocations are padded at sizeof(long) by the underlying allocator.
+    if( size & SIZE_OF_LONG_MASK ) 
+        size += sizeof(long) - ( size & SIZE_OF_LONG_MASK );
     
-    return size+PREFIX_SIZE;
+    return size + ZMEM_PREFIX_SIZE;
 }
 #endif
+
+void *zmemdup(void *ptr, size_t size){
+	unsigned char *dup = zmalloc( size );
+
+	memcpy( dup, ptr, size );
+
+	return dup;
+}
 
 void zfree(void *ptr) {
 #ifndef HAVE_MALLOC_SIZE
@@ -159,12 +245,12 @@ void zfree(void *ptr) {
 
     if (ptr == NULL) return;
 #ifdef HAVE_MALLOC_SIZE
-    update_zmalloc_stat_free(zmalloc_size(ptr));
+    zmem_decr_mem(zmalloc_size(ptr));
     free(ptr);
 #else
-    realptr = (char*)ptr-PREFIX_SIZE;
-    oldsize = *((size_t*)realptr);
-    update_zmalloc_stat_free(oldsize+PREFIX_SIZE);
+    realptr = zmem_head_ptr(ptr);
+    oldsize = zmem_read_prefix(realptr);
+    zmem_decr_mem(oldsize+ZMEM_PREFIX_SIZE);
     free(realptr);
 #endif
 }
@@ -172,16 +258,15 @@ void zfree(void *ptr) {
 char *zstrdup(const char *s) {
     size_t l = strlen(s)+1;
     char *p = zmalloc(l);
-
     memcpy(p,s,l);
     return p;
 }
 
-size_t zmalloc_used_memory(void) {
+size_t zmem_used(void) {
     return used_memory;
 }
 
-void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
+void zmem_set_oom_handler(void (*oom_handler)(size_t)) {
     zmalloc_oom_handler = oom_handler;
 }
 
@@ -193,7 +278,7 @@ void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
 #include <sys/stat.h>
 #include <fcntl.h>
 
-size_t zmalloc_get_rss(void) {
+size_t zmem_rss(void) {
     int page = sysconf(_SC_PAGESIZE);
     size_t rss;
     char buf[4096];
@@ -233,7 +318,7 @@ size_t zmalloc_get_rss(void) {
 #include <mach/task.h>
 #include <mach/mach_init.h>
 
-size_t zmalloc_get_rss(void) {
+size_t zmem_rss(void) {
     task_t task = MACH_PORT_NULL;
     struct task_basic_info t_info;
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
@@ -245,23 +330,23 @@ size_t zmalloc_get_rss(void) {
     return t_info.resident_size;
 }
 #else
-size_t zmalloc_get_rss(void) {
+size_t zmem_rss(void) {
     /* If we can't get the RSS in an OS-specific way for this system just
      * return the memory usage we estimated in zmalloc()..
      *
      * Fragmentation will appear to be always 1 (no fragmentation)
      * of course... */
-    return zmalloc_used_memory();
+    return zmem_used();
 }
 #endif
 
 /* Fragmentation = RSS / allocated-bytes */
-float zmalloc_get_fragmentation_ratio(void) {
-    return (float)zmalloc_get_rss()/zmalloc_used_memory();
+float zmem_fragmentation_ratio(void) {
+    return (float)zmem_rss()/zmem_used();
 }
 
 #if defined(HAVE_PROC_SMAPS)
-size_t zmalloc_get_private_dirty(void) {
+size_t zmem_private_dirty(void) {
     char line[1024];
     size_t pd = 0;
     FILE *fp = fopen("/proc/self/smaps","r");
@@ -280,7 +365,7 @@ size_t zmalloc_get_private_dirty(void) {
     return pd;
 }
 #else
-size_t zmalloc_get_private_dirty(void) {
+size_t zmem_private_dirty(void) {
     return 0;
 }
 #endif

@@ -36,7 +36,6 @@
 #include <sys/stat.h>
 #include "atree.h"
 #include "llist.h"
-#include "mem.h"
 #include "default.h"
 
 #if defined(__sun)

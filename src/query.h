@@ -32,7 +32,6 @@
 #include <unistd.h>
 #include "net.h"
 #include "default.h"
-#include "zmalloc.h"
 
 // single
 #define OP_SET     1

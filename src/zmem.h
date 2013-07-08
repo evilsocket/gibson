@@ -1,5 +1,8 @@
 /*
  * Copyright (c) 2013, Simone Margaritelli <evilsocket at gmail dot com>
+ *
+ * Based on Redis zmalloc library by Salvatore Sanfilippo.
+ *
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,17 +29,42 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __MEM_H__
-#define __MEM_H__
 
-#include <memory.h>
-#include <stdio.h>
+#ifndef __ZMEM_H__
+#define __ZMEM_H__
+
+#include "configure.h"
+
+#if defined(HAVE_JEMALLOC)
+#   include <jemalloc/jemalloc.h>
+#endif
+
+#if defined(__APPLE__)
+#   include <malloc/malloc.h>
+#   define HAVE_MALLOC_SIZE 1
+#   define zmalloc_size(p) malloc_size(p)
+#endif
+
 #include <stdlib.h>
-#include "zmalloc.h"
 
-size_t gbMemAvailable();
-void   gbMemFormat( unsigned long used, char *buffer, size_t size );
-void  *gbMemDup( void *mem, size_t size );
-void  *gbMemReuse( void *old, void *new, size_t size );
+// get system available memory
+size_t zmem_available();
+// get memory used by the process
+size_t zmem_used(void);
+// set a custom out of memory handler
+void   zmem_set_oom_handler(void (*oom_handler)(size_t));
+// get RSS / used ratio
+float  zmem_fragmentation_ratio(void);
+// get resident set size aka process memory held by the ram
+size_t zmem_rss(void);
+// get private dirty memory field
+size_t zmem_private_dirty(void);
+
+void *zmalloc(size_t size);
+void *zcalloc(size_t size);
+void *zrealloc(void *ptr, size_t size);
+void  zfree(void *ptr);
+void *zmemdup(void *ptr, size_t size);
+char *zstrdup(const char *s);
 
 #endif

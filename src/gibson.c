@@ -43,7 +43,6 @@
 #include "query.h"
 #include "config.h"
 #include "default.h"
-#include "zmalloc.h"
 
 extern char *aeApiName();
 
@@ -57,6 +56,7 @@ int  gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data
 void gbDaemonize();
 void gbProcessInit();
 void gbServerDestroy( gbServer *server );
+void gbOOM(size_t size);
 
 void gbHelpMenu( char **argv, int exitcode ){
 	printf( "Gibson cache server v%s %s ( built %s )\nCopyright %s\nReleased under %s\n\n", VERSION, BUILD_GIT_BRANCH, BUILD_DATETIME, AUTHOR, LICENSE );
@@ -67,6 +67,19 @@ void gbHelpMenu( char **argv, int exitcode ){
 	printf("  -c, --config FILE   Set configuration file to load, default %s.\n\n", GB_DEFAULT_CONFIGURATION );
 
 	exit(exitcode);
+}
+
+static void gbMemFormat( unsigned long used, char *buffer, size_t size ){
+	memset( buffer, 0x00, size );
+	char *suffix[] = { "B", "KB", "MB", "GB", "TB" };
+	size_t i = 0;
+	double d = used;
+    
+    for( ; i < 5 && d >= 1024; ++i ){
+        d /= 1024.0;
+    }
+
+	sprintf( buffer, "%.1f%s", d, suffix[i] );
 }
 
 int main( int argc, char **argv)
@@ -112,6 +125,8 @@ int main( int argc, char **argv)
 				gbHelpMenu(argv,1);
 		}
     }
+
+    zmem_set_oom_handler(gbOOM);
 
 	memset( &server, 0x00, sizeof(gbServer) );
 
@@ -175,7 +190,7 @@ int main( int argc, char **argv)
 	server.stats.ncompressed =
 	server.stats.sizeavg	 = 
     server.stats.compravg    = 0;
-	server.stats.memavail    = gbMemAvailable();
+	server.stats.memavail    = zmem_available();
 
 	if( server.limits.maxmem > server.stats.memavail ){
 		char drop[0xFF] = {0};
@@ -250,6 +265,33 @@ int main( int argc, char **argv)
 	gbDeleteEventLoop( server.events );
 
 	return 0;
+}
+
+void gbOOM(size_t size){
+    char used[0xFF] = {0},
+         max[0xFF] = {0},
+         uptime[0xFF] = {0};
+
+    gbMemFormat( server.stats.memused, used, 0xFF );
+    gbMemFormat( server.limits.maxmem, max,  0xFF );
+    gbServerFormatUptime( &server, uptime );
+
+    gbLog( CRITICAL, "Out of memory trying to allocate %zu bytes.", size );
+
+    gbLog( CRITICAL, "" );
+    gbLog( CRITICAL, "INFO:" );
+    gbLog( CRITICAL, "" );
+
+    gbLog( CRITICAL, "  Git Branch      : %s", BUILD_GIT_BRANCH );
+    gbLog( CRITICAL, "  Git HEAD Rev.   : %s", BUILD_GIT_SHA1 );
+    gbLog( CRITICAL, "  Uptime          : %s", uptime );
+    gbLog( CRITICAL, "  Memory Used     : %s/%s", used, max );
+    gbLog( CRITICAL, "  Current Items   : %d", server.stats.nitems );
+    gbLog( CRITICAL, "  Current Clients : %d", server.stats.nclients );
+   
+    gbLogFinalize();
+   
+    abort();
 }
 
 void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
@@ -589,7 +631,9 @@ static void gbSignalHandler(int sig) {
 		gbLog( CRITICAL, "" );
 		gbLog( CRITICAL, "***************************************" );
 
-		exit(-1);
+        gbLogFinalize();
+		
+        exit(-1);
 	}
 }
 

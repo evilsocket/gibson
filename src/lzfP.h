@@ -155,7 +155,7 @@ typedef const u8 *LZF_STATE[1 << (HLOG)];
 # endif
 #endif
 
-#include "zmalloc.h"
+#include "zmem.h"
 
 #endif
 
