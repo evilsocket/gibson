@@ -510,9 +510,9 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		deleted = before - server->stats.memused;
 
 		if( deleted > 0 ){
-			gbMemFormat( deleted, freed,  0xFF );
+			gbMemFormat( deleted, freed, 0xFF );
 
-			gbLog( INFO, "Freed %s of expired data, left %d items.", freed, server->stats.nitems );
+			gbLog( INFO, "Freed %s ( %lu B ) of expired data, left %d items.", freed, deleted, server->stats.nitems );
 		}
 	}
 
