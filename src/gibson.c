@@ -494,7 +494,8 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		 freed[0xFF] = {0},
 		 uptime[0xFF] = {0},
 		 avgsize[0xFF] = {0};
-	unsigned long before = 0, deleted = 0;
+	unsigned long before = 0;
+	long deleted = 0;
 
 	server->stats.time = now;
 
@@ -512,7 +513,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		if( deleted > 0 ){
 			gbMemFormat( deleted, freed, 0xFF );
 
-			gbLog( INFO, "Freed %s ( %lu B ) of expired data, left %d items.", freed, deleted, server->stats.nitems );
+			gbLog( INFO, "Freed %s of expired data, left %d items.", freed, server->stats.nitems );
 		}
 	}
 
