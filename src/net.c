@@ -128,8 +128,8 @@ int gbResizeSetSize(gbEventLoop *eventLoop, int setsize) {
     else if( aeApiResize(eventLoop,setsize) == -1 )
     	return GB_ERR;
 
-    eventLoop->events  = realloc( eventLoop->events, sizeof(gbFileEvent) * setsize );
-    eventLoop->fired   = realloc( eventLoop->fired, sizeof(gbFiredEvent) * setsize );
+    eventLoop->events  = zrealloc( eventLoop->events, sizeof(gbFileEvent) * setsize );
+    eventLoop->fired   = zrealloc( eventLoop->fired, sizeof(gbFiredEvent) * setsize );
     eventLoop->setsize = setsize;
 
     /* Make sure that if we created new slots, they are initialized with
@@ -965,7 +965,7 @@ int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, 
 
 	// realloc only if needed
 	if( rsize > client->server->limits.maxrequestsize )
-		client->buffer = (byte_t *)realloc( client->buffer, rsize );
+		client->buffer = (byte_t *)zrealloc( client->buffer, rsize );
 
 	client->buffer_size = rsize;
 	client->read  		= 0;
