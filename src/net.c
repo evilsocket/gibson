@@ -902,7 +902,7 @@ gbClient* gbClientCreate( int fd, gbServer *server  ){
 	gbClient *client = (gbClient *)zmalloc( sizeof( gbClient ) );
 
 	client->fd 			= fd;
-	client->buffer 		= zmalloc( server->limits.maxrequestsize );
+	client->buffer 		= NULL;
 	client->buffer_size = 0;
 	client->status		= STATUS_WAITING_SIZE;
 	client->read 		= 0;
@@ -918,6 +918,10 @@ gbClient* gbClientCreate( int fd, gbServer *server  ){
 }
 
 void gbClientReset( gbClient *client ){
+    if( client->buffer != NULL )
+        zfree( client->buffer );
+
+    client->buffer      = NULL;
 	client->buffer_size = 0;
 	client->status		= STATUS_WAITING_SIZE;
 	client->read 		= 0;
@@ -964,8 +968,9 @@ int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, 
 				   size;			  		  // data
 
 	// realloc only if needed
-	if( rsize > client->server->limits.maxrequestsize )
-		client->buffer = (byte_t *)zrealloc( client->buffer, rsize );
+	if( rsize > client->buffer_size ){
+        client->buffer = (byte_t *)zrealloc( client->buffer, rsize );
+    }
 
 	client->buffer_size = rsize;
 	client->read  		= 0;

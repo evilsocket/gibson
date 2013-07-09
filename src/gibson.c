@@ -362,6 +362,9 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 				gbClientDestroy(client);
 				return;
 			}
+            // allocate buffer for the incoming request
+            else
+                client->buffer = zmalloc( client->buffer_size );
 		}
 	}
 
@@ -371,6 +374,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 		if( toread > 0 ){
 			p = client->buffer + client->read;
 		}
+        // nothing left to read
 		else {
 			client->read   = 0;
 			client->status = STATUS_SENDING_REPLY;
@@ -405,7 +409,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 	// process the query only if we were reading it and the request is complete
 	if( client->status == STATUS_WAITING_BUFFER && client->read == client->buffer_size ){
 		client->status = STATUS_SENDING_REPLY;
-
+        
 		if( gbProcessQuery(client) != GB_OK ){
 			size_t sz = client->buffer_size < 255 ? client->buffer_size : 255;
 
@@ -455,16 +459,18 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 	}
 }
 
-void gbMemoryFreeHandler( anode_t *elem, size_t level, void *data ) {
+#define GB_DEL_ITEM(s,n,i) (n)->marker = NULL; gbDestroyItem( (s), (i) )
+
+void gbMemoryFreeHandler( anode_t *node, size_t level, void *data ) {
 	gbServer *server = data;
-	gbItem	 *item = elem->marker;
+	gbItem	 *item = node->marker;
 	time_t	  eta = item ? ( server->stats.time - item->last_access_time ) : 0;
 
 	// item is older enough to be deleted
 	if( eta && eta >= server->gc_ratio ) {
-		// item is freeable
-		elem->marker = NULL;
-		gbDestroyItem( server, item );
+	    gbLog( DEBUG, "[OOM] Removing item %p since wasn't accessed from %lus.", item, eta );
+        
+        GB_DEL_ITEM( server, node, item );
 	}
 }
 
@@ -476,11 +482,8 @@ void gbHandleDeadTTLHandler( anode_t *node, size_t level, void *data ){
 	// item is older enough to be deleted
 	if( item && item->ttl > 0 && eta >= item->ttl ) {
 		gbLog( DEBUG, "[CRON] TTL of %ds expired for item at %p.", item->ttl, item );
-
-		// item is freeable
-		node->marker = NULL;
-
-		gbDestroyItem( server, item );
+        
+        GB_DEL_ITEM( server, node, item );
 	}
 }
 
