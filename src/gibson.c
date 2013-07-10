@@ -322,9 +322,10 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 			client->seen = client->server->stats.time;
 
 			if( client->wrote == client->buffer_size ){
-				if( client->shutdown )
-					gbClientDestroy(client);
-
+				if( client->shutdown ){
+					gbLog( DEBUG, "Client shutdown." );
+                    gbClientDestroy(client);
+                }
 				else{
 					gbClientReset(client);
 					gbDeleteFileEvent( client->server->events, client->fd, GB_WRITABLE );
@@ -457,6 +458,8 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 			return;
 		}
 	}
+    else
+        gbLog( WARNING, "Accept error: %s ( %d )", server->error, errno );
 }
 
 #define GB_DEL_ITEM(s,n,i) (n)->marker = NULL; gbDestroyItem( (s), (i) )
