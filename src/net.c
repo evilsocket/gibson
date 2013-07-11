@@ -959,13 +959,13 @@ void gbClientDestroy( gbClient *client ){
 	client = NULL;
 }
 
-int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, byte_t *reply, size_t size, gbFileProc *proc, short shutdown ){
+int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, byte_t *reply, uint32_t size, gbFileProc *proc, short shutdown ){
 	if( client->fd <= 0 ) return GB_ERR;
 
-	size_t rsize = sizeof( short )  + 		  // reply opcode
-				   sizeof( gbItemEncoding ) + // data type
-				   sizeof( size_t ) + 		  // data length
-				   size;			  		  // data
+	uint32_t rsize = sizeof( short )  + 		// reply opcode
+				     sizeof( gbItemEncoding ) + // data type
+				     sizeof( uint32_t ) + 	    // data length
+				     size;			  		    // data
 
 	// realloc only if needed
 	if( rsize > client->buffer_size ){
@@ -977,10 +977,10 @@ int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, 
 	client->wrote 		= 0;
 	client->shutdown 	= shutdown;
 
-	memcpy( client->buffer, 				  					          					&code, 	   sizeof( short ) );
-	memcpy( client->buffer + sizeof( short ),					          					&encoding, sizeof( gbItemEncoding ) );
-	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ),  				    &size, 	   sizeof( size_t ) );
-	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ) + sizeof( size_t ), reply, 	   size );
+	memcpy( client->buffer, 				  					          					  &code, 	 sizeof( short ) );
+	memcpy( client->buffer + sizeof( short ),					          					  &encoding, sizeof( gbItemEncoding ) );
+	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ),  				      &size, 	 sizeof( uint32_t ) );
+	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ) + sizeof( uint32_t ), reply, 	 size );
 
 	return gbCreateFileEvent( client->server->events, client->fd, GB_WRITABLE, proc, client );
 }
@@ -1015,12 +1015,12 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
 		return GBNET_ERR;
 }
 
-int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *proc, short shutdown ){
+int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc *proc, short shutdown ){
 	gbServer *server = client->server;
 	gbItem *item = NULL;
-	size_t sz = sizeof(size_t),
-		   vsize = 0,
-		   space = server->limits.maxresponsesize;
+	uint32_t sz = sizeof(uint32_t),
+		     vsize = 0,
+		     space = server->limits.maxresponsesize;
 	byte_t *data = server->m_buffer,
 		   *p = data,
 		   *v = NULL;
@@ -1045,7 +1045,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 			// write key size + key
 			sz = strlen( ki->data );
 
-			SAFE_MEMCPY( p, &sz, sizeof(size_t) );
+			SAFE_MEMCPY( p, &sz, sizeof(uint32_t) );
 			SAFE_MEMCPY( p, ki->data, sz );
 
 			// write value size + value
@@ -1072,7 +1072,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *p
 			}
 
 			SAFE_MEMCPY( p, &encoding, sizeof( gbItemEncoding ) );
-			SAFE_MEMCPY( p, &vsize,	   sizeof(size_t) );
+			SAFE_MEMCPY( p, &vsize,	   sizeof(uint32_t) );
 			SAFE_MEMCPY( p, v, 		   vsize );
 		}
 	}

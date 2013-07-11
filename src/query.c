@@ -926,6 +926,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 #else
 	APPEND_STRING_STAT( "server_allocator", "malloc" );
 #endif
+    APPEND_STRING_STAT( "server_arch", (sizeof(long) == 8) ? "64" : "32" );
 	APPEND_LONG_STAT( "server_started",         server->stats.started );
 	APPEND_LONG_STAT( "server_time",            server->stats.time );
 	APPEND_LONG_STAT( "first_item_seen",        server->stats.firstin );
@@ -976,7 +977,7 @@ static int gbQuerySizeOfHandler( gbClient *client, byte_t *p ){
 			item->last_access_time = server->stats.time;
 			
 			if( gbIsNodeStillValid( node, node->marker, server, 1 ) )
-				return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&item->size, sizeof(size_t), gbWriteReplyHandler, 0 );
+				return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&item->size, sizeof(uint32_t), gbWriteReplyHandler, 0 );
 		}
 		else
 			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
@@ -987,7 +988,8 @@ static int gbQuerySizeOfHandler( gbClient *client, byte_t *p ){
 
 static int gbQueryMultiSizeOfHandler( gbClient *client, byte_t *p ){
 	byte_t *expr = NULL;
-	size_t exprlen = 0, msize = 0;
+	size_t exprlen = 0;
+    uint32_t msize = 0;
 	gbServer *server = client->server;
 	gbItem *item = NULL;
 
@@ -1010,7 +1012,7 @@ static int gbQueryMultiSizeOfHandler( gbClient *client, byte_t *p ){
 			ll_reset( server->m_keys );
 			ll_reset( server->m_values );
 
-			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&msize, sizeof(size_t), gbWriteReplyHandler, 0 );
+			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&msize, sizeof(uint32_t), gbWriteReplyHandler, 0 );
 		}
 		else
 			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );

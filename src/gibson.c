@@ -348,7 +348,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask ) {
 
 	// we're still readying the buffer size from the socket
 	if( client->status == STATUS_WAITING_SIZE ){
-		toread = sizeof(int) - client->read;
+		toread = sizeof(uint32_t) - client->read;
 		// keep reading it
 		if( toread > 0 ){
 			p = (byte_t *)( &client->buffer_size + client->read );

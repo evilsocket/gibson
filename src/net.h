@@ -32,6 +32,7 @@
 #ifndef __NET_H__
 #	define __NET_H__
 
+#include <stdint.h>
 #include <time.h>
 #include <sys/stat.h>
 #include "atree.h"
@@ -239,11 +240,11 @@ typedef struct gbClient
 	// client request/response buffer
 	byte_t   *buffer;
 	// client request/response buffer size
-	int		  buffer_size;
+	uint32_t  buffer_size;
 	// number of bytes currently read
-	int		  read;
+	uint32_t  read;
 	// number of bytes currently wrote
-	int 	  wrote;
+	uint32_t  wrote;
 	// client read status
 	byte_t	  status;
 	// last time this client was seen alive
@@ -269,11 +270,11 @@ typedef struct
 	// the item buffer
 	void  		  *data;
 	// the item buffer size
-	size_t 		   size;
+	uint32_t 	   size;
 	// the item encoding
 	gbItemEncoding encoding;
 	// time the item was last accessed
-	time_t	last_access_time;
+	time_t	       last_access_time;
 	// time the item was created
 	time_t		   time;
 	// TTL of this item
@@ -321,10 +322,10 @@ void gbServerFormatUptime( gbServer *server, char *s );
 
 gbClient *gbClientCreate( int fd, gbServer *server );
 void      gbClientReset( gbClient *client );
-int 	  gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, byte_t *reply, size_t size, gbFileProc *proc, short shutdown );
+int 	  gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, byte_t *reply, uint32_t size, gbFileProc *proc, short shutdown );
 int       gbClientEnqueueCode( gbClient *client, short code, gbFileProc, short shutdown );
 int		  gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc *proc, short shutdown );
-int		  gbClientEnqueueKeyValueSet( gbClient *client, size_t elements, gbFileProc *proc, short shutdown );
+int		  gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc *proc, short shutdown );
 void	  gbClientDestroy( gbClient *client );
 
 #endif

@@ -12,5 +12,5 @@ max_request_size 10M
 max_key_size 512K
 max_value_size 9M
 max_response_size 15M
-compression 1K
+compression 500
 cron_period      100

@@ -5,15 +5,13 @@
 
 require_once 'testlib.php';
 
-$big = str_repeat( 'a', 50000 );
-
 $g = new Gibson();
 
 fail_if( $g->pconnect(GIBSON_SOCKET) == FALSE, "Could not connect to test instance" );
 
 for( $i = 0; $i < 1000; $i++ ){
-    $big = str_repeat( generateRandomString(), rand( 2500, 5000 ) );
-    fail_if( $g->set( "big$i", $big, 1 )      == FALSE, "Unexpected SET reply" );
+    $big = str_repeat( generateRandomString(), rand( 500, 1000 ) );
+    fail_if( $g->set( "big$i", $big )      == FALSE, "Unexpected SET reply" );
 }
 
 $stats = $g->stats();

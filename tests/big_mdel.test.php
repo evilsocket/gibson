@@ -8,11 +8,12 @@ $big = str_repeat( "a", 50000 );
 
 fail_if( $g->pconnect(GIBSON_SOCKET) == FALSE, "Could not connect to test instance" );
 
-fail_if( $g->set( "foo", "bar" ) == FALSE, "Unexpected SET reply" );
-fail_if( $g->set( "fuu", "rar" ) == FALSE, "Unexpected SET reply" );
+fail_if( $g->set( "foo", "bar" ) == FALSE, "Unexpected SET reply (foo)" );
+fail_if( $g->set( "fuu", "rar" ) == FALSE, "Unexpected SET reply (fuu)" );
 
 for( $i = 0; $i < 500; $i++ ){
-	fail_if( $g->set( "big$i", $big ) != $big, "Unexpected SET reply" );
+    $reply = $g->set( "big$i", $big );
+	fail_if( $reply != $big, "Unexpected SET reply (big$i)" );
 }
 
 fail_if( $g->mdel( "big" )    		== FALSE, "Unexpected MDEL reply" );
