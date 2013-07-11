@@ -909,8 +909,6 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	size_t elems = 0;
     char s[0xFF] = {0};
 
-    sprintf( s, "%f", zmem_fragmentation_ratio() );
-
 #define APPEND_LONG_STAT( key, value ) ++elems; \
 								   ll_append( server->m_keys, key ); \
 								   ll_append( server->m_values, gbCreateVolatileItem( (void *)(long)value, sizeof(long), GB_ENC_NUMBER ) )
@@ -918,6 +916,11 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 #define APPEND_STRING_STAT( key, value ) ++elems; \
 								   ll_append( server->m_keys, key ); \
 								   ll_append( server->m_values, gbCreateVolatileItem( zstrdup(value), strlen(value), GB_ENC_PLAIN ) )
+
+#define APPEND_FLOAT_STAT( key, value ) memset( s, 0x00, 0xFF ); \
+                                        printf( "APPEND_FLOAT_STAT( %s, %f )\n", key, value ); \
+                                        sprintf( s, "%f", (value) ); \
+                                        APPEND_STRING_STAT( key, s )
 
 	APPEND_STRING_STAT( "server_version",        VERSION );
 	APPEND_STRING_STAT( "server_build_datetime", BUILD_DATETIME );
@@ -935,13 +938,16 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	APPEND_LONG_STAT( "total_compressed_items", server->stats.ncompressed );
 	APPEND_LONG_STAT( "total_clients",          server->stats.nclients );
 	APPEND_LONG_STAT( "total_cron_done",        server->stats.crondone );
+    APPEND_LONG_STAT( "total_connections",      server->stats.connections );
+    APPEND_LONG_STAT( "total_requests",         server->stats.requests );
 	APPEND_LONG_STAT( "memory_available",       server->stats.memavail );
 	APPEND_LONG_STAT( "memory_usable",          server->limits.maxmem );
 	APPEND_LONG_STAT( "memory_used",            server->stats.memused );
 	APPEND_LONG_STAT( "memory_peak", 			server->stats.mempeak );
-    APPEND_STRING_STAT( "memory_fragmentation", s );
+    APPEND_FLOAT_STAT( "memory_fragmentation",  zmem_fragmentation_ratio() );
 	APPEND_LONG_STAT( "item_size_avg",          server->stats.sizeavg );
     APPEND_LONG_STAT( "compr_rate_avg",         server->stats.compravg );
+    APPEND_FLOAT_STAT( "reqs_per_client_avg",   server->stats.requests / (double)server->stats.connections );
 
 #undef APPEND_LONG_STAT
 #undef APPEND_STRING_STAT
@@ -1046,9 +1052,10 @@ static int gbQueryEncOfHandler( gbClient *client, byte_t *p ){
 }
 
 int gbProcessQuery( gbClient *client ) {
-
 	short  op = *(short *)&client->buffer[0];
 	byte_t *p =  client->buffer + sizeof(short);
+    
+    ++client->server->stats.requests;
 
 	if( op == OP_GET ){
 		return gbQueryGetHandler( client, p );

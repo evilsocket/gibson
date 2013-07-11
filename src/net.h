@@ -159,6 +159,10 @@ typedef struct
 	time_t   firstin;
 	// time of the last created object
 	time_t	 lastin;
+    // total requests received
+    unsigned long requests;
+    // total connections received
+    unsigned long connections;
 	// number total of items stored in the container
 	unsigned int nitems;
 	// number of compressed items

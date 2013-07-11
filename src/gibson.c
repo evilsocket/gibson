@@ -188,6 +188,8 @@ int main( int argc, char **argv)
 	server.stats.nclients    =
 	server.stats.nitems	     =
 	server.stats.ncompressed =
+    server.stats.requests    =
+    server.stats.connections =
 	server.stats.sizeavg	 = 
     server.stats.compravg    = 0;
 	server.stats.memavail    = zmem_available();
@@ -449,6 +451,8 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask) {
 		gbNetEnableTcpNoDelay(NULL,client_fd);
         gbNetKeepAlive(NULL,client_fd,server->limits.maxidletime);        
 
+        ++server->stats.connections;
+
 	    gbClient *client = gbClientCreate(client_fd,server);
 
 		if( gbCreateFileEvent( e, client_fd, GB_READABLE, gbReadQueryHandler, client ) == GB_ERR ) {
@@ -500,8 +504,8 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		 freed[0xFF] = {0},
 		 uptime[0xFF] = {0},
 		 avgsize[0xFF] = {0};
-	unsigned long before = 0;
-	long deleted = 0;
+	unsigned long mem_before = 0, items_before = 0;
+	long mem_freed = 0, items_freed = 0;
 
 	server->stats.time = now;
 
@@ -510,31 +514,57 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 		gbServerDestroy( server );
 
 	CRON_EVERY( 15000 ) {
-		before = server->stats.memused;
+		mem_before   = server->stats.memused;
+        items_before = server->stats.nitems;
 
 		at_recurse( &server->tree, gbHandleDeadTTLHandler, server, 0 );
 
-		deleted = before - server->stats.memused;
+		mem_freed   = mem_before   - server->stats.memused;
+        items_freed = items_before - server->stats.nitems;
 
-		if( deleted > 0 ){
-			gbMemFormat( deleted, freed, 0xFF );
+        if( mem_freed > 0 && items_freed > 0 ){
+            gbMemFormat( mem_freed, freed, 0xFF );
 
-			gbLog( INFO, "Freed %s of expired data, left %d items.", freed, server->stats.nitems );
-		}
+			gbLog( INFO, "Freed %s of expired data ( %lu items ).", freed, items_freed );
+        } 
+        else if( items_freed > 0 ){
+            gbLog( INFO, "Freed %lu expired items.", items_freed );
+        }
+        // is this even possible ?
+        else if( mem_freed > 0 ){
+            gbMemFormat( mem_freed, freed, 0xFF );
+
+			gbLog( INFO, "Freed %s of expired data.", freed );
+        }
 	}
 
 	CRON_EVERY( 5000 ) {
 		if( server->stats.memused > server->limits.maxmem ){
 
-			before = server->stats.memused;
+            mem_before   = server->stats.memused;
+            items_before = server->stats.nitems;
 
 			gbLog( WARNING, "Max memory exhausted, trying to free data that was accessed not in the last %ds.", server->gc_ratio );
 
 			at_recurse( &server->tree, gbMemoryFreeHandler, server, 0 );
 
-			gbMemFormat( before - server->stats.memused, freed,  0xFF );
+			mem_freed   = mem_before   - server->stats.memused;
+            items_freed = items_before - server->stats.nitems;
 
-			gbLog( INFO, "Freed %s, left %d items.", freed, server->stats.nitems );
+			if( mem_freed > 0 && items_freed > 0 ){
+                gbMemFormat( mem_freed, freed, 0xFF );
+
+			    gbLog( INFO, "Freed %s of expired data ( %lu items ).", freed, items_freed );
+            } 
+            else if( items_freed > 0 ){
+                gbLog( INFO, "Freed %lu expired items.", items_freed );
+            }
+            // is this even possible ?
+            else if( mem_freed > 0 ){
+                gbMemFormat( mem_freed, freed, 0xFF );
+
+			    gbLog( INFO, "Freed %s of expired data.", freed );
+            }
 		}
 	}
 
