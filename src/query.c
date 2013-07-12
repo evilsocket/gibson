@@ -968,86 +968,64 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	return ret;
 }
 
-static int gbQuerySizeOfHandler( gbClient *client, byte_t *p ){
-	byte_t *k = NULL;
-	size_t klen = 0;
-	gbServer *server = client->server;
-	anode_t *node = NULL;
-	gbItem *item = NULL;
+static int gbGetItemMeta( gbServer *server, gbItem *item, byte_t *m, size_t mlen, int32_t *v ){
+    if( strncmp( m, "size", min( mlen, 4 ) ) == 0 ){
+        *v = item->size;
+        return 1;
+    }
+    else if( strncmp( m, "encoding", min( mlen, 8 ) ) == 0 ){
+        *v = item->encoding;
+        return 1;
+    }
+    else if( strncmp( m, "access", min( mlen, 6 ) ) == 0 ){
+        *v = item->last_access_time;
+        return 1;
+    }
+    else if( strncmp( m, "created", min( mlen, 7 ) ) == 0 ){
+        *v = item->time;
+        return 1;
+    }
+    else if( strncmp( m, "ttl", min( mlen, 3 ) ) == 0 ){
+        *v = item->ttl;
+        return 1;
+    }
+    else if( strncmp( m, "left", min( mlen, 4 ) ) == 0 ){
+        *v = item->ttl <= 0 ? -1 : item->ttl - ( server->stats.time - item->time ); 
+        return 1;
+    }
+    else if( strncmp( m, "lock", min( mlen, 4 ) ) == 0 ){
+        *v = item->lock;
+        return 1;
+    }
+    
+    return 0; 
+}
+        
+static int gbQueryMetaHandler( gbClient *client, byte_t *p ){
+    byte_t *k = NULL, *m = NULL;
+    size_t klen = 0, mlen = 0;
+    gbServer *server = client->server;
+    anode_t *node = NULL;
+    gbItem *item = NULL;
+    int32_t v = 0;
 
-	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL ) ){
+   	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &m, &klen, &mlen ) ){
 		node = at_find_node( &server->tree, k, klen );
-		if(node){
-			item = node->marker;
+		if(node && gbIsNodeStillValid( node, node->marker, server, 1 ) ){
+			item                   = node->marker;
 			item->last_access_time = server->stats.time;
-			
-			if( gbIsNodeStillValid( node, node->marker, server, 1 ) )
-				return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&item->size, sizeof(uint32_t), gbWriteReplyHandler, 0 );
+		    
+            if( gbGetItemMeta( server, item, m, mlen, &v ) == 1 ){
+                return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&v, sizeof(int32_t), gbWriteReplyHandler, 0 );
+            }
+           
+            return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 		}
-		else
-			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+		
+        return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
 	}
-	else
-		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
-}
-
-static int gbQueryMultiSizeOfHandler( gbClient *client, byte_t *p ){
-	byte_t *expr = NULL;
-	size_t exprlen = 0;
-    uint32_t msize = 0;
-	gbServer *server = client->server;
-	gbItem *item = NULL;
-
-	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) ){
-		size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-		if( found ){
-			ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-				item = vi->data;
-				item->last_access_time = server->stats.time;
-				
-				if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) ){
-					msize += item->size;
-				}
-
-				// free allocated key
-				zfree( ki->data );
-				ki->data = NULL;
-			}
-
-			ll_reset( server->m_keys );
-			ll_reset( server->m_values );
-
-			return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&msize, sizeof(uint32_t), gbWriteReplyHandler, 0 );
-		}
-		else
-			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
-	}
-	else
-		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
-}
-
-static int gbQueryEncOfHandler( gbClient *client, byte_t *p ){
-	byte_t *k = NULL;
-	size_t klen = 0;
-	gbServer *server = client->server;
-	anode_t *node = NULL;
-	gbItem *item = NULL;
-
-	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL ) ){
-		node = at_find_node( &server->tree, k, klen );
-		if( node ){
-			item = node->marker;
-			item->last_access_time = server->stats.time; 
-			
-			if( gbIsNodeStillValid( node, node->marker, server, 1 ) ){
-				return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&item->encoding, sizeof(gbItemEncoding), gbWriteReplyHandler, 0 );
-			}
-			else
-				return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
-		}
-	}
-	else
-		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+	
+	return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
 int gbProcessQuery( gbClient *client ) {
@@ -1107,15 +1085,9 @@ int gbProcessQuery( gbClient *client ) {
 	else if( op == OP_PING ){
 		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
 	}
-	else if( op == OP_SIZEOF ){
-		return gbQuerySizeOfHandler( client, p );
-	}
-	else if( op == OP_MSIZEOF ){
-		return gbQueryMultiSizeOfHandler( client, p );
-	}
-	else if( op == OP_ENCOF ){
-		return gbQueryEncOfHandler( client, p );
-	}
+    else if( op == OP_META ){
+        return gbQueryMetaHandler( client, p );
+    }
 	else if( op == OP_END ){
 		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 1 );
 	}
