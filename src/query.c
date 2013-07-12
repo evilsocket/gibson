@@ -968,7 +968,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 	return ret;
 }
 
-static int gbGetItemMeta( gbServer *server, gbItem *item, byte_t *m, size_t mlen, int32_t *v ){
+static int gbGetItemMeta( gbServer *server, gbItem *item, byte_t *m, size_t mlen, long *v ){
     if( strncmp( m, "size", min( mlen, 4 ) ) == 0 ){
         *v = item->size;
         return 1;
@@ -1007,16 +1007,16 @@ static int gbQueryMetaHandler( gbClient *client, byte_t *p ){
     gbServer *server = client->server;
     anode_t *node = NULL;
     gbItem *item = NULL;
-    int32_t v = 0;
+    long v = 0;
 
    	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &m, &klen, &mlen ) ){
 		node = at_find_node( &server->tree, k, klen );
-		if(node && gbIsNodeStillValid( node, node->marker, server, 1 ) ){
+		if(node && node->marker && gbIsNodeStillValid( node, node->marker, server, 1 ) ){
 			item                   = node->marker;
 			item->last_access_time = server->stats.time;
 		    
             if( gbGetItemMeta( server, item, m, mlen, &v ) == 1 ){
-                return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&v, sizeof(int32_t), gbWriteReplyHandler, 0 );
+                return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&v, sizeof(long), gbWriteReplyHandler, 0 );
             }
            
             return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
