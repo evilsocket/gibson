@@ -1008,18 +1008,22 @@ static int gbQueryMetaHandler( gbClient *client, byte_t *p ){
     anode_t *node = NULL;
     gbItem *item = NULL;
     long v = 0;
+    int ret = 0;
 
    	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, &m, &klen, &mlen ) ){
 		node = at_find_node( &server->tree, k, klen );
 		if(node && node->marker && gbIsNodeStillValid( node, node->marker, server, 1 ) ){
-			item                   = node->marker;
-			item->last_access_time = server->stats.time;
+			item = node->marker;
 		    
             if( gbGetItemMeta( server, item, m, mlen, &v ) == 1 ){
-                return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&v, sizeof(long), gbWriteReplyHandler, 0 );
+                ret = gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&v, sizeof(long), gbWriteReplyHandler, 0 );
             }
+            else
+                ret = gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+
+			item->last_access_time = server->stats.time;
            
-            return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+            return ret;
 		}
 		
         return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
