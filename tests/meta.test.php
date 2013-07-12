@@ -12,8 +12,8 @@ fail_if( $g->set( "ebbb",  "1" )   == FALSE, "Unexpected SET reply" );
 fail_if( $g->inc( "ebbb" )         == FALSE, "Unexpected INC reply" );
 fail_if( $g->set( "eccc",  $big )  == FALSE, "Unexpected SET reply" );
 
-fail_if( $g->encof( "eaaa" ) != Gibson::ENC_PLAIN,  "ENCOF should be ENC_PLAIN" );
-fail_if( $g->encof( "ebbb" ) != Gibson::ENC_NUMBER, "ENCOF should be ENC_NUMBER" );
-fail_if( $g->encof( "eccc" ) != Gibson::ENC_LZF, 	"ENCOF should be ENC_LZF" );
+fail_if( $g->meta( "eaaa", 'encoding' ) != Gibson::ENC_PLAIN,  "Encoding should be ENC_PLAIN" );
+fail_if( $g->meta( "ebbb", 'encoding' ) != Gibson::ENC_NUMBER, "Encoding should be ENC_NUMBER" );
+fail_if( $g->meta( "eccc", 'encoding' ) != Gibson::ENC_LZF, 	"Encoding should be ENC_LZF" );
 
 ?>
