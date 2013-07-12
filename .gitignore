@@ -4,6 +4,11 @@
 *.so
 *.so.*
 *.swp
+*.deb
+*.rpm
+*.gz
+CPack*
+_CPack*
 tags
 gibson
 # Eclipse files and directories

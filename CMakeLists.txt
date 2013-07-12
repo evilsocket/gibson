@@ -96,3 +96,25 @@ else ( NOT PHP_FOUND )
 	
 	add_custom_target( test COMMAND ./tests/run_tests.php )
 endif ( NOT PHP_FOUND )
+
+#packaging
+if (UNIX)
+
+    if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+        set( CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64" )
+    else( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+        set( CPACK_DEBIAN_PACKAGE_ARCHITECTURE "i386" )
+    endif( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+
+    set( CPACK_GENERATOR "DEB;RPM")
+    set( CPACK_PACKAGE_NAME "gibson-server" )
+    set( CPACK_PACKAGE_VERSION  ${VERSION} )
+    set( CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}" ) 
+    set( CPACK_PACKAGE_DESCRIPTION_SUMMARY "A high performance tree-based cache server.")
+    set( CPACK_PACKAGE_DESCRIPTION "A high performance tree-based cache server.")
+    set( CPACK_DEBIAN_PACKAGE_SECTION "database" )
+    set( CPACK_PACKAGE_CONTACT "Simone Margaritelli evilsocket@gmail.com")
+
+    include(CPack)
+
+endif (UNIX)
