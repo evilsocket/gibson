@@ -87,62 +87,11 @@ llist_t *ll_prealloc( size_t elements );
  */
 #define ll_init( ll ) (ll)->head = NULL; \
 					  (ll)->tail = NULL
-/*
- * Get the number of items in the list.
- */
-#define ll_size( ll ) (ll)->items
-/*
- * Remove the last element from the list.
- */
-#define ll_pop( ll )  ll_remove( (ll), (ll)->tail )
-/*
- * Get a pointer to the first element data.
- */
-#define ll_head( ll ) (ll)->head->data
-/*
- * Get a pointer to the last element data.
- */
-#define ll_back( ll ) (ll)->tail->data
+
 /*
  * Add an element to the end of the list.
  */
 void 	ll_append( llist_t *ll, void *data );
-/*
- * Add two elements to the end of the list.
- */
-#define ll_append_pair( ll, a, b ) ll_append( (ll), b ); \
-								   ll_append( (ll), a )
-/*
- * Add an element on top of the list.
- */
-void 	ll_prepend( llist_t *ll, void *data );
-/*
- * Add two elements on top of the list.
- */
-#define ll_prepend_pair( ll, a, b ) ll_prepend( (ll), b ); \
-									ll_prepend( (ll), a )
-/*
- * Move the item from one list to the end of another.
- */
-void 	ll_move( llist_t *from, llist_t *to, ll_item_t *item );
-/*
- * Copy the 'from' linked list to the 'to' linked list.
- */
-void	ll_copy( llist_t *from, llist_t *to );
-/*
- * Merge 'source' list inside 'dest' list, the elements of
- * 'dest' will be removed.
- */
-void	ll_merge( llist_t *dest, llist_t *source );
-/*
- * Same as ll_merge, plus destroy the 'source' list.
- */
-#define ll_merge_destroy( dest, source ) ll_merge( (dest), (source) ); \
-										 ll_destroy( (source) )
-/*
- * Remove an element from the list.
- */
-void    ll_remove( llist_t *ll, ll_item_t *item );
 /*
  * Clear and deallocate each item of the list.
  */
