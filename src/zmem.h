@@ -47,6 +47,8 @@
 
 #include <stdlib.h>
 
+
+void   zmem_allocator( char *buffer, size_t size );
 // get system available memory
 size_t zmem_available();
 // get memory used by the process

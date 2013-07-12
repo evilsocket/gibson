@@ -186,7 +186,8 @@ int main( int argc, char **argv)
 		 maxkey[0xFF] = {0},
 		 maxvalue[0xFF] = {0},
 		 maxrespsize[0xFF] = {0},
-		 compr[0xFF] = {0};
+		 compr[0xFF] = {0},
+         allocator[0xFF] = {0};
 
 	gbMemFormat( server.limits.maxrequestsize, reqsize, 0xFF );
 	gbMemFormat( server.limits.maxmem, maxmem, 0xFF );
@@ -195,20 +196,14 @@ int main( int argc, char **argv)
 	gbMemFormat( server.limits.maxresponsesize, maxrespsize, 0xFF );
 	gbMemFormat( server.compression, compr, 0xFF );
 
+    zmem_allocator( allocator, 0xFF );
+
     extern char *aeApiName();
 
 	gbLog( INFO, "Server starting ..." );
 	gbLog( INFO, "Git Branch       : '%s'", BUILD_GIT_BRANCH );
 	gbLog( INFO, "Multiplexing API : '%s'", aeApiName() );
-#if HAVE_JEMALLOC == 1
-	const char *p;
-	size_t s = sizeof(p);
-	mallctl("version", &p,  &s, NULL, 0);
-
-	gbLog( INFO, "Memory allocator : 'jemalloc %s'", p );
-#else
-	gbLog( INFO, "Memory allocator : 'malloc'" );
-#endif
+	gbLog( INFO, "Memory allocator : '%s'", allocator );
 	gbLog( INFO, "Max idle time    : %ds", server.limits.maxidletime );
 	gbLog( INFO, "Max clients      : %d", server.limits.maxclients );
 	gbLog( INFO, "Max request size : %s", reqsize );
