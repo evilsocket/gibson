@@ -61,9 +61,7 @@ void ll_append_new( llist_t *ll, void *data ){
 	}
 	else{
 		ll->tail->next = item;
-		item->prev 	   = ll->tail;
 	}
-
 	ll->tail = item;
 }
 

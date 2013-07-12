@@ -39,7 +39,6 @@
  */
 typedef struct ll_item {
 	struct ll_item *next;
-	struct ll_item *prev;
     void    *data;
 }
 ll_item_t;
