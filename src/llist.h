@@ -48,6 +48,7 @@ ll_item_t;
 typedef struct {
 	ll_item_t *head;
 	ll_item_t *tail;
+    ll_item_t *free; // next free element if ll_prealloc was used
 }
 llist_t;
 
@@ -85,7 +86,8 @@ llist_t *ll_prealloc( size_t elements );
  * Initialize a linked list.
  */
 #define ll_init( ll ) (ll)->head = NULL; \
-					  (ll)->tail = NULL
+					  (ll)->tail = NULL; \
+                      (ll)->free = NULL
 
 /*
  * Add an element to the end of the list.

@@ -918,7 +918,6 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p ){
 								   ll_append( server->m_values, gbCreateVolatileItem( zstrdup(value), strlen(value), GB_ENC_PLAIN ) )
 
 #define APPEND_FLOAT_STAT( key, value ) memset( s, 0x00, 0xFF ); \
-                                        printf( "APPEND_FLOAT_STAT( %s, %f )\n", key, value ); \
                                         sprintf( s, "%f", (value) ); \
                                         APPEND_STRING_STAT( key, s )
 
