@@ -15,7 +15,7 @@ $values = array
 
 foreach( $values as $value ){
 	fail_if( $g->set( "utf", $value  ) != $value, "Unexpected SET reply" );
-	fail_if( $g->get( "utf" ) 		   != $value, "Unexpected SET reply" );
+	fail_if( $g->get( "utf" ) 		   != $value, "Unexpected GET reply" );
 }
 
 ?>
