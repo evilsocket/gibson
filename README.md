@@ -38,11 +38,11 @@ Features
 
 * [Compilation](#compilation)
 * [Configuration](#configuration)
-* [Using the console client](#usingtheconsoleclient)
+* [Using the console client](#using-the-console-client)
 * [Command Reference](http://gibson-db.in/commands.php)
 * [Clients](http://gibson-db.in/clients.php)
 * [Protocol Specifications](http://gibson-db.in/protocol.php)
-* [Data Model](#datamodel)
+* [Data Model](#data-model)
 * [License](#license)
 
 * * *
