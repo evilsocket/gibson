@@ -67,6 +67,17 @@ void ll_append( llist_t *ll, void *data ){
 		}
 	}
 
+    // search starting from the head until the free slot marker
+    for( item = ll->head; item != ll->free && item; item = item->next ){
+        // found first free slot
+        if( item->data == NULL ){
+			item->data = data;
+            ll->free   = item->next;
+			return;
+		}
+    }
+
+    // no free slot found, create a new one
 	ll_append_new( ll, data );
 }
 

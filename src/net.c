@@ -948,7 +948,8 @@ void gbClientDestroy( gbClient *client ){
 		if( ll_data( gbClient *, item ) == client )
 		{
             // do not free the list item itself
-            item->data = NULL;
+            item->data            = NULL;
+            server->clients->free = item;
 			break;
 		}
 	}
