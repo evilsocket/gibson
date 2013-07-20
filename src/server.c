@@ -508,7 +508,7 @@ void gbServerDestroy( gbServer *server ){
 	zfree( server->m_buffer );
 	zfree( server->lzf_buffer );
 
-	at_recurse( &server->tree, gbObjectDestroyHandler, server, 0 );
+	at_recurse( &server->tree, gbObjectDestroyHandler,   NULL, 0 );
 	at_recurse( &server->config, gbConfigDestroyHandler, NULL, 0 );
 
 	at_free( &server->tree );
