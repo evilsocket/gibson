@@ -31,8 +31,8 @@
 // command line arguments
 static struct option long_options[] =
 {
-    { "help",    no_argument,       0, 'h'},
-     {"config",  required_argument, 0, 'c'},
+    { "help",    no_argument,       0, 'h' },
+    { "config",  required_argument, 0, 'c' },
     // overridable configuration directives
     { "logfile", required_argument, 0, 0x00 },
     { "loglevel", required_argument, 0, 0x00 },
