@@ -92,6 +92,22 @@ void gbConfigLoad( atree_t *config, char *filename ){
 	}
 }
 
+void gbConfigMerge( atree_t *config, char *skip, struct option *options, int argc, char **argv ){
+    int c = 0, oindex = 0;
+    char *key;
+
+    while( ( c = getopt_long( argc, argv, skip, options, &oindex ) ) != -1 ){
+        if( c && strchr( skip, c ) ){
+            continue;
+        }
+        else if( oindex >= 0 && optarg != NULL ){
+            key = (char *)options[oindex].name;
+
+            at_insert( config, (unsigned char *)key, strlen(key), zstrdup(optarg) ); 
+        }
+    } 
+}
+
 int gbConfigReadInt( atree_t *config, const char *key, int def ){
 	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
 	if( value ){

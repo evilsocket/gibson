@@ -50,7 +50,7 @@ string(REGEX REPLACE "HEAD " "" BUILD_GIT_BRANCH "${BUILD_GIT_BRANCH}")
 
 set( PREFIX usr )
 set( PROJECT "gibson" )
-set( AUTHOR "Simone Margaritelli <evilsocket at gmail dot com>" )
+set( AUTHOR "Simone Margaritelli <http://gibson-db.in>" )
 set( LICENSE "BSD License" )
 set( MAJOR_VERSION 1 )
 set( MINOR_VERSION 0 )

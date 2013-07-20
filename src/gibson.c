@@ -28,17 +28,96 @@
  */
 #include "server.h"
 
+// command line arguments
+static struct option long_options[] =
+{
+    { "help",    no_argument,       0, 'h'},
+     {"config",  required_argument, 0, 'c'},
+    // overridable configuration directives
+    { "logfile", required_argument, 0, 0x00 },
+    { "loglevel", required_argument, 0, 0x00 },
+    { "logflushrate", required_argument, 0, 0x00 },
+    { "unix_socket", required_argument, 0, 0x00 },
+    { "address", required_argument, 0, 0x00 },
+    { "port", required_argument, 0, 0x00 },
+    { "max_idletime", required_argument, 0, 0x00 },
+    { "max_clients", required_argument, 0, 0x00 },
+    { "max_request_size", required_argument, 0, 0x00 },
+    { "max_item_ttl", required_argument, 0, 0x00 },
+    { "max_memory", required_argument, 0, 0x00 },
+    { "max_key_size", required_argument, 0, 0x00 },
+    { "max_value_size", required_argument, 0, 0x00 },
+    { "max_response_size", required_argument, 0, 0x00 },
+    { "compression", required_argument, 0, 0x00 },
+    { "daemonize", required_argument, 0, 0x00 },
+    { "cron_period", required_argument, 0, 0x00 },
+    { "pidfile", required_argument, 0, 0x00 },
+    { "gc_ratio", required_argument, 0, 0x00 },
+
+    {0, 0, 0, 0}
+};
+
+static char *descriptions[] = {
+    "Print this help menu and exit.",
+    "Set configuration file to load.",
+    "The log file path, or /dev/stdout to log on the terminal output.",
+    "Integer number representing the verbosity of the log manager.",
+    "How often to flush logfile, where 1 stands for 'flush the log file every new line'.",
+    "The UNIX socket path to use if Gibson will run in a local environment, use the directives address and port to create a TCP server instead.",
+    "Address to bind the TCP server to.",
+    "TCP port to use for server listening.",
+    "Maximum time in seconds a client can be idle ( without read or write operations ), after this period the client connection will be closed.",
+    "Maximum number of clients Gibson can hadle concurrently.",
+    "Maximum size of a client request.",
+    "Maximum time-to-live an object can have.",
+    "Maximum memory to be used by the Gibson server, when this value is reached, the server will try to deallocate old objects to free space ( see gc_ratio ) and, if there aren't freeable objects at the moment, will refuse to accept new objects with a REPL_ERR_MEM error reply.",
+    "Maximum size of the key for a Gibson object.",
+    "Maximum size of the value for a Gibson object.",
+    "Maximum Gibson response size, used to limit I/O when a M* operator is used.",
+    "Objects above this size will be compressed in memory.",
+    "If 1 the process server will be daemonized ( put on background ), otherwise will run synchronously with the caller process.",
+    "Number of milliseconds between each cron schedule, do not put a value higher than 1000.",
+    "File to be used to save the current Gibson process id.",
+    "If max_memory is reached, data that is not being accessed in this amount of time ( i.e. gc_ratio 1h = data that is not being accessed in the last hour ) get deleted to release memory for the server."
+};
 
 // the global server instance
 gbServer server;
 
 void gbHelpMenu( char **argv, int exitcode ){
-	printf( "Gibson cache server v%s %s ( built %s )\nCopyright %s\nReleased under %s\n\n", VERSION, BUILD_GIT_BRANCH, BUILD_DATETIME, AUTHOR, LICENSE );
+    size_t i = 0;
+    struct option *popt = &long_options[0];
+    char s[0xFF];
 
-	printf( "%s [-h|--help] [-c|--config FILE]\n\n", argv[0] );
+	printf( "Gibson cache server v%s %s ( built %s )\n", VERSION, BUILD_GIT_BRANCH, BUILD_DATETIME );
+    printf( "Released under %s\n\n", LICENSE );
 
-	printf("  -h, --help          Print this help and exit.\n");
-	printf("  -c, --config FILE   Set configuration file to load, default %s.\n\n", GB_DEFAULT_CONFIGURATION );
+	printf( "Usage: %s [options]\n", argv[0] );
+    printf( "Options:\n" );
+
+    while( popt && popt->name ){
+        memset( s, 0x00, 0xFF );
+
+        if( popt->val != 0x00 )
+            sprintf( s, "  -%c, --%s", popt->val, popt->name );
+
+        else
+            sprintf( s, "  --%s", popt->name );
+
+        if( popt->has_arg == required_argument )
+            strcat( s, " VALUE" );
+
+        printf( "%-35s %s\n", s, descriptions[i] );
+
+        ++popt;
+        ++i;
+    }
+
+    printf("\n");
+
+    printf( "To report issues : <http://github.com/evilsocket/gibson/issues>\n" );
+    printf( "Gibson website   : <http://gibson-db.in>\n" );
+    printf( "Documentation    : <http://gibson-db.in/documentation.php>\n\n" );
 
 	exit(exitcode);
 }
@@ -46,30 +125,11 @@ void gbHelpMenu( char **argv, int exitcode ){
 int main( int argc, char **argv)
 {
 	int c, option_index = 0;
-
-	static struct option long_options[] =
-	{
-		{"help",    no_argument,       0, 'h'},
-		{"config",  required_argument, 0, 'c'},
-		{0, 0, 0, 0}
-	};
-
     char *configuration = GB_DEFAULT_CONFIGURATION;
 
-    while(1){
-    	c = getopt_long( argc, argv, "hc:", long_options, &option_index );
-    	if( c == -1 )
-    		break;
-
+    while( ( c = getopt_long( argc, argv, "hc:", long_options, &option_index ) ) != -1 ){
     	switch (c)
 		{
-			case 0:
-				/* If this option set a flag, do nothing else now. */
-				if (long_options[option_index].flag != 0)
-					break;
-
-			break;
-
 			case 'h':
 
 				gbHelpMenu(argv,0);
@@ -81,18 +141,22 @@ int main( int argc, char **argv)
 				configuration = optarg;
 
 			break;
-
-			default:
-				gbHelpMenu(argv,1);
 		}
     }
+
+    // this must be resetted to 1 in order to allow another getopt_long to parse argv
+    optind = 1;
 
     zmem_set_oom_handler(gbOOM);
 
 	memset( &server, 0x00, sizeof(gbServer) );
 
+    // load configuration from file
     gbConfigLoad( &server.config, configuration );
-
+    // perform configuration override from command line
+    gbConfigMerge( &server.config, "hc:", long_options, argc, argv );
+    
+    // start reading configuration
 	gbLogInit
 	(
 	  gbConfigReadString( &server.config, "logfile", GB_DEAFULT_LOG_FILE ),

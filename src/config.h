@@ -30,8 +30,10 @@
 #define __CONFIG_H__
 
 #include "atree.h"
+#include <getopt.h>
 
 void 		  gbConfigLoad( atree_t *config, char *filename );
+void          gbConfigMerge( atree_t *config, char *skip, struct option *options, int argc, char **argv );
 int  		  gbConfigReadInt( atree_t *config, const char *key, int def );
 unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long def );
 const char *  gbConfigReadString( atree_t *config, const char *key, const char *def );
