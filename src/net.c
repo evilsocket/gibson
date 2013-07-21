@@ -35,6 +35,7 @@
 #include "lzf.h"
 #include "log.h"
 #include "query.h"
+#include "endianness.h"
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -978,10 +979,21 @@ int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, 
 	client->wrote 		= 0;
 	client->shutdown 	= shutdown;
 
-	memcpy( client->buffer, 				  					          					  &code, 	 sizeof( short ) );
-	memcpy( client->buffer + sizeof( short ),					          					  &encoding, sizeof( gbItemEncoding ) );
-	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ),  				      &size, 	 sizeof( uint32_t ) );
-	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ) + sizeof( uint32_t ), reply, 	 size );
+	memcpy( client->buffer, 				  					          					  
+            memrev16ifbe(&code), 	 
+            sizeof( short ) );
+
+	memcpy( client->buffer + sizeof( short ),					          					  
+            &encoding, 
+            sizeof( gbItemEncoding ) );
+
+	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ),  				     
+            memrev32ifbe(&size), 	 
+            sizeof( uint32_t ) );
+
+	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ) + sizeof( uint32_t ), 
+            reply, 	 
+            size );
 
 	return gbCreateFileEvent( client->server->events, client->fd, GB_WRITABLE, proc, client );
 }
@@ -1009,8 +1021,13 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
 	}
 	else if( item->encoding == GB_ENC_NUMBER ){
 		long num = (long)item->data;
-
-		return gbClientEnqueueData( client, code, GB_ENC_NUMBER, (byte_t *)&num, item->size, proc, shutdown );
+        #if __x86_64__ || __ppc64__
+        byte_t *v = (byte_t *)memrev64ifbe(&num);
+        #else
+        byte_t *v = (byte_t *)memrev32ifbe(&num);
+        #endif	
+		
+        return gbClientEnqueueData( client, code, GB_ENC_NUMBER, v, item->size, proc, shutdown );
 	}
 	else
 		return GBNET_ERR;
@@ -1035,7 +1052,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc 
 
 #define SAFE_MEMCPY( p, data, size ) CHECK_SPACE(size); memcpy( p, data, size ); p += size; space -= size
 
-	SAFE_MEMCPY( p, &elements, sz );
+	SAFE_MEMCPY( p, memrev32ifbe(&elements), sz );
 
 	ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
 		// handle expired/nulled items
@@ -1046,7 +1063,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc 
 			// write key size + key
 			sz = strlen( ki->data );
 
-			SAFE_MEMCPY( p, &sz, sizeof(uint32_t) );
+			SAFE_MEMCPY( p, memrev32ifbe(&sz), sizeof(uint32_t) );
 			SAFE_MEMCPY( p, ki->data, sz );
 
 			// write value size + value
@@ -1068,13 +1085,17 @@ int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc 
 			}
 			else if( item->encoding == GB_ENC_NUMBER ){
 				num = (long)item->data;
-				v   = (byte_t *)&num;
+                #if __x86_64__ || __ppc64__
+                v = (byte_t *)memrev64ifbe(&num);
+                #else
+                v = (byte_t *)memrev32ifbe(&num);
+                #endif	
 				vsize = item->size;
 			}
 
-			SAFE_MEMCPY( p, &encoding, sizeof( gbItemEncoding ) );
-			SAFE_MEMCPY( p, &vsize,	   sizeof(uint32_t) );
-			SAFE_MEMCPY( p, v, 		   vsize );
+			SAFE_MEMCPY( p, &encoding,            sizeof( gbItemEncoding ) );
+			SAFE_MEMCPY( p, memrev32ifbe(&vsize), sizeof( uint32_t ) );
+			SAFE_MEMCPY( p, v, 		              vsize );
 		}
 	}
 
