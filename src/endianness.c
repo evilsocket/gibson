@@ -69,33 +69,3 @@ void *memrev64(void *p) {
 
     return p;
 }
-
-uint16_t uintrev16(uint16_t v) {
-    memrev16(&v);
-    return v;
-}
-
-uint32_t uintrev32(uint32_t v) {
-    memrev32(&v);
-    return v;
-}
-
-uint64_t uintrev64(uint64_t v) {
-    memrev64(&v);
-    return v;
-}
-
-int16_t intrev16(int16_t v) {
-    memrev16(&v);
-    return v;
-}
-
-int32_t intrev32(int32_t v) {
-    memrev32(&v);
-    return v;
-}
-
-int64_t intrev64(int64_t v) {
-    memrev64(&v);
-    return v;
-}
