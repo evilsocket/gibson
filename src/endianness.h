@@ -34,34 +34,15 @@
 void *memrev16(void *p);
 void *memrev32(void *p);
 void *memrev64(void *p);
-uint16_t uintrev16(uint16_t v);
-uint32_t uintrev32(uint32_t v);
-uint64_t uintrev64(uint64_t v);
-int16_t intrev16(int16_t v);
-int32_t intrev32(int32_t v);
-int64_t intrev64(int64_t v);
 
 #if (BYTE_ORDER == LITTLE_ENDIAN)
 #   define memrev16ifbe(p) (p)
 #   define memrev32ifbe(p) (p)
 #   define memrev64ifbe(p) (p)
-#   define uintrev16ifbe(v) (v)
-#   define uintrev32ifbe(v) (v)
-#   define uintrev64ifbe(v) (v)
-#   define intrev16ifbe(v) (v)
-#   define intrev32ifbe(v) (v)
-#   define intrev64ifbe(v) (v)
 #else
 #   define memrev16ifbe(p) memrev16(p)
 #   define memrev32ifbe(p) memrev32(p)
 #   define memrev64ifbe(p) memrev64(p)
-#   define uintrev16ifbe(v) uintrev16(v)
-#   define uintrev32ifbe(v) uintrev32(v)
-#   define uintrev64ifbe(v) uintrev64(v)
-#   define intrev16ifbe(v) intrev16(v)
-#   define intrev32ifbe(v) intrev32(v)
-#   define intrev64ifbe(v) intrev64(v)
-
 #endif
 
 #endif
