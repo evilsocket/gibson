@@ -60,7 +60,14 @@ endif()
 
 string(REGEX REPLACE "HEAD " "" BUILD_GIT_BRANCH "${BUILD_GIT_BRANCH}")
 
-set( PREFIX usr )
+if (PREFIX)
+    message(STATUS "Using prefix ${PREFIX}")
+else (WITH_DEBUG)
+	message(STATUS "Using default prefix")
+    set( PREFIX /usr )
+endif ()
+
+
 set( PROJECT "gibson" )
 set( AUTHOR "Simone Margaritelli <http://gibson-db.in>" )
 set( LICENSE "BSD License" )
@@ -86,9 +93,9 @@ if ( HAVE_JEMALLOC EQUAL 1 )
 	target_link_libraries( ${PROJECT} jemalloc )
 endif ( HAVE_JEMALLOC EQUAL 1 )
 
-install( TARGETS ${PROJECT} DESTINATION /${PREFIX}/bin )
-install( FILES debian/etc/${PROJECT}/${PROJECT}.conf DESTINATION /etc/${PROJECT}/ )
-install( FILES debian/etc/init.d/${PROJECT} DESTINATION /etc/init.d/ 
+install( TARGETS ${PROJECT} DESTINATION ${PREFIX}/bin )
+install( FILES debian/etc/${PROJECT}/${PROJECT}.conf DESTINATION ${PREFIX}/etc/${PROJECT}/ )
+install( FILES debian/etc/init.d/${PROJECT} DESTINATION ${PREFIX}/etc/init.d/ 
 		 PERMISSIONS
 		 OWNER_READ 
 		 OWNER_WRITE 
