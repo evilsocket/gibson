@@ -55,6 +55,7 @@
 #define OP_STATS   18
 #define OP_PING    19
 #define OP_META    20
+#define OP_KEYS    21
 #define OP_END    0xFF
 
 /*

@@ -1032,6 +1032,48 @@ static int gbQueryMetaHandler( gbClient *client, byte_t *p ){
 	return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
+static int gbQueryKeysHandler( gbClient *client, byte_t *p ){
+	byte_t *expr = NULL;
+	size_t exprlen = 0;
+	gbServer *server = client->server;
+	gbItem *item = NULL;
+
+	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) ){
+		size_t i, found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_values, NULL );
+		if( found ){
+            char index[0xFF] = {0};
+            ll_item_t *key = NULL;
+                
+            ll_reset( server->m_keys );
+            for( i = 0, key = server->m_values->head; i < found && key; key = key->next, ++i ){
+                sprintf( index, "%lu", i );
+                ll_append( server->m_keys, zstrdup(index) );
+                // convert strings to gbItems
+                key->data = gbCreateVolatileItem( key->data, strlen(key->data), GB_ENC_PLAIN );
+            }
+
+			int ret = gbClientEnqueueKeyValueSet( client, found, gbWriteReplyHandler, 0 );
+
+            ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
+                // free volatile item
+                gbDestroyVolatileItem( vi->data );
+                // free zstrdup'ed key
+                zfree( ki->data );
+                ki->data = NULL;
+            }
+
+            ll_reset( server->m_keys );
+            ll_reset( server->m_values );
+
+            return ret;
+		}
+		else
+			return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+	}
+	else
+		return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+}
+
 int gbProcessQuery( gbClient *client ) {
 	short  op = *(short *)&client->buffer[0];
 	byte_t *p =  client->buffer + sizeof(short);
@@ -1091,6 +1133,9 @@ int gbProcessQuery( gbClient *client ) {
 	}
     else if( op == OP_META ){
         return gbQueryMetaHandler( client, p );
+    }
+    else if( op == OP_KEYS ){
+        return gbQueryKeysHandler( client, p );
     }
 	else if( op == OP_END ){
 		return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 1 );

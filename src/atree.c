@@ -128,8 +128,10 @@ static void at_search_recursive_handler(anode_t *node, size_t level, void *data)
 		++search->total;
 		search->current[ level + 1 ] = '\0';
 
-		ll_append( *search->keys,   zstrdup( search->current ) );
-		ll_append( *search->values, node->marker );
+		ll_append( *search->keys, zstrdup( search->current ) );
+
+        if( search->values != NULL )
+		    ll_append( *search->values, node->marker );
 	}
 }
 
