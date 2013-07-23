@@ -66,6 +66,10 @@ Once you got the source code, all you have to do is compile Gibson, the process 
 
 Where **compilation options** might be:
 
+    -DPREFIX=/your/custom/prefix
+
+To use a different installation prefix rather than /usr
+
     -DWITH_DEBUG=1
 
 To compile with debug symbols and without optimizations ( for devs ).
