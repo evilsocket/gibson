@@ -76,6 +76,12 @@ set( MINOR_VERSION 0 )
 set( PATCH_LEVEL   0 )
 set( VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL}b" )
 
+# *BSD
+include_directories(/usr/local/include)
+# NetBSD
+include_directories(/usr/local/include)
+# Darwin
+include_directories(/opt/local/include)
 # this is needed for Mac OS X compilation compatibility
 include_directories("${PROJECT_SOURCE_DIR}/src")
 
