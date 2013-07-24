@@ -28,6 +28,7 @@
  */
 #include <stdio.h>
 #include <ctype.h>
+#include <time.h>
 #include "config.h"
 
 void gbConfigLoad( atree_t *config, char *filename ){
