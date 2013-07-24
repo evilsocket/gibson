@@ -79,16 +79,12 @@ static int aeApiAddEvent(gbEventLoop *eventLoop, int fd, int mask) {
     aeApiState *state = eventLoop->apidata;
     struct kevent ke;
 
-    /* EV_CLEAR flag is needed because the filter reports
-	 * event state transitions and not the current state.  With this flag,
-	 * the same event is only returned once. 
-     */ 
     if (mask & GB_READABLE) {
-        EV_SET(&ke, fd, EVFILT_READ, EV_ADD|EV_CLEAR, 0, 0, NULL);
+        EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
         if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1) return -1;
     }
     if (mask & GB_WRITABLE) {
-        EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD|EV_CLEAR, 0, 0, NULL);
+        EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
         if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1) return -1;
     }
     return 0;
