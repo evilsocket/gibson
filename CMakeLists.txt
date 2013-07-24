@@ -78,12 +78,13 @@ set( VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL}b" )
 
 # *BSD
 include_directories(/usr/local/include)
-set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} /usr/local/lib)
+set( COMMON_FLAGS "${COMMON_FLAGS} -L/usr/local/lib" )
 # NetBSD
 include_directories(/pkg/local/include)
 # Darwin
 include_directories(/opt/local/include)
-set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} /opt/local/lib)
+set( COMMON_FLAGS "${COMMON_FLAGS} -L/opt/local/lib" )
+
 # this is needed for Mac OS X compilation compatibility
 include_directories("${PROJECT_SOURCE_DIR}/src")
 
@@ -103,7 +104,7 @@ endif ( HAVE_JEMALLOC EQUAL 1 )
 
 # backtrace is available in a separate library under FreeBSD
 if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
-    target_link_libraries( ${PROJECT} execinfo)
+    target_link_libraries( ${PROJECT} execinfo )
 endif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
 
 
