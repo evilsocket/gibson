@@ -103,17 +103,17 @@ void zmem_allocator( char *buffer, size_t size ){
 }
 
 /* Author:  David Robert Nadeau */
-size_t zmem_available(){
+unsigned long long zmem_available(){
 #if defined(_WIN32) && (defined(__CYGWIN__) || defined(__CYGWIN32__))
     MEMORYSTATUS status;
     status.dwLength = sizeof(status);
     GlobalMemoryStatus(&status);
-    return (size_t) status.dwTotalPhys;
+    return (unsigned long long) status.dwTotalPhys;
 #elif defined(_WIN32)
     MEMORYSTATUSEX status;
     status.dwLength = sizeof(status);
     GlobalMemoryStatusEx( &status );
-    return (size_t)status.ullTotalPhys;
+    return (unsigned long long)status.ullTotalPhys;
 #elif defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
     /* UNIX variants. ------------------------------------------- */
     /* Prefer sysctl() over sysconf() except sysctl() HW_REALMEM and HW_PHYSMEM */
@@ -128,18 +128,18 @@ size_t zmem_available(){
 #endif
     int64_t size = 0;		/* 64-bit */
     size_t len = sizeof(size);
-    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t) size;
+    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (unsigned long long) size;
     return 0L;			/* Failed? */
 
 #elif defined(_SC_AIX_REALMEM)
-    return (size_t)sysconf( _SC_AIX_REALMEM ) * (size_t)1024L;
+    return (unsigned long long)sysconf( _SC_AIX_REALMEM ) * (size_t)1024L;
 #elif defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
     /* FreeBSD, Linux, OpenBSD, and Solaris. */
-    return (size_t)sysconf( _SC_PHYS_PAGES ) * (size_t)sysconf( _SC_PAGESIZE );
+    return (unsigned long long)sysconf( _SC_PHYS_PAGES ) * (long long)sysconf( _SC_PAGESIZE );
 
 #elif defined(_SC_PHYS_PAGES) && defined(_SC_PAGE_SIZE)
     /* Legacy. */
-    return (size_t)sysconf( _SC_PHYS_PAGES ) * (size_t)sysconf( _SC_PAGE_SIZE );
+    return (unsigned long long)sysconf( _SC_PHYS_PAGES ) * (unsigned long long)sysconf( _SC_PAGE_SIZE );
 #elif defined(CTL_HW) && (defined(HW_PHYSMEM) || defined(HW_REALMEM))
     /* DragonFly BSD, FreeBSD, NetBSD, OpenBSD, and OSX. -------- */
     int mib[2];
@@ -149,14 +149,14 @@ size_t zmem_available(){
 #elif defined(HW_PYSMEM)
     mib[1] = HW_PHYSMEM;		/* Others. ------------------ */
 #endif
-    unsigned int size = 0;		/* 32-bit */
+    unsigned long long size = 0;		/* 32-bit */
     size_t len = sizeof( size );
-    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t)size;
-    return 0L;			/* Failed? */
+    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (unsigned long long)size;
+    return 0;			/* Failed? */
 #endif /* sysctl and sysconf variants */
 
 #else
-    return 0L;			/* Unknown OS. */
+    return 0;			/* Unknown OS. */
 #endif
 }
 

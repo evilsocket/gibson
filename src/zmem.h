@@ -50,7 +50,7 @@
 
 void   zmem_allocator( char *buffer, size_t size );
 // get system available memory
-size_t zmem_available();
+unsigned long long zmem_available();
 // get memory used by the process
 size_t zmem_used(void);
 // set a custom out of memory handler
