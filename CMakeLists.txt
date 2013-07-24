@@ -91,7 +91,12 @@ add_executable( ${PROJECT} ${MAIN_SOURCES} )
 if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
     message( STATUS "Detected FreeBSD - Using libexecinfo." )
     include_directories(/usr/local/include)
+    # cmake seems pretty buggy under FreeBSD :(
     link_directories(/usr/local/lib)
+    set( CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/lib" )
+    set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L/usr/local/lib" )
+    set( CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -L/usr/local/lib" )
+
     target_link_libraries( ${PROJECT} execinfo )
 endif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
 
