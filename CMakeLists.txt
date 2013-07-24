@@ -91,7 +91,7 @@ add_executable( ${PROJECT} ${MAIN_SOURCES} )
 if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
     message( STATUS "Detected FreeBSD - Using libexecinfo." )
     include_directories(/usr/local/include)
-    set( COMMON_FLAGS "${COMMON_FLAGS} -L/usr/local/lib" )
+    link_directories(/usr/local/lib)
     target_link_libraries( ${PROJECT} execinfo )
 endif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
 
