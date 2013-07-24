@@ -77,8 +77,7 @@ set( PATCH_LEVEL   0 )
 set( VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_LEVEL}b" )
 
 # *BSD
-include_directories(/usr/local/include)
-set( COMMON_FLAGS "${COMMON_FLAGS} -L/usr/local/lib" )
+
 # NetBSD
 include_directories(/pkg/local/include)
 # Darwin
@@ -93,20 +92,22 @@ file( GLOB HEADERS src/*.h )
 
 # configure.h generation
 configure_file( src/configure.h.in src/configure.h )
-
 # generation
 add_executable( ${PROJECT} ${MAIN_SOURCES} ) 
+
+# backtrace is available in a separate library under FreeBSD
+if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+    message( STATUS "Detected FreeBSD - Using libexecinfo." )
+    include_directories(/usr/local/include)
+    set( COMMON_FLAGS "${COMMON_FLAGS} -L/usr/local/lib" )
+    target_link_libraries( ${PROJECT} execinfo )
+endif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+
 set_target_properties( ${PROJECT} PROPERTIES COMPILE_FLAGS "${COMMON_CFLAGS}" )
 
 if ( HAVE_JEMALLOC EQUAL 1 )
 	target_link_libraries( ${PROJECT} jemalloc )
 endif ( HAVE_JEMALLOC EQUAL 1 )
-
-# backtrace is available in a separate library under FreeBSD
-if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
-    target_link_libraries( ${PROJECT} execinfo )
-endif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
-
 
 install( TARGETS ${PROJECT} DESTINATION ${PREFIX}/bin )
 install( FILES debian/etc/${PROJECT}/${PROJECT}.conf DESTINATION ${PREFIX}/etc/${PROJECT}/ )
