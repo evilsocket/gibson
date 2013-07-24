@@ -409,12 +409,19 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
             gbGetTime(&now_sec, &now_ms);
             tvp = &tv;
             tvp->tv_sec = shortest->when_sec - now_sec;
-            if (shortest->when_ms < now_ms) {
+			/* Seems like there's a bug in FreeBSD kernel timers :S
+			 */
+			#if defined(__FreeBSD__)
+			tvp->tv_usec = (shortest->when_ms - now_ms)*1000;
+			#else
+			if (shortest->when_ms < now_ms) {
                 tvp->tv_usec = ((shortest->when_ms+1000) - now_ms)*1000;
                 tvp->tv_sec --;
             } else {
                 tvp->tv_usec = (shortest->when_ms - now_ms)*1000;
             }
+			#endif
+
             if (tvp->tv_sec < 0) tvp->tv_sec = 0;
             if (tvp->tv_usec < 0) tvp->tv_usec = 0;
         } else {
