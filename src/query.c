@@ -1039,8 +1039,10 @@ static int gbQueryKeysHandler( gbClient *client, byte_t *p ){
 	gbItem *item = NULL;
 
 	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) ){
-		size_t i, found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_values, NULL );
-		if( found ){
+		size_t found = at_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_values, NULL );
+		long unsigned int i;
+
+        if( found ){
             char index[0xFF] = {0};
             ll_item_t *key = NULL;
                 
