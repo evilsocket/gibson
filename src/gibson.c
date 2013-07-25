@@ -234,7 +234,6 @@ int main( int argc, char **argv)
 	server.cronperiod  = gbConfigReadInt( &server.config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
 	server.pidfile	   = gbConfigReadString( &server.config, "pidfile",        GB_DEFAULT_PID_FILE );
     server.gc_ratio    = gbConfigReadTime( &server.config, "gc_ratio",         GB_DEFAULT_GC_RATIO );
-	server.events 	   = gbCreateEventLoop( server.limits.maxclients + 1024 );
 	server.clients 	   = ll_prealloc( server.limits.maxclients );
 	server.m_keys	   = ll_prealloc( 255 );
 	server.m_values	   = ll_prealloc( 255 );
@@ -280,7 +279,12 @@ int main( int argc, char **argv)
 	gbLog( INFO, "Cron period      : %dms", server.cronperiod );
 
 	gbProcessInit();
-
+	
+	/*
+	 * Under FreeBSD events must be created after gbProcessInit since daemonizing
+	 * the process would mess up timers ( see issue #14 ).
+	 */
+	server.events  = gbCreateEventLoop( server.limits.maxclients + 1024 );
 	server.cron_id = gbCreateTimeEvent( server.events, 1, gbServerCronHandler, &server, NULL );
 
 	gbCreateFileEvent( server.events, server.fd, GB_READABLE, gbAcceptHandler, &server );
