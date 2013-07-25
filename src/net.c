@@ -232,7 +232,7 @@ static void gbAddMillisecondsToNow(long long milliseconds, long *sec, long *ms) 
     when_sec = cur_sec + milliseconds/1000;
     when_ms = cur_ms + milliseconds%1000;
     if (when_ms >= 1000) {
-        when_sec ++;
+        ++when_sec;
         when_ms -= 1000;
     }
     *sec = when_sec;
@@ -344,7 +344,7 @@ static int processTimeEvents(gbEventLoop *eventLoop) {
 
             id = te->id;
             retval = te->timeProc(eventLoop, id, te->clientData);
-            processed++;
+            ++processed;
             /* After an event is processed our time event list may
              * no longer be the same, so we restart from head.
              * Still we make sure to don't process events registered
@@ -389,7 +389,8 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
     int processed = 0, numevents;
 
     /* Nothing to do? return ASAP */
-    if (!(flags & GB_TIME_EVENTS) && !(flags & GB_FILE_EVENTS)) return 0;
+    if (!(flags & GB_TIME_EVENTS) && !(flags & GB_FILE_EVENTS)) 
+        return 0;
 
     /* Note that we want to poll even if there are no
      * file events to process as long as we want to process time
@@ -403,11 +404,11 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 
         if ( ( flags & GB_TIME_EVENTS ) && !(flags & GB_DONT_WAIT))
             shortest = aeSearchNearestTimer(eventLoop);
+        
         if (shortest) {
             long now_sec, now_ms;
 
-            /* Calculate the time missing for the nearest
-             * timer to fire. */
+            // Compute the time missing for the nearest timer to fire.
             gbGetTime(&now_sec, &now_ms);
             tvp = &tv;
             tvp->tv_sec = shortest->when_sec - now_sec;
@@ -421,7 +422,9 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 
             if (tvp->tv_sec < 0) tvp->tv_sec = 0;
             if (tvp->tv_usec < 0) tvp->tv_usec = 0;
-        } else {
+        } 
+        // no time events scheduled
+        else {
             /* If we have to check for events but need to return
              * ASAP because of GB_DONT_WAIT we need to set the timeout
              * to zero */
@@ -452,7 +455,7 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
                 if (!rfired || fe->wfileProc != fe->rfileProc)
                     fe->wfileProc(eventLoop,fd,fe->clientData,mask);
             }
-            processed++;
+            ++processed;
         }
     }
     /* Check time events */
