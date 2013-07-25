@@ -182,7 +182,7 @@ void gbDeleteFileEvent(gbEventLoop *eventLoop, int fd, int mask)
         /* Update the max fd */
         int j;
 
-        for (j = eventLoop->maxfd-1; j >= 0; j--)
+        for (j = eventLoop->maxfd-1; j >= 0; --j )
             if (eventLoop->events[j].mask != GB_NONE) break;
         eventLoop->maxfd = j;
     }
@@ -386,23 +386,27 @@ static int processTimeEvents(gbEventLoop *eventLoop) {
  * The function returns the number of events processed. */
 int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 {
-    int processed = 0, numevents;
+    int processed = 0, 
+        time_events = ( flags & GB_TIME_EVENTS ),
+        file_events = ( flags & GB_FILE_EVENTS ),
+        dont_wait   = ( flags & GB_DONT_WAIT ),
+        numevents;
 
     /* Nothing to do? return ASAP */
-    if (!(flags & GB_TIME_EVENTS) && !(flags & GB_FILE_EVENTS)) 
+    if (!time_events && !file_events) 
         return 0;
 
     /* Note that we want to poll even if there are no
      * file events to process as long as we want to process time
      * events, in order to sleep until the next time event is ready
      * to fire. */
-    if (eventLoop->maxfd != -1 ||
-        ((flags & GB_TIME_EVENTS) && !(flags & GB_DONT_WAIT))) {
+    if ( eventLoop->maxfd != -1 || ( time_events && !dont_wait ) ) 
+    {
         int j;
         gbTimeEvent *shortest = NULL;
         struct timeval tv, *tvp;
 
-        if ( ( flags & GB_TIME_EVENTS ) && !(flags & GB_DONT_WAIT))
+        if ( time_events && !dont_wait )
             shortest = aeSearchNearestTimer(eventLoop);
         
         if (shortest) {
@@ -428,7 +432,7 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
             /* If we have to check for events but need to return
              * ASAP because of GB_DONT_WAIT we need to set the timeout
              * to zero */
-            if (flags & GB_DONT_WAIT) {
+            if (dont_wait) {
                 tv.tv_sec = tv.tv_usec = 0;
                 tvp = &tv;
             } else {
@@ -447,14 +451,17 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 	        /* note the fe->mask & mask & ... code: maybe an already processed
              * event removed an element that fired and we still didn't
              * processed, so we check if the event is still valid. */
-            if (fe->mask & mask & GB_READABLE) {
-                rfired = 1;
-                fe->rfileProc(eventLoop,fd,fe->clientData,mask);
+            if( fe->mask ){
+                if (mask & GB_READABLE) {
+                    rfired = 1;
+                    fe->rfileProc(eventLoop,fd,fe->clientData,mask);
+                }
+                if (mask & GB_WRITABLE) {
+                    if (!rfired || fe->wfileProc != fe->rfileProc)
+                        fe->wfileProc(eventLoop,fd,fe->clientData,mask);
+                }
             }
-            if (fe->mask & mask & GB_WRITABLE) {
-                if (!rfired || fe->wfileProc != fe->rfileProc)
-                    fe->wfileProc(eventLoop,fd,fe->clientData,mask);
-            }
+
             ++processed;
         }
     }
