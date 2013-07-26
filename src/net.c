@@ -451,15 +451,13 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 	        /* note the fe->mask & mask & ... code: maybe an already processed
              * event removed an element that fired and we still didn't
              * processed, so we check if the event is still valid. */
-            if( fe->mask ){
-                if (mask & GB_READABLE) {
-                    rfired = 1;
-                    fe->rfileProc(eventLoop,fd,fe->clientData,mask);
-                }
-                if (mask & GB_WRITABLE) {
-                    if (!rfired || fe->wfileProc != fe->rfileProc)
-                        fe->wfileProc(eventLoop,fd,fe->clientData,mask);
-                }
+            if ( fe->mask && mask & GB_READABLE) {
+                rfired = 1;
+                fe->rfileProc(eventLoop,fd,fe->clientData,mask);
+            }
+            if ( fe->mask && mask & GB_WRITABLE) {
+                if (!rfired || fe->wfileProc != fe->rfileProc)
+                    fe->wfileProc(eventLoop,fd,fe->clientData,mask);
             }
 
             ++processed;
