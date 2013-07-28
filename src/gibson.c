@@ -246,6 +246,7 @@ int main( int argc, char **argv)
 
 	char reqsize[0xFF] = {0},
 		 maxmem[0xFF] = {0},
+         sysmem[0xFF] = {0},
 		 maxkey[0xFF] = {0},
 		 maxvalue[0xFF] = {0},
 		 maxrespsize[0xFF] = {0},
@@ -254,6 +255,7 @@ int main( int argc, char **argv)
 
 	gbMemFormat( server.limits.maxrequestsize, reqsize, 0xFF );
 	gbMemFormat( server.limits.maxmem, maxmem, 0xFF );
+    gbMemFormat( server.stats.memavail, sysmem, 0xFF );
 	gbMemFormat( server.limits.maxkeysize, maxkey, 0xFF );
 	gbMemFormat( server.limits.maxvaluesize, maxvalue, 0xFF );
 	gbMemFormat( server.limits.maxresponsesize, maxrespsize, 0xFF );
@@ -271,6 +273,7 @@ int main( int argc, char **argv)
 	gbLog( INFO, "Max clients      : %d", server.limits.maxclients );
 	gbLog( INFO, "Max request size : %s", reqsize );
 	gbLog( INFO, "Max memory       : %s", maxmem );
+    gbLog( INFO, "System memory    : %s", sysmem );
     gbLog( INFO, "GC Ratio         : %ds", server.gc_ratio );
 	gbLog( INFO, "Max key size     : %s", maxkey );
 	gbLog( INFO, "Max value size   : %s", maxvalue );
