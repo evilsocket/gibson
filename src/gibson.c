@@ -263,11 +263,9 @@ int main( int argc, char **argv)
 
     zmem_allocator( allocator, 0xFF );
 
-    extern char *aeApiName();
-
 	gbLog( INFO, "Server starting ..." );
 	gbLog( INFO, "Git Branch       : '%s'", BUILD_GIT_BRANCH );
-	gbLog( INFO, "Multiplexing API : '%s'", aeApiName() );
+	gbLog( INFO, "Multiplexing API : '%s'", GB_MUX_API );
 	gbLog( INFO, "Memory allocator : '%s'", allocator );
 	gbLog( INFO, "Max idle time    : %ds", server.limits.maxidletime );
 	gbLog( INFO, "Max clients      : %d", server.limits.maxclients );

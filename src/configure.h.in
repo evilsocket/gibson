@@ -38,3 +38,17 @@
 #endif
 #endif
 #endif
+
+#ifdef HAVE_EVPORT
+#define GB_MUX_API "evport"
+#else
+#ifdef HAVE_EPOLL
+#define GB_MUX_API "epoll"    
+#else
+#ifdef HAVE_KQUEUE
+#define GB_MUX_API "kqueue"
+#else
+#define GB_MUX_API "select"
+#endif
+#endif
+#endif
