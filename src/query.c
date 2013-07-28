@@ -39,11 +39,15 @@ extern void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int ma
 __inline__ __attribute__((always_inline)) unsigned int gbQueryParseLong( byte_t *v, size_t vlen, long *l ){
 	register size_t i;
     register long n = 0;
-    register char c;
+    register char c = v[0];
     int sign = 1;
     int start = 0;
 
-    if( v[0] == '-' ){
+    if( c == '0' ){
+        *l = 0;
+        return 1;
+    }
+    else if( c == '-' ){
         sign = -1;
         start = 1;
     }
@@ -89,13 +93,13 @@ static void gbDestroyVolatileItem( gbItem *item ){
 static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl ) {
 	gbItem *item = ( gbItem * )zmalloc( sizeof( gbItem ) );
 
-	item->data 	   = data;
-	item->size 	   = size;
-	item->encoding = encoding;
-	item->time = 
-	item->last_access_time	= server->stats.time;
-	item->ttl	   = ttl;
-	item->lock	   = 0;
+	item->data 	           = data;
+	item->size 	           = size;
+	item->encoding         = encoding;
+	item->time             = 
+	item->last_access_time = server->stats.time;
+	item->ttl	           = ttl;
+	item->lock	           = 0;
 
 	if( encoding == GB_ENC_LZF ){
 	    ++server->stats.ncompressed;
