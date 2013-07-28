@@ -205,8 +205,6 @@ int main( int argc, char **argv)
 	// initialize server statistics
 	server.stats.started     =
 	server.stats.time	     = time(NULL);
-	server.stats.memused     =
-	server.stats.mempeak     =
 	server.stats.firstin     =
 	server.stats.lastin      =
 	server.stats.crondone    =
@@ -217,6 +215,8 @@ int main( int argc, char **argv)
     server.stats.connections =
 	server.stats.sizeavg	 = 
     server.stats.compravg    = 0;
+    server.stats.mempeak     =
+    server.stats.memused     = zmem_used();
 	server.stats.memavail    = zmem_available();
 
 	if( server.limits.maxmem > server.stats.memavail ){
