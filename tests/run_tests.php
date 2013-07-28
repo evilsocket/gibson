@@ -29,7 +29,7 @@ else {
 }
 
 if( $bCustomServer == FALSE )
-	system("cd .. && cmake . && make && ./gibson -c tests/config.test");
+	system("cd .. && ./gibson -c tests/config.test");
 
 $passed = 0;
 $failed = 0;

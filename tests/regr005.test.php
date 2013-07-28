@@ -10,10 +10,10 @@ $big = str_repeat( 'a', 50000 );
 $g = new Gibson();
 
 fail_if( $g->pconnect(GIBSON_SOCKET) == FALSE, "Could not connect to test instance" );
-fail_if( $g->set( "big", $big )      == FALSE, "Unexpected SET reply" );
-fail_if( $g->set( "bog", $big )      == FALSE, "Unexpected SET reply" );
+fail_if( $g->set( "005:big", $big )      == FALSE, "Unexpected SET reply" );
+fail_if( $g->set( "005:bog", $big )      == FALSE, "Unexpected SET reply" );
 
-$multi = $g->mget( "b" );
+$multi = $g->mget( "005:" );
 
 fail_if( $multi == FALSE || is_array($multi)== FALSE || count($multi) != 2, "Unexpected MGET reply" );
 
