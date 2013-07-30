@@ -5,8 +5,10 @@ if( !class_exists('Gibson') ) die( "You will need the Gibson PHP extension to ru
 
 chdir( dirname(__FILE__) );
 
+
 $shortopts = "C:S:"; 
-$longopts  = array(
+$longopts  = array
+(
 	"custom-server:",
 	"single-test:" 
 );
@@ -21,11 +23,13 @@ else {
 	define( 'GIBSON_SOCKET', '../gibson.sock' );
 }
 
+include_once 'BaseUnit.class.php';
+
 if( isset( $options['S'] ) || isset( $options['single-test'] ) ){
-	$tests = array( ( isset( $options['S'] ) ? $options['S'] : $options['single-test'] ).'.test.php' );
+	$tests = array( "units/".( isset( $options['S'] ) ? $options['S'] : $options['single-test'] ).'.php' );
 }
 else {
-	$tests = glob("*.test.php" );
+	$tests = glob("units/*.php" );
 }
 
 if( $bCustomServer == FALSE )
@@ -36,21 +40,36 @@ $failed = 0;
 $start  = microtime(TRUE);
 
 foreach( $tests as $testfile ){
-	$name = strtoupper( str_replace( '.test.php', '', $testfile ) );
-	
-    printf( "Running %15s test ...", $name );
-  
- 	$t_start = microtime(TRUE);
-	$output  = trim( shell_exec("php $testfile") );
-  	$t_end   = microtime(TRUE);
-	if( $output ){
-		printf( " FAILED: %s\n", $output );
-   		++$failed;  
-  	}
-	else { 
-		printf( " PASSED ( %s )\n", format_timespan( $t_end - $t_start ) ); 
-    	++$passed;
-  	}
+    $filename  = basename($testfile);
+	$name      = strtoupper( str_replace( '.php', '', $filename ) );
+    $classname = str_replace( '.php', '', $filename );
+    $classname = str_replace( '_', ' ', $classname );
+    $classname = str_replace( ' ', '', ucwords($classname) );
+
+    printf( "Running %15s Unit :", $name );
+
+    include $testfile;
+
+    try
+    {
+        $inst = new $classname();
+
+        $t_start = microtime(TRUE);
+
+        $inst->run();
+        
+  	    $t_end = microtime(TRUE);
+        
+        ++$passed;
+        
+        printf( " \033[32mPASSED\033[m \033[01;30m( %s )\033[m\n", format_timespan( $t_end - $t_start ) ); 
+    }
+    catch( Exception $e )
+    {
+        ++$failed;
+
+		printf( " \033[31mFAILED: %s\033[m\n", $e->getMessage() );
+    }
 }
 
 $end = microtime(TRUE);
