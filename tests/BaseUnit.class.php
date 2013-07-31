@@ -1,8 +1,5 @@
 <?php
 
-if( defined('GIBSON_SOCKET') == FALSE )
-    define( 'GIBSON_SOCKET', realpath( dirname(__FILE__).'/../gibson.sock' ) );
-
 class BaseUnit
 {
     protected $client = NULL;

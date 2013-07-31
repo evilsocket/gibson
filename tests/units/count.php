@@ -8,8 +8,6 @@ class Count extends BaseUnit
         $this->assertEqual( $this->client->set( 'aac', 'bar' ), 'bar' );
 
         $this->assertEqual( $this->client->count('a'), 3  );
-
-        $this->assertEqual( $this->client->mdel( 'a' ), 3 );
     }
 
     public function clean(){

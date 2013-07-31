@@ -12,28 +12,26 @@ $longopts  = array
 	"custom-server:",
 	"single-test:" 
 );
-$options = getopt($shortopts, $longopts);
+$options       = getopt($shortopts, $longopts);
+$sCustomServer = isset( $options['C'] ) ? $options['C'] : ( isset( $options['custom-server'] ) ? $options['custom-server'] : NULL );
+$sSingleTest   = isset( $options['S'] ) ? $options['S'] : ( isset( $options['single-test'] ) ? $options['single-test'] : NULL );
 
-if( isset( $options['C'] ) || isset( $options['custom-server'] ) ){
-	$bCustomServer = TRUE;
-	define( 'GIBSON_SOCKET', isset( $options['C'] ) ? $options['C'] : $options['custom-server'] );
-}
-else {
-	$bCustomServer = FALSE;
-	define( 'GIBSON_SOCKET', '../gibson.sock' );
-}
+include_once 'Server.class.php';
+
+$server = new Server( $sCustomServer );
+$server->stop();
+$server->start();
+
+define( 'GIBSON_SOCKET', $server->getSocket() );
 
 include_once 'BaseUnit.class.php';
 
-if( isset( $options['S'] ) || isset( $options['single-test'] ) ){
-	$tests = array( "units/".( isset( $options['S'] ) ? $options['S'] : $options['single-test'] ).'.php' );
+if( $sSingleTest ){
+	$tests = array( "units/$sSingleTest.php" );
 }
 else {
 	$tests = glob("units/*.php" );
 }
-
-if( $bCustomServer == FALSE )
-	system("cd .. && ./gibson -c tests/config.test");
 
 $passed = 0;
 $failed = 0;
@@ -74,8 +72,7 @@ foreach( $tests as $testfile ){
 
 $end = microtime(TRUE);
 
-if( $bCustomServer == FALSE )
-	system("killall gibson");
+$server->stop();
 
 printf( "\n%d passed, %d failed ( %s )\n", $passed, $failed, format_timespan( $end - $start ) );
 

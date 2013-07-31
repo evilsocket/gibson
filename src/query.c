@@ -464,7 +464,10 @@ static int gbQueryGetHandler( gbClient *client, byte_t *p ){
 
 	if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &k, NULL, &klen, NULL ) ){
 		node = at_find_node( &server->tree, k, klen );
-		if(node && ( item = node->marker ) && gbIsNodeStillValid( node, node->marker, server, 1 )){
+		if( node &&                                               // key exists
+            ( item = node->marker ) &&                            // value exists 
+            gbIsNodeStillValid( node, node->marker, server, 1 ) ) // item is not expired 
+        {
 			item = node->marker;
 			item->last_access_time = server->stats.time;
 

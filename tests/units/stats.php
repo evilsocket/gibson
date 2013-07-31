@@ -30,7 +30,7 @@ class Stats extends BaseUnit
         );
 
         $stats = $this->client->stats();
-
+        
         foreach( $keys as $k ){
             $this->assertIsSet( $stats, $k );
         }
