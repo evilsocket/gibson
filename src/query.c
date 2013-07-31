@@ -1025,8 +1025,9 @@ static int gbQueryMetaHandler( gbClient *client, byte_t *p ){
             if( gbGetItemMeta( server, item, m, mlen, &v ) == 1 ){
                 ret = gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&v, sizeof(long), gbWriteReplyHandler, 0 );
             }
-            else
+            else {
                 ret = gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+            }
 
 			item->last_access_time = server->stats.time;
            

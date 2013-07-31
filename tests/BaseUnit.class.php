@@ -2,13 +2,32 @@
 
 class BaseUnit
 {
+    protected $server = NULL;
     protected $client = NULL;
     private $current_method = '???';
 
-    public function __construct(){
+    public function __construct( $server ){
+        $this->server = $server;
         $this->client = new Gibson();
-        $this->assertTrue( $this->client->pconnect(GIBSON_SOCKET) );
+        $this->assertTrue( $this->client->pconnect( $server->getSocket() ) );
     }
+
+    protected function newConfig( $cfg ){
+        if( $cfg != NULL ){
+            foreach( $cfg as $key => $value ){
+                $this->server->override[$key] = $value;
+            }
+        }
+        else
+            $this->server->override = array();
+
+        $this->server->restart();
+        $this->assertTrue( $this->client->pconnect( $this->server->getSocket() ) );
+    }  
+
+    protected function restoreDefaultConfig(){
+        $this->newConfig(NULL);
+    } 
 
     protected function assert( $x, $message = NULL ){
         if( $x == FALSE ){

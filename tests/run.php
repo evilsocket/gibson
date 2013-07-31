@@ -19,10 +19,7 @@ $sSingleTest   = isset( $options['S'] ) ? $options['S'] : ( isset( $options['sin
 include_once 'Server.class.php';
 
 $server = new Server( $sCustomServer );
-$server->stop();
-$server->start();
-
-define( 'GIBSON_SOCKET', $server->getSocket() );
+$server->restart();
 
 include_once 'BaseUnit.class.php';
 
@@ -32,6 +29,8 @@ if( $sSingleTest ){
 else {
 	$tests = glob("units/*.php" );
 }
+
+shuffle($tests);
 
 $passed = 0;
 $failed = 0;
@@ -50,7 +49,7 @@ foreach( $tests as $testfile ){
 
     try
     {
-        $inst = new $classname();
+        $inst = new $classname($server);
 
         $t_start = microtime(TRUE);
 
