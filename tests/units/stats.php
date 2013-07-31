@@ -30,10 +30,20 @@ class Stats extends BaseUnit
         );
 
         $stats = $this->client->stats();
-        
         foreach( $keys as $k ){
             $this->assertIsSet( $stats, $k );
         }
+
+        $now = time();
+
+        $this->assertInArray( $stats['server_allocator'], array( 'malloc', 'jemalloc' ) );
+        $this->assertInArray( $stats['server_arch'], array( 32, 64 ) );
+        $this->assertBetween( $stats['server_started'], $now - 10, $now );
+        $this->assertBetween( $stats['server_time'], $now - 1, $now );
+        $this->assertBetween( $stats['first_item_seen'], 0, $now );
+        $this->assertBetween( $stats['last_item_seen'], 0, $now );
+        $this->assertEqual( $stats['total_clients'], 1 );
+        $this->assertTrue( $stats['memory_fragmentation'] < 1 );
     }
 }
 

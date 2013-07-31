@@ -12,6 +12,8 @@ class Mdel extends BaseUnit
         $this->assertFalse( $this->client->get( 'aaa' ) );
         $this->assertFalse( $this->client->get( 'aab' ) );
         $this->assertFalse( $this->client->get( 'aac' ) );
+
+        $this->assertFalse( $this->client->mdel( 'a' ) );
     }
 
     public function testBig(){

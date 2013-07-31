@@ -11,6 +11,14 @@ class Dec extends BaseUnit
         }
     }
 
+    public function testNaN(){
+        $this->assertEqual( $this->client->set( 'foo', 'bar' ), 'bar' );
+
+        $this->assertFalse( $this->client->dec('foo') );
+
+        $this->assertEqual( $this->client->get('foo'), 'bar' );
+    }
+
     public function clean(){
         $this->client->del('foo');
     }

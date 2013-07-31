@@ -8,6 +8,14 @@ class Inc extends BaseUnit
         $this->assertEqual( $this->client->get( 'foo' ), 2 );
     }
 
+    public function testNaN(){
+        $this->assertEqual( $this->client->set( 'foo', 'bar' ), 'bar' );
+
+        $this->assertFalse( $this->client->inc('foo') );
+
+        $this->assertEqual( $this->client->get('foo'), 'bar' );
+    }
+
     public function clean(){
         $this->client->del('foo');
     }

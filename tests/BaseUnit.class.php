@@ -75,6 +75,14 @@ class BaseUnit
         $this->assert( is_array($x) === FALSE );
     }
 
+    protected function assertInArray( $x, $a ){
+        $this->assert( is_array($a) && in_array( $x, $a ) );
+    }
+
+    protected function assertBetween( $x, $l, $r ){
+        $this->assert( $x >= $l && $x <= $r );
+    }
+
     protected function assertEqual( $x, $y ){
         $this->assert( $x === $y ); 
     }

@@ -15,7 +15,15 @@ class Mlock extends BaseUnit
 
         $this->assertEqual( $this->client->set( 'foo', 'new' ), 'new' );
         $this->assertEqual( $this->client->set( 'fuu', 'new' ), 'new' );
+    }
 
+    public function testAlreadyLocked(){
+        $this->assertEqual( $this->client->set( 'foo', 'bar' ), 'bar' );
+        $this->assertEqual( $this->client->set( 'fuu', 'rar' ), 'rar' );
+
+        $this->assertTrue( $this->client->lock( 'foo', 10 ) );
+
+        $this->assertEqual( $this->client->mlock( 'f', 1 ), 1 );
     }
 
     public function clean(){
