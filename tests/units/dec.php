@@ -4,8 +4,11 @@ class Dec extends BaseUnit
 {
     public function test(){
         $this->assertEqual( $this->client->set( 'foo', '1' ), '1' );
-        $this->assertEqual( $this->client->dec( 'foo' ), 0 );
-        $this->assertEqual( $this->client->get( 'foo' ), 0 );
+
+        for( $i = 0; $i >= -50; $i-- ){
+            $this->assertEqual( $this->client->dec( 'foo' ), $i );
+            $this->assertEqual( $this->client->get( 'foo' ), $i );
+        }
     }
 
     public function clean(){

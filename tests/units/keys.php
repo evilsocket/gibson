@@ -11,6 +11,24 @@ class Keys extends BaseUnit
 
         $this->assertIsA( $keys );
         $this->assertEqual( $keys, array( 'aaa', 'aab', 'aac' ) );
+
+        $this->assertTrue( $this->client->del('aab') );
+
+        $keys = $this->client->keys('a');
+
+        $this->assertIsA( $keys );
+        $this->assertEqual( $keys, array( 'aaa', 'aac' ) );
+
+        $this->assertTrue( $this->client->del('aaa') );
+
+        $keys = $this->client->keys('a');
+
+        $this->assertIsA( $keys );
+        $this->assertEqual( $keys, array( 'aac' ) );
+    
+        $this->assertTrue( $this->client->del('aac') );
+
+        $this->assertFalse( $this->client->keys('a') );
     }
 
     public function clean(){

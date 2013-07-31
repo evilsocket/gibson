@@ -126,7 +126,7 @@ if ( NOT PHP_FOUND )
 else ( NOT PHP_FOUND )
 	message( "-- Found php : ${PHP_FOUND}\n-- Run 'make test' to execute testsuite" )
 	
-	add_custom_target( test COMMAND ./tests/run_tests.php )
+	add_custom_target( test COMMAND ./tests/run.php )
 endif ( NOT PHP_FOUND )
 
 #packaging
