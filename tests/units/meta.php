@@ -15,13 +15,17 @@ class Meta extends BaseUnit
     }       
 
     public function testAccess(){
+        $now = time();
+
         $this->assertEqual( $this->client->set( 'aaa', 'bar' ), 'bar' );
-        $this->assertEqual( $this->client->meta( 'aaa', 'access' ), time() );
+        $this->assertBetween( $this->client->meta( 'aaa', 'access' ), $now - 1, $now + 1 );
     }
 
     public function testCreated(){
+        $now = time();
+
         $this->assertEqual( $this->client->set( 'aaa', 'bar' ), 'bar' );
-        $this->assertEqual( $this->client->meta( 'aaa', 'created' ), time() );
+        $this->assertBetween( $this->client->meta( 'aaa', 'created' ), $now - 1, $now + 1 );
     }
 
     public function testTTL(){
