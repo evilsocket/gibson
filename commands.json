@@ -1,0 +1,523 @@
+/*
+ * This file contains every Gibson command with its opcode, syntax, summary description, arguments
+ * ( with name, type and description ), examples and eventually notes.
+ * It can be used to automatically build operators documentation or even client modules.
+ *
+ * Copyright (c) 2013, Simone Margaritelli 
+ * <evilsocket@gmail.com>
+ * <http://www.evilsocket.net/>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *   * Neither the name of Gibson nor the names of its contributors may be used
+ *     to endorse or promote products derived from this software without
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+{
+    "SET": {
+        "opcode": 0x01,
+        "syntax": "SET <ttl> <key> <value>",
+        "summary": "Set the value for the given key, with an optional TTL.",
+        "args": [
+            {
+                "name": "ttl",
+                "type": "int",
+                "desc": "The optional ttl in seconds."
+            },
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key to set."
+            },
+            {
+                "name": "value",
+                "type": "string",
+                "desc": "The value."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar // This will create a 'foo' item with the 'bar' content and no TTL.",
+            "SET 0 foo newvalue // Overwrite the old value of 'foo'.",
+            "SET 10 hello world // Create a 'hello' item that is going to expire in 10 seconds"
+        ],
+        "notes": [
+            "This operator will fail for LOCKed items.",
+            "On success the new set value will be returned, otherwise an error."
+        ]
+    },
+    "MSET": {
+        "opcode": 0x09,
+        "syntax": "MSET <prefix> <value>",
+        "summary": "Set the value for keys verifying the given prefix.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            },
+            {
+                "name": "value",
+                "type": "string",
+                "desc": "The value."
+            }
+        ],
+        "example": [
+            "SET 0 app:news:item:hits 10 // This will create a 'app:news:item:hits' item with the '10' content and no TTL.",
+            "SET 0 app:news:other-item:hits 23",
+            "MSET app:news 0 // Reset both"
+        ],
+        "notes": [
+            "This operator will fail for LOCKed items.",
+            "Return the number of modified items, otherwise an error."
+        ]
+    },
+    "TTL": {
+        "opcode": 0x02,
+        "syntax": "TTL <key> <ttl>",
+        "summary": "Set the TTL of a key.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key."
+            },
+            {
+                "name": "ttl",
+                "type": "integer",
+                "desc": "The TTL in seconds."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "TTL foo 10 // Now 'foo' has a 10 seconds ttl"
+        ],
+        "notes": [
+            "This operator will fail for LOCKed items."
+        ]
+    },
+    "MTTL": {
+        "opcode": 0x0A,
+        "syntax": "MTTL <prefix> <ttl>",
+        "summary": "Set the TTL for keys verifying the given prefix.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            },
+            {
+                "name": "ttl",
+                "type": "integer",
+                "desc": "The TTL in seconds."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "SET 0 fuu bar",
+            "MTTL f 10 // Now both foo and fuu have a 10 seconds ttl"
+        ],
+        "notes": [
+            "This operator will fail for LOCKed items."
+        ]
+    },
+    "MUNLOCK": {
+        "opcode": 0x10,
+        "syntax": "MUNLOCK <prefix>",
+        "summary": "Remove the lock on keys verifying the given prefix.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "SET 0 fuu bar",
+            "MLOCK f 30",
+            "MUNLOCK f"
+        ],
+        "notes": [
+            
+        ]
+    },
+    "UNLOCK": {
+        "opcode": 0x08,
+        "syntax": "UNLOCK <key>",
+        "summary": "Remove the lock from the given key.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "LOCK foo 30",
+            "UNLOCK foo"
+        ],
+        "notes": [
+            
+        ]
+    },
+    "LOCK": {
+        "opcode": 0x07,
+        "syntax": "LOCK <key> <time>",
+        "summary": "Prevent the given key from being modified for a given amount of seconds.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key."
+            },
+            {
+                "name": "time",
+                "type": "integer",
+                "desc": "The time in seconds to lock the item."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "LOCK foo 30",
+            "DEL foo // this will fail since foo is now locked"
+        ],
+        "notes": [
+            
+        ]
+    },
+    "MLOCK": {
+        "opcode": 0x0E,
+        "syntax": "MLOCK <prefix> <time>",
+        "summary": "Prevent keys verifying the given prefix from being modified for a given amount of seconds.",
+        "args": [
+            {
+                "name": "prefix",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            },
+            {
+                "name": "time",
+                "type": "integer",
+                "desc": "The lock period in seconds."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "SET 0 fuu bur",
+            "MLOCK f 30",
+            "DEL foo // this will fail since both foo and fuu are now locked"
+        ],
+        "notes": [
+            
+        ]
+    },
+    "PING": {
+        "opcode": 0x13,
+        "syntax": "PING",
+        "summary": "Ping the server instance to refresh client last seen timestamp.",
+        "args": [
+            
+        ],
+        "example": [ "PING" ],
+        "notes": [ "This is useful to keep alive the connection with the server." ]
+    },
+    "META": {
+        "opcode": 0x14,
+        "syntax": "META <key> <field>",
+        "summary": "Obtain a specific information about a given item.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key of the value to search."
+            },
+            {
+                "name": "field",
+                "type": "string",
+                "desc": "The information name to retrieve, allowed values follow.",
+                "enum": {
+                    "size": "The size in bytes of the item value.",
+                    "encoding": "The value encoding.",
+                    "access": "Timestamp of the last time the item was accessed.",
+                    "created": "Timestamp of item creation.",
+                    "ttl": "Item specified time to live, -1 for infinite TTL.",
+                    "left": "Number of seconds left for the item to live if a ttl was specified, otherwise -1.",
+                    "lock": "Number of seconds the item is locked, -1 if there's no lock."
+                }
+            }
+        ],
+        "example": [
+            "META foo encoding // will print 'foo' encoding",
+            "META foo size  // its size",
+            "META foo access // last access time"
+        ],
+        "notes": [
+            
+        ]
+    },
+    "INC": {
+        "opcode": 0x05,
+        "syntax": "INC <key>",
+        "summary": "Increment by one the given key.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key to increment."
+            }
+        ],
+        "example": [
+            "SET 0 foo 10 // foo encoding is GB_ENC_PLAIN now",
+            "INC foo // Now foo is 11 encoded as GB_ENC_NUMBER"
+        ],
+        "notes": [
+            "INC will change internal value encoding from GB_ENC_PLAIN to GB_ENC_NUMBER",
+            "Return the new incremented value in case of success, otherwise an error.",
+            "If the value is not a parsable number, REPL_ERR_NAN will be returned."
+        ]
+    },
+    "MINC": {
+        "opcode": 0x0D,
+        "syntax": "MINC <prefix>",
+        "summary": "Increment by one keys verifying the given prefix.",
+        "args": [
+            {
+                "name": "prefix",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            }
+        ],
+        "example": [
+            "SET 0 foo 10",
+            "SET 0 fuu 1",
+            "MINC f // Now foo is 11 and fuu is 2"
+        ],
+        "notes": [
+            "MINC will change internal value encoding from GB_ENC_PLAIN to GB_ENC_NUMBER",
+            "Return the number of succesfully incremented values in case of success, otherwise an error."
+        ]
+    },
+    "GET": {
+        "opcode": 0x03,
+        "syntax": "GET <key>",
+        "summary": "Get the value for a given key.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key to get."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "GET foo"
+        ],
+        "notes": [
+            "Return the item value in case of success, otherwise an error."
+        ]
+    },
+    "MGET": {
+        "opcode": 0x0B,
+        "syntax": "MGET <prefix>",
+        "summary": "Get the value for a given prefix.",
+        "args": [
+            {
+                "name": "prefix",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "SET 0 fuu bur",
+            "MGET f"
+        ],
+        "notes": [
+            "Return a REPL_KVAL with keys and values verifying the given expression in case of success, otherwise an error."
+        ]
+    },
+    "STATS": {
+        "opcode": 0x12,
+        "syntax": "STATS",
+        "summary": "Get system stats about the Gibson instance.",
+        "args": [
+            
+        ],
+        "example": [ "STATS" ],
+        "notes": {
+            "The following values will be returned:": {
+                "server_version": "Version of the server instance.",
+                "server_build_datetime": "Date and time the server was built.",
+                "server_allocator": "Memory allocator used by the server.",
+                "server_arch": "Server processor architecture.",
+                "server_started": "Unix timestamp the server was started.",
+                "server_time": "Internal unix timestamp of the server.",
+                "first_item_seen": "Unix timestamp of the first created item.",
+                "last_item_seen": "Unix timestamp of the last created item.",
+                "total_items": "Number of total items stored by this server-",
+                "total_compressed_items": "Number of LZF compressed items stored by this server.",
+                "total_clients": "Number of currently connected clients.",
+                "total_cron_done": "Number of cron loops the server has performed since it was started.",
+                "total_connections": "Number of connections the server received.",
+                "total_requests": "Number of valid requests the server executed.",
+                "memory_available": "Total memory available.",
+                "memory_usable": "Server usable memory limit.",
+                "memory_used": "Currently used memory-",
+                "memory_peak": "Max used memory since the server was started.",
+                "memory_fragmentation": "Value of RSS / memory used.",
+                "item_size_avg": "Average size of an item.",
+                "compr_rate_avg": "Average LZF compression rate.",
+                "reqs_per_client_avg": "Average number of requests per client."
+            }
+        }
+    },
+    "QUIT": {
+        "opcode": 0xFF,
+        "syntax": "QUIT",
+        "summary": "Disconnects from the Gibson instance.",
+        "args": [
+            
+        ],
+        "example": [ "QUIT" ],
+        "notes": [ ]
+    },
+    "DEL": {
+        "opcode": 0x04,
+        "syntax": "DEL <key>",
+        "summary": "Delete the given key.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key to delete."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "DEL foo"
+        ],
+        "notes": [
+            "This operator will fail for LOCKed items." 
+        ]
+    },
+    "MDEL": {
+        "opcode": 0x0C,
+        "syntax": "MDEL <prefix>",
+        "summary": "Delete keys verifying the given prefix.",
+        "args": [
+            {
+                "name": "prefix",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "SET 0 fuu bur",
+            "MDEL f"
+        ],
+        "notes": [
+            "This operator will fail for LOCKed items.",
+            "Return the number of deleted items in case of success, otherwise an error."
+        ]
+    },
+    "DEC": {
+        "opcode": 0x06,
+        "syntax": "DEC <key>",
+        "summary": "Decrement by one the given key.",
+        "args": [
+            {
+                "name": "key",
+                "type": "string",
+                "desc": "The key to decrement."
+            }
+        ],
+        "example": [
+            "SET 0 foo 10 // foo encoding is GB_ENC_PLAIN now",
+            "DEC foo // Now foo is 9 encoded as GB_ENC_NUMBER"
+        ],
+        "notes": [
+            "DEC will change internal value encoding from GB_ENC_PLAIN to GB_ENC_NUMBER",
+            "Return the new decremented value in case of success, otherwise an error.",
+            "If the value is not a parsable number, REPL_ERR_NAN will be returned."
+        ]
+    },
+    "MDEC": {
+        "opcode": 0x0E,
+        "syntax": "MDEC <prefix>",
+        "summary": "Decrement by one keys verifying the given prefix.",
+        "args": [
+            {
+                "name": "prefix",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            }
+        ],
+        "example": [
+            "SET 0 foo 10",
+            "SET 0 fuu 1",
+            "MDEC f // Now foo is 9 and fuu is 0"
+        ],
+        "notes": [
+            "MDEC will change internal value encoding from GB_ENC_PLAIN to GB_ENC_NUMBER",
+            "Return the number of succesfully decremented values in case of success, otherwise an error."
+        ]
+    },
+    "COUNT": {
+        "opcode": 0x01,
+        "syntax": "COUNT <prefix>",
+        "summary": "Count items for a given prefix.",
+        "args": [
+            {
+                "name": "prefix",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            }
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "SET 0 fuu bur",
+            "COUNT f // will return 2"
+        ],
+        "notes": [ ]
+    },
+    "KEYS": {
+        "opcode": 0x15,
+        "syntax": "KEYS <prefix>",
+        "summary": "Return a list of keys matching the given prefix.",
+        "args": [
+            {
+                "name": "prefix",
+                "type": "string",
+                "desc": "The key prefix to use as expression."
+            }
+
+        ],
+        "example": [
+            "SET 0 foo bar",
+            "SET 0 fuu bur",
+            "KEYS f // will return [foo,fuu]"
+        ],
+        "notes": []
+    }
+}
