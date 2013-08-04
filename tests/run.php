@@ -59,7 +59,7 @@ foreach( $tests as $testfile ){
         
         ++$passed;
         
-        printf( " \033[32mPASSED\033[m \033[01;30m( %s )\033[m\n", format_timespan( $t_end - $t_start ) ); 
+        printf( " \033[32mPASSED\033[m ( %s )\n", format_timespan( $t_end - $t_start ) ); 
     }
     catch( Exception $e )
     {

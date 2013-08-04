@@ -169,6 +169,18 @@ Objects above this size will be compressed in memory.
 
 Number of milliseconds between each cron schedule, do not put a value higher than 1000.
 
+### gc_ratio
+
+If max_memory is reached, data that is not being accessed in this amount of time ( i.e. gc_ratio 1h = data that is not being accessed in the last hour ) get deleted to release memory for the server.
+
+### max_mem_cron
+
+Check if max memory usage is reached every 'max_mem_cron' seconds.
+
+### expired_cron
+
+Check for expired items every 'expired_cron' seconds.
+
 * * *
 
 ## Using the console client

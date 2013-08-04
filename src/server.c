@@ -287,7 +287,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 	if( server->shutdown )
 		gbServerDestroy( server );
 
-	CRON_EVERY( 15000 ) {
+	CRON_EVERY( server->expired_cron ) {
 		mem_before   = server->stats.memused;
         items_before = server->stats.nitems;
 
@@ -312,7 +312,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
         }
 	}
 
-	CRON_EVERY( 5000 ) {
+	CRON_EVERY( server->max_mem_cron ) {
 		if( server->stats.memused > server->limits.maxmem ){
 
             mem_before   = server->stats.memused;

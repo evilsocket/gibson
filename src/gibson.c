@@ -53,6 +53,8 @@ static struct option long_options[] =
     { "cron_period", required_argument, 0, 0x00 },
     { "pidfile", required_argument, 0, 0x00 },
     { "gc_ratio", required_argument, 0, 0x00 },
+    { "max_mem_cron", required_argument, 0, 0x00 },
+    { "expired_cron", required_argument, 0, 0x00 },
 
     {0, 0, 0, 0}
 };
@@ -78,7 +80,9 @@ static char *descriptions[] = {
     "If 1 the process server will be daemonized ( put on background ), otherwise will run synchronously with the caller process.",
     "Number of milliseconds between each cron schedule, do not put a value higher than 1000.",
     "File to be used to save the current Gibson process id.",
-    "If max_memory is reached, data that is not being accessed in this amount of time ( i.e. gc_ratio 1h = data that is not being accessed in the last hour ) get deleted to release memory for the server."
+    "If max_memory is reached, data that is not being accessed in this amount of time ( i.e. gc_ratio 1h = data that is not being accessed in the last hour ) get deleted to release memory for the server.",
+    "Check if max memory usage is reached every 'max_mem_cron' seconds.",
+    "Check for expired items every 'expired_cron' seconds."
 };
 
 // the global server instance
@@ -229,11 +233,13 @@ int main( int argc, char **argv)
 		server.limits.maxmem = server.stats.memavail / 2;
 	}
 
-	server.compression = gbConfigReadSize( &server.config, "compression",	   GB_DEFAULT_COMPRESSION );
-	server.daemon	   = gbConfigReadInt( &server.config, "daemonize", 		   0 );
-	server.cronperiod  = gbConfigReadInt( &server.config, "cron_period", 	   GB_DEFAULT_CRON_PERIOD );
-	server.pidfile	   = gbConfigReadString( &server.config, "pidfile",        GB_DEFAULT_PID_FILE );
-    server.gc_ratio    = gbConfigReadTime( &server.config, "gc_ratio",         GB_DEFAULT_GC_RATIO );
+	server.compression = gbConfigReadSize( &server.config, "compression",	 GB_DEFAULT_COMPRESSION );
+	server.daemon	   = gbConfigReadInt( &server.config, "daemonize", 		 0 );
+	server.cronperiod  = gbConfigReadInt( &server.config, "cron_period", 	 GB_DEFAULT_CRON_PERIOD );
+	server.pidfile	   = gbConfigReadString( &server.config, "pidfile",      GB_DEFAULT_PID_FILE );
+    server.gc_ratio    = gbConfigReadTime( &server.config, "gc_ratio",       GB_DEFAULT_GC_RATIO );
+    server.max_mem_cron = gbConfigReadTime( &server.config, "max_mem_cron",  GB_DEFAULT_MAX_MEM_CRON ) * 1000;
+    server.expired_cron = gbConfigReadTime( &server.config, "expired_cron",  GB_DEFAULT_EXPIRED_CRON ) * 1000;
 	server.clients 	   = ll_prealloc( server.limits.maxclients );
 	server.m_keys	   = ll_prealloc( 255 );
 	server.m_values	   = ll_prealloc( 255 );

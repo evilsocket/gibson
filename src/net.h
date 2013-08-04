@@ -223,6 +223,10 @@ typedef struct gbServer
 	long long cron_id;
 	// data that is not being accessed in the last 'gc_ratio' seconds get deleted if the server needs memory.	
     time_t	 gc_ratio;
+    // check for expired items every 'expired_cron' seconds.
+    unsigned long expired_cron;
+    // check if max memory usage is reached every 'max_mem_cron' seconds.
+    unsigned long max_mem_cron;
 	// flag to say the server to shutdown ASAP
 	int		 shutdown;
 	// plain configuration instance

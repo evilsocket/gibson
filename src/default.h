@@ -57,4 +57,7 @@
 
 #define GB_DEFAULT_CRON_PERIOD 				  100
 
+#define GB_DEFAULT_MAX_MEM_CRON               15
+#define GB_DEFAULT_EXPIRED_CRON               5
+
 #endif
