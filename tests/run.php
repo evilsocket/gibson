@@ -32,9 +32,10 @@ else {
 
 shuffle($tests);
 
-$passed = 0;
-$failed = 0;
-$start  = microtime(TRUE);
+$passed  = 0;
+$failed  = 0;
+$start   = microtime(TRUE);
+$n_tests = 0;
 
 foreach( $tests as $testfile ){
     $filename  = basename($testfile);
@@ -53,7 +54,7 @@ foreach( $tests as $testfile ){
 
         $t_start = microtime(TRUE);
 
-        $inst->run();
+        $n_tests += $inst->run();
         
   	    $t_end = microtime(TRUE);
         
@@ -73,7 +74,7 @@ $end = microtime(TRUE);
 
 $server->stop();
 
-printf( "\n%d passed, %d failed ( %s )\n", $passed, $failed, format_timespan( $end - $start ) );
+printf( "\n%d units passed ( %d total tests ), %d failed ( %s )\n", $passed, $n_tests, $failed, format_timespan( $end - $start ) );
 
 if( $failed > 0 )
 	exit(1);

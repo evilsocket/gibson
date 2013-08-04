@@ -92,6 +92,7 @@ class BaseUnit
     }
 
     public function run(){
+        $count   = 0;
         $methods = get_class_methods($this);
         foreach( $methods as $method ){
             if( strpos( $method, 'test' ) === 0 ){
@@ -99,8 +100,12 @@ class BaseUnit
 
                 $this->$method();
                 $this->clean();
+
+                ++$count;
             }
         }
+
+        return $count;
     }
 
     public function clean(){
