@@ -2,6 +2,8 @@
 
 class Mget extends BaseUnit
 {
+    private $hash = NULL;
+
     public function test(){
         $test = array
         (
@@ -37,8 +39,29 @@ class Mget extends BaseUnit
         $this->assertFalse( $this->client->mget('f') );
     }
 
+    public function testBinary(){
+        $this->hash = md5( 'foobar', true );
+
+        $test = array
+        (
+            $this->hash.'foo' => 'bar',
+            $this->hash.'fuu' => 'bur',
+            $this->hash.'fii' => 'bir'	
+        );
+
+        foreach( $test as $k => $v ){
+            $this->assertEqual( $this->client->set( $k, $v ), $v );
+        }
+
+        $mget = $this->client->mget( $this->hash );
+
+        $this->assertIsA( $mget );
+        $this->assertEqual( $mget, $test );
+    }
+
     public function clean(){
         $this->client->mdel('f');
+        $this->client->mdel( $this->hash );
     }
 }
 
