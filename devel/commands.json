@@ -1,6 +1,6 @@
 {
     "SET": {
-        "opcode": 0x01,
+        "opcode": 1,
         "syntax": "SET <ttl> <key> <value>",
         "summary": "Set the value for the given key, with an optional TTL.",
         "args": [
@@ -31,7 +31,7 @@
         ]
     },
     "MSET": {
-        "opcode": 0x09,
+        "opcode": 9,
         "syntax": "MSET <prefix> <value>",
         "summary": "Set the value for keys verifying the given prefix.",
         "args": [
@@ -57,7 +57,7 @@
         ]
     },
     "TTL": {
-        "opcode": 0x02,
+        "opcode": 2,
         "syntax": "TTL <key> <ttl>",
         "summary": "Set the TTL of a key.",
         "args": [
@@ -81,7 +81,7 @@
         ]
     },
     "MTTL": {
-        "opcode": 0x0A,
+        "opcode": 10,
         "syntax": "MTTL <prefix> <ttl>",
         "summary": "Set the TTL for keys verifying the given prefix.",
         "args": [
@@ -106,7 +106,7 @@
         ]
     },
     "MUNLOCK": {
-        "opcode": 0x10,
+        "opcode": 16,
         "syntax": "MUNLOCK <prefix>",
         "summary": "Remove the lock on keys verifying the given prefix.",
         "args": [
@@ -127,7 +127,7 @@
         ]
     },
     "UNLOCK": {
-        "opcode": 0x08,
+        "opcode": 8,
         "syntax": "UNLOCK <key>",
         "summary": "Remove the lock from the given key.",
         "args": [
@@ -147,7 +147,7 @@
         ]
     },
     "LOCK": {
-        "opcode": 0x07,
+        "opcode": 7,
         "syntax": "LOCK <key> <time>",
         "summary": "Prevent the given key from being modified for a given amount of seconds.",
         "args": [
@@ -172,7 +172,7 @@
         ]
     },
     "MLOCK": {
-        "opcode": 0x0E,
+        "opcode": 14,
         "syntax": "MLOCK <prefix> <time>",
         "summary": "Prevent keys verifying the given prefix from being modified for a given amount of seconds.",
         "args": [
@@ -198,7 +198,7 @@
         ]
     },
     "PING": {
-        "opcode": 0x13,
+        "opcode": 19,
         "syntax": "PING",
         "summary": "Ping the server instance to refresh client last seen timestamp.",
         "args": [
@@ -208,7 +208,7 @@
         "notes": [ "This is useful to keep alive the connection with the server." ]
     },
     "META": {
-        "opcode": 0x14,
+        "opcode": 20,
         "syntax": "META <key> <field>",
         "summary": "Obtain a specific information about a given item.",
         "args": [
@@ -242,7 +242,7 @@
         ]
     },
     "INC": {
-        "opcode": 0x05,
+        "opcode": 5,
         "syntax": "INC <key>",
         "summary": "Increment by one the given key.",
         "args": [
@@ -263,7 +263,7 @@
         ]
     },
     "MINC": {
-        "opcode": 0x0D,
+        "opcode": 13,
         "syntax": "MINC <prefix>",
         "summary": "Increment by one keys verifying the given prefix.",
         "args": [
@@ -284,7 +284,7 @@
         ]
     },
     "GET": {
-        "opcode": 0x03,
+        "opcode": 3,
         "syntax": "GET <key>",
         "summary": "Get the value for a given key.",
         "args": [
@@ -303,7 +303,7 @@
         ]
     },
     "MGET": {
-        "opcode": 0x0B,
+        "opcode": 11,
         "syntax": "MGET <prefix>",
         "summary": "Get the value for a given prefix.",
         "args": [
@@ -323,7 +323,7 @@
         ]
     },
     "STATS": {
-        "opcode": 0x12,
+        "opcode": 18,
         "syntax": "STATS",
         "summary": "Get system stats about the Gibson instance.",
         "args": [
@@ -358,7 +358,7 @@
         }
     },
     "QUIT": {
-        "opcode": 0xFF,
+        "opcode": 255,
         "syntax": "QUIT",
         "summary": "Disconnects from the Gibson instance.",
         "args": [
@@ -368,7 +368,7 @@
         "notes": [ ]
     },
     "DEL": {
-        "opcode": 0x04,
+        "opcode": 4,
         "syntax": "DEL <key>",
         "summary": "Delete the given key.",
         "args": [
@@ -387,7 +387,7 @@
         ]
     },
     "MDEL": {
-        "opcode": 0x0C,
+        "opcode": 12,
         "syntax": "MDEL <prefix>",
         "summary": "Delete keys verifying the given prefix.",
         "args": [
@@ -408,7 +408,7 @@
         ]
     },
     "DEC": {
-        "opcode": 0x06,
+        "opcode": 6,
         "syntax": "DEC <key>",
         "summary": "Decrement by one the given key.",
         "args": [
@@ -429,7 +429,7 @@
         ]
     },
     "MDEC": {
-        "opcode": 0x0E,
+        "opcode": 14,
         "syntax": "MDEC <prefix>",
         "summary": "Decrement by one keys verifying the given prefix.",
         "args": [
@@ -450,7 +450,7 @@
         ]
     },
     "COUNT": {
-        "opcode": 0x01,
+        "opcode": 17,
         "syntax": "COUNT <prefix>",
         "summary": "Count items for a given prefix.",
         "args": [
@@ -468,7 +468,7 @@
         "notes": [ ]
     },
     "KEYS": {
-        "opcode": 0x15,
+        "opcode": 21,
         "syntax": "KEYS <prefix>",
         "summary": "Return a list of keys matching the given prefix.",
         "args": [
