@@ -107,8 +107,8 @@ if ( HAVE_JEMALLOC EQUAL 1 )
 endif ( HAVE_JEMALLOC EQUAL 1 )
 
 install( TARGETS ${PROJECT} DESTINATION ${PREFIX}/bin )
-install( FILES debian/etc/${PROJECT}/${PROJECT}.conf DESTINATION ${PREFIX}/etc/${PROJECT}/ )
-install( FILES debian/etc/init.d/${PROJECT} DESTINATION ${PREFIX}/etc/init.d/ 
+install( FILES debian/etc/${PROJECT}/${PROJECT}.conf DESTINATION /etc/${PROJECT}/ )
+install( FILES debian/etc/init.d/${PROJECT} DESTINATION /etc/init.d/ 
 		 PERMISSIONS
 		 OWNER_READ 
 		 OWNER_WRITE 
