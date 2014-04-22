@@ -47,9 +47,9 @@ typedef struct _atree {
 	 */
 	void*   	  marker;
 	/*
-	 * Number of children.
+	 * Number of children ( base 0 ).
 	 */
-	unsigned short n_nodes;
+	unsigned char n_nodes;
 	/*
 	 * Child nodes dynamic array.
 	 */

@@ -28,9 +28,14 @@
  */
 #include "atree.h"
 
+static size_t at_node_children( atree_t *at )
+{
+    return at->nodes == NULL ? 0 : ( at->n_nodes + 1 );
+}
+
 // This is O(N) since the at->nodes array is not sorted.
 static anode_t *at_find_next_node( atree_t *at, unsigned char ascii ){
-	int n = at->n_nodes;
+	int n = at_node_children(at);
 	atree_t *node = NULL;
 
 	while( --n >= 0 ){
@@ -60,9 +65,10 @@ void *at_insert( atree_t *at, unsigned char *key, int len, void *value ){
 			 * will be quick-sorted on every reallocation, so the search with
 			 * at_find_next_node would be O(log N) instead of O(N).
 			 */
-			current_size  = parent->n_nodes;
-			parent->nodes = zrealloc( parent->nodes, sizeof(atree_t) * ++parent->n_nodes );
-			node		  = parent->nodes + current_size;
+			current_size    = at_node_children( parent );
+			parent->nodes   = zrealloc( parent->nodes, sizeof(atree_t) * ( current_size + 1 ) );
+			parent->n_nodes = current_size;
+            node		    = parent->nodes + current_size;
 
 			node->ascii   = ascii;
 			node->marker  =
@@ -102,11 +108,11 @@ void *at_find( atree_t *at, unsigned char *key, int len ){
 }
 
 void at_recurse( atree_t *at, at_recurse_handler handler, void *data, size_t level ) {
-	size_t i;
+	size_t i, nnodes = at_node_children(at);
 
 	handler( at, level, data );
 
-	for( i = 0; i < at->n_nodes; ++i ){
+	for( i = 0; i < nnodes; ++i ){
 		at_recurse( at->nodes + i, handler, data, level + 1 );
 	}
 }
@@ -220,15 +226,15 @@ void *at_remove( atree_t *at, unsigned char *key, int len ){
 }
 
 void at_free( atree_t *at ){
-	int i, n_nodes = at->n_nodes;
+	int i, nnodes = at_node_children(at);
 	/*
 	 * Better be safe than sorry ;)
 	 */
-	if( at->nodes ){
+	if( nnodes ){
 		/*
 		 * First of all, loop all the sub links.
 		 */
-		for( i = 0; i < n_nodes; ++i, --at->n_nodes ){
+		for( i = 0; i < nnodes; ++i ){
 			/*
 			 * Free this node children.
 			 */
