@@ -1026,8 +1026,8 @@ int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, 
 	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ) + sizeof( uint32_t ), 
             reply, 	 
             size );
-
-	return gbCreateFileEvent( client->server->events, client->fd, GB_WRITABLE, proc, client );
+	
+    return gbCreateFileEvent( client->server->events, client->fd, GB_WRITABLE, proc, client );
 }
 
 int gbClientEnqueueCode( gbClient *client, short code, gbFileProc proc, short shutdown ){

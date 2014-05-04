@@ -121,7 +121,7 @@ void gbHelpMenu( char **argv, int exitcode ){
 
     printf( "To report issues : <http://github.com/evilsocket/gibson/issues>\n" );
     printf( "Gibson website   : <http://gibson-db.in>\n" );
-    printf( "Documentation    : <http://gibson-db.in/documentation.php>\n\n" );
+    printf( "Documentation    : <http://gibson-db.in/documentation.html>\n\n" );
 
 	exit(exitcode);
 }

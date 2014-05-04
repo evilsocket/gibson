@@ -8,6 +8,7 @@
 *.deb
 *.rpm
 *.gz
+.DS_Store
 CPack*
 _CPack*
 tags
