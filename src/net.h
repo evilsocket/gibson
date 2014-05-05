@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <sys/stat.h>
-#include "atree.h"
+#include "trie.h"
 #include "llist.h"
 #include "default.h"
 
@@ -201,7 +201,7 @@ typedef struct gbServer
 	// path of the pidfile
 	const char *pidfile;
 	// the main object container
-	atree_t  tree;
+	trie_t  tree;
 	// server main file descriptor
 	int 	 fd;
 	// list of currently connected clients
@@ -230,7 +230,7 @@ typedef struct gbServer
 	// flag to say the server to shutdown ASAP
 	int		 shutdown;
 	// plain configuration instance
-	atree_t	 config;
+	trie_t	 config;
 
 	gbServerLimits limits;
 	gbServerStats stats;

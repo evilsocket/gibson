@@ -30,7 +30,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "configure.h"
-#include "atree.h"
+#include "trie.h"
 #include "net.h"
 #include "lzf.h"
 #include "log.h"
@@ -66,18 +66,19 @@
 #ifdef HAVE_EVPORT
 #include "mux/evport.c"
 #else
-    #ifdef HAVE_EPOLL
-    #include "mux/epoll.c"
-    #else
-        #ifdef HAVE_KQUEUE
-        #include "mux/kqueue.c"
-        #else
-        #include "mux/select.c"
-        #endif
-    #endif
+#ifdef HAVE_EPOLL
+#include "mux/epoll.c"
+#else
+#ifdef HAVE_KQUEUE
+#include "mux/kqueue.c"
+#else
+#include "mux/select.c"
+#endif
+#endif
 #endif
 
-gbEventLoop *gbCreateEventLoop(int setsize) {
+gbEventLoop *gbCreateEventLoop(int setsize)
+{
     gbEventLoop *eventLoop;
     int i;
 
@@ -100,7 +101,8 @@ gbEventLoop *gbCreateEventLoop(int setsize) {
     return eventLoop;
 
 err:
-    if (eventLoop) {
+    if (eventLoop)
+    {
         zfree(eventLoop->events);
         zfree(eventLoop->fired);
         zfree(eventLoop);
@@ -108,7 +110,8 @@ err:
     return NULL;
 }
 
-int gbGetSetSize(gbEventLoop *eventLoop) {
+int gbGetSetSize(gbEventLoop *eventLoop)
+{
     return eventLoop->setsize;
 }
 
@@ -119,15 +122,16 @@ int gbGetSetSize(gbEventLoop *eventLoop) {
  * performed at all.
  *
  * Otherwise GB_OK is returned and the operation is successful. */
-int gbResizeSetSize(gbEventLoop *eventLoop, int setsize) {
+int gbResizeSetSize(gbEventLoop *eventLoop, int setsize)
+{
     int i;
 
     if( setsize == eventLoop->setsize )
-    	return GB_OK;
+        return GB_OK;
     else if( eventLoop->maxfd >= setsize )
-    	return GB_ERR;
+        return GB_ERR;
     else if( aeApiResize(eventLoop,setsize) == -1 )
-    	return GB_ERR;
+        return GB_ERR;
 
     eventLoop->events  = zrealloc( eventLoop->events, sizeof(gbFileEvent) * setsize );
     eventLoop->fired   = zrealloc( eventLoop->fired, sizeof(gbFiredEvent) * setsize );
@@ -141,20 +145,23 @@ int gbResizeSetSize(gbEventLoop *eventLoop, int setsize) {
     return GB_OK;
 }
 
-void gbDeleteEventLoop(gbEventLoop *eventLoop) {
+void gbDeleteEventLoop(gbEventLoop *eventLoop)
+{
     aeApiFree(eventLoop);
     zfree(eventLoop->events);
     zfree(eventLoop->fired);
     zfree(eventLoop);
 }
 
-void gbStopEventLoop(gbEventLoop *eventLoop) {
+void gbStopEventLoop(gbEventLoop *eventLoop)
+{
     eventLoop->stop = 1;
 }
 
 int gbCreateFileEvent(gbEventLoop *eventLoop, int fd, int mask, gbFileProc *proc, void *clientData)
 {
-    if (fd >= eventLoop->setsize) {
+    if (fd >= eventLoop->setsize)
+    {
         errno = ERANGE;
         return GB_ERR;
     }
@@ -178,7 +185,8 @@ void gbDeleteFileEvent(gbEventLoop *eventLoop, int fd, int mask)
 
     if (fe->mask == GB_NONE) return;
     fe->mask = fe->mask & (~mask);
-    if (fd == eventLoop->maxfd && fe->mask == GB_NONE) {
+    if (fd == eventLoop->maxfd && fe->mask == GB_NONE)
+    {
         /* Update the max fd */
         int j;
 
@@ -189,7 +197,8 @@ void gbDeleteFileEvent(gbEventLoop *eventLoop, int fd, int mask)
     aeApiDelEvent(eventLoop, fd, mask);
 }
 
-int gbGetFileEvents(gbEventLoop *eventLoop, int fd) {
+int gbGetFileEvents(gbEventLoop *eventLoop, int fd)
+{
     if (fd >= eventLoop->setsize) return 0;
     gbFileEvent *fe = &eventLoop->events[fd];
 
@@ -198,40 +207,42 @@ int gbGetFileEvents(gbEventLoop *eventLoop, int fd) {
 
 static void gbGetTime(long *seconds, long *milliseconds)
 {
-/*
- * On FreeBSD calling gettimeofday() causes all the cores on a multicore
- * system to be synchronized. On a heavily loaded system with a
- * significantly CPU bound application this can cause a 40% overall
- * system degradation.
- *
- * A better option is to use clock_gettime() and pass in the
- * CLOCK_REALTIME_FAST clock as the clock to use. This achieves the
- * same behavior as gettimeofday() on Linux.
- */
+    /*
+     * On FreeBSD calling gettimeofday() causes all the cores on a multicore
+     * system to be synchronized. On a heavily loaded system with a
+     * significantly CPU bound application this can cause a 40% overall
+     * system degradation.
+     *
+     * A better option is to use clock_gettime() and pass in the
+     * CLOCK_REALTIME_FAST clock as the clock to use. This achieves the
+     * same behavior as gettimeofday() on Linux.
+     */
 #if defined(__FreeBSD__)
 #include <sys/time.h>
-	struct timespec ts;
+    struct timespec ts;
     int r = clock_gettime(CLOCK_REALTIME_FAST, &ts);
-	
-	*seconds = ts.tv_sec;
+
+    *seconds = ts.tv_sec;
     *milliseconds = ts.tv_nsec/1000000;
 #else
     struct timeval tv;
 
     gettimeofday(&tv, NULL);
-	
-	*seconds = tv.tv_sec;
+
+    *seconds = tv.tv_sec;
     *milliseconds = tv.tv_usec/1000;
 #endif
 }
 
-static void gbAddMillisecondsToNow(long long milliseconds, long *sec, long *ms) {
+static void gbAddMillisecondsToNow(long long milliseconds, long *sec, long *ms)
+{
     long cur_sec, cur_ms, when_sec, when_ms;
 
     gbGetTime(&cur_sec, &cur_ms);
     when_sec = cur_sec + milliseconds/1000;
     when_ms = cur_ms + milliseconds%1000;
-    if (when_ms >= 1000) {
+    if (when_ms >= 1000)
+    {
         ++when_sec;
         when_ms -= 1000;
     }
@@ -263,8 +274,10 @@ int gbDeleteTimeEvent(gbEventLoop *eventLoop, long long id)
     gbTimeEvent *te, *prev = NULL;
 
     te = eventLoop->timeEventHead;
-    while(te) {
-        if (te->id == id) {
+    while(te)
+    {
+        if (te->id == id)
+        {
             if (prev == NULL)
                 eventLoop->timeEventHead = te->next;
             else
@@ -290,9 +303,11 @@ static gbTimeEvent *aeSearchNearestTimer(gbEventLoop *eventLoop)
     gbTimeEvent *te = eventLoop->timeEventHead;
     gbTimeEvent *nearest = te;
 
-    while(te) {
+    while(te)
+    {
         if( te->when_sec < nearest->when_sec || 
-            ( te->when_sec == nearest->when_sec && te->when_ms < nearest->when_ms) ){
+                ( te->when_sec == nearest->when_sec && te->when_ms < nearest->when_ms) )
+        {
             nearest = te;
         }
 
@@ -303,7 +318,8 @@ static gbTimeEvent *aeSearchNearestTimer(gbEventLoop *eventLoop)
 }
 
 /* Process time events */
-static int processTimeEvents(gbEventLoop *eventLoop) {
+static int processTimeEvents(gbEventLoop *eventLoop)
+{
     int processed = 0;
     gbTimeEvent *te;
     long long maxId;
@@ -317,9 +333,11 @@ static int processTimeEvents(gbEventLoop *eventLoop) {
      * events to be processed ASAP when this happens: the idea is that
      * processing events earlier is less dangerous than delaying them
      * indefinitely, and practice suggests it is. */
-    if (now < eventLoop->lastTime) {
+    if (now < eventLoop->lastTime)
+    {
         te = eventLoop->timeEventHead;
-        while(te) {
+        while(te)
+        {
             te->when_sec = 0;
             te = te->next;
         }
@@ -328,17 +346,19 @@ static int processTimeEvents(gbEventLoop *eventLoop) {
 
     te = eventLoop->timeEventHead;
     maxId = eventLoop->timeEventNextId-1;
-    while(te) {
+    while(te)
+    {
         long now_sec, now_ms;
         long long id;
 
-        if (te->id > maxId) {
+        if (te->id > maxId)
+        {
             te = te->next;
             continue;
         }
         gbGetTime(&now_sec, &now_ms);
         if (now_sec > te->when_sec ||
-            (now_sec == te->when_sec && now_ms >= te->when_ms))
+                (now_sec == te->when_sec && now_ms >= te->when_ms))
         {
             int retval;
 
@@ -358,13 +378,18 @@ static int processTimeEvents(gbEventLoop *eventLoop) {
              * to flag deleted elements in a special way for later
              * deletion (putting references to the nodes to delete into
              * another linked list). */
-            if (retval != GB_NOMORE) {
+            if (retval != GB_NOMORE)
+            {
                 gbAddMillisecondsToNow(retval,&te->when_sec,&te->when_ms);
-            } else {
+            }
+            else
+            {
                 gbDeleteTimeEvent(eventLoop, id);
             }
             te = eventLoop->timeEventHead;
-        } else {
+        }
+        else
+        {
             te = te->next;
         }
     }
@@ -408,8 +433,9 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 
         if ( time_events && !dont_wait )
             shortest = aeSearchNearestTimer(eventLoop);
-        
-        if (shortest) {
+
+        if (shortest)
+        {
             long now_sec, now_ms;
 
             // Compute the time missing for the nearest timer to fire.
@@ -417,10 +443,13 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
             tvp = &tv;
             tvp->tv_sec = shortest->when_sec - now_sec;
 
-			if (shortest->when_ms < now_ms) {
+            if (shortest->when_ms < now_ms)
+            {
                 tvp->tv_usec = ((shortest->when_ms+1000) - now_ms)*1000;
                 tvp->tv_sec --;
-            } else {
+            }
+            else
+            {
                 tvp->tv_usec = (shortest->when_ms - now_ms)*1000;
             }
 
@@ -428,34 +457,41 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
             if (tvp->tv_usec < 0) tvp->tv_usec = 0;
         } 
         // no time events scheduled
-        else {
+        else
+        {
             /* If we have to check for events but need to return
              * ASAP because of GB_DONT_WAIT we need to set the timeout
              * to zero */
-            if (dont_wait) {
+            if (dont_wait)
+            {
                 tv.tv_sec = tv.tv_usec = 0;
                 tvp = &tv;
-            } else {
+            }
+            else
+            {
                 /* Otherwise we can block */
                 tvp = NULL; /* wait forever */
             }
         }
 
         numevents = aeApiPoll(eventLoop, tvp);
-        for (j = 0; j < numevents; j++) {
+        for (j = 0; j < numevents; j++)
+        {
             gbFileEvent *fe = &eventLoop->events[eventLoop->fired[j].fd];
             int mask = eventLoop->fired[j].mask;
             int fd = eventLoop->fired[j].fd;
             int rfired = 0;
 
-	        /* note the fe->mask & mask & ... code: maybe an already processed
+            /* note the fe->mask & mask & ... code: maybe an already processed
              * event removed an element that fired and we still didn't
              * processed, so we check if the event is still valid. */
-            if ( fe->mask && mask & GB_READABLE) {
+            if ( fe->mask && mask & GB_READABLE)
+            {
                 rfired = 1;
                 fe->rfileProc(eventLoop,fd,fe->clientData,mask);
             }
-            if ( fe->mask && mask & GB_WRITABLE) {
+            if ( fe->mask && mask & GB_WRITABLE)
+            {
                 if (!rfired || fe->wfileProc != fe->rfileProc)
                     fe->wfileProc(eventLoop,fd,fe->clientData,mask);
             }
@@ -472,7 +508,8 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 
 /* Wait for milliseconds until the given file descriptor becomes
  * writable/readable/exception */
-int gbWaitEvents(int fd, int mask, long long milliseconds) {
+int gbWaitEvents(int fd, int mask, long long milliseconds)
+{
     struct pollfd pfd;
     int retmask = 0, retval;
 
@@ -481,31 +518,38 @@ int gbWaitEvents(int fd, int mask, long long milliseconds) {
     if (mask & GB_READABLE) pfd.events |= POLLIN;
     if (mask & GB_WRITABLE) pfd.events |= POLLOUT;
 
-    if ((retval = poll(&pfd, 1, milliseconds))== 1) {
+    if ((retval = poll(&pfd, 1, milliseconds))== 1)
+    {
         if (pfd.revents & POLLIN) retmask |= GB_READABLE;
         if (pfd.revents & POLLOUT) retmask |= GB_WRITABLE;
-	if (pfd.revents & POLLERR) retmask |= GB_WRITABLE;
+        if (pfd.revents & POLLERR) retmask |= GB_WRITABLE;
         if (pfd.revents & POLLHUP) retmask |= GB_WRITABLE;
         return retmask;
-    } else {
+    }
+    else
+    {
         return retval;
     }
 }
 
-void gbEventLoopMain(gbEventLoop *eventLoop) {
+void gbEventLoopMain(gbEventLoop *eventLoop)
+{
     eventLoop->stop = 0;
-    while (!eventLoop->stop) {
+    while (!eventLoop->stop)
+    {
         if (eventLoop->beforesleep != NULL)
             eventLoop->beforesleep(eventLoop);
         gbProcessEvents(eventLoop, GB_ALL_EVENTS);
     }
 }
 
-char *gbGetEventApiName(void) {
+char *gbGetEventApiName(void)
+{
     return aeApiName();
 }
 
-void gbSetBeforeSleepProc(gbEventLoop *eventLoop, gbBeforeSleepProc *beforesleep) {
+void gbSetBeforeSleepProc(gbEventLoop *eventLoop, gbBeforeSleepProc *beforesleep)
+{
     eventLoop->beforesleep = beforesleep;
 }
 
@@ -527,11 +571,13 @@ int gbNetNonBlock(char *err, int fd)
     /* Set the socket non-blocking.
      * Note that fcntl(2) for F_GETFL and F_SETFL can't be
      * interrupted by a signal. */
-    if ((flags = fcntl(fd, F_GETFL)) == -1) {
+    if ((flags = fcntl(fd, F_GETFL)) == -1)
+    {
         gbNetSetError(err, "fcntl(F_GETFL): %s", strerror(errno));
         return GBNET_ERR;
     }
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
         gbNetSetError(err, "fcntl(F_SETFL,O_NONBLOCK): %s", strerror(errno));
         return GBNET_ERR;
     }
@@ -558,7 +604,8 @@ int gbNetKeepAlive(char *err, int fd, int interval)
 
     /* Send first probe after interval. */
     val = interval;
-    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val)) < 0) {
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val)) < 0)
+    {
         gbNetSetError(err, "setsockopt TCP_KEEPIDLE: %s\n", strerror(errno));
         return GBNET_ERR;
     }
@@ -568,7 +615,8 @@ int gbNetKeepAlive(char *err, int fd, int interval)
      * an error (see the next setsockopt call). */
     val = interval/3;
     if (val == 0) val = 1;
-    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val)) < 0) {
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val)) < 0)
+    {
         gbNetSetError(err, "setsockopt TCP_KEEPINTVL: %s\n", strerror(errno));
         return GBNET_ERR;
     }
@@ -576,7 +624,8 @@ int gbNetKeepAlive(char *err, int fd, int interval)
     /* Consider the socket in error state after three we send three ACK
      * probes without getting a reply. */
     val = 3;
-    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val)) < 0) {
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val)) < 0)
+    {
         gbNetSetError(err, "setsockopt TCP_KEEPCNT: %s\n", strerror(errno));
         return GBNET_ERR;
     }
@@ -618,7 +667,8 @@ int gbNetSetSendBuffer(char *err, int fd, int buffsize)
 int gbNetTcpKeepAlive(char *err, int fd)
 {
     int yes = 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(yes)) == -1) {
+    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(yes)) == -1)
+    {
         gbNetSetError(err, "setsockopt SO_KEEPALIVE: %s", strerror(errno));
         return GBNET_ERR;
     }
@@ -630,11 +680,13 @@ int gbNetResolve(char *err, char *host, char *ipbuf)
     struct sockaddr_in sa;
 
     sa.sin_family = AF_INET;
-    if (inet_aton(host, &sa.sin_addr) == 0) {
+    if (inet_aton(host, &sa.sin_addr) == 0)
+    {
         struct hostent *he;
 
         he = gethostbyname(host);
-        if (he == NULL) {
+        if (he == NULL)
+        {
             gbNetSetError(err, "can't resolve: %s", host);
             return GBNET_ERR;
         }
@@ -644,16 +696,19 @@ int gbNetResolve(char *err, char *host, char *ipbuf)
     return GBNET_OK;
 }
 
-static int gbNetCreateSocket(char *err, int domain) {
+static int gbNetCreateSocket(char *err, int domain)
+{
     int s, on = 1;
-    if ((s = socket(domain, SOCK_STREAM, 0)) == -1) {
+    if ((s = socket(domain, SOCK_STREAM, 0)) == -1)
+    {
         gbNetSetError(err, "creating socket: %s", strerror(errno));
         return GBNET_ERR;
     }
 
     /* Make sure connection-intensive things will be able to close/open
        sockets a zillion of times */
-    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1) {
+    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1)
+    {
         gbNetSetError(err, "setsockopt SO_REUSEADDR: %s", strerror(errno));
         return GBNET_ERR;
     }
@@ -672,22 +727,26 @@ static int gbNetTcpGenericConnect(char *err, char *addr, int port, int flags)
 
     sa.sin_family = AF_INET;
     sa.sin_port = htons(port);
-    if (inet_aton(addr, &sa.sin_addr) == 0) {
+    if (inet_aton(addr, &sa.sin_addr) == 0)
+    {
         struct hostent *he;
 
         he = gethostbyname(addr);
-        if (he == NULL) {
+        if (he == NULL)
+        {
             gbNetSetError(err, "can't resolve: %s", addr);
             close(s);
             return GBNET_ERR;
         }
         memcpy(&sa.sin_addr, he->h_addr, sizeof(struct in_addr));
     }
-    if (flags & GBNET_CONNECT_NONBLOCK) {
+    if (flags & GBNET_CONNECT_NONBLOCK)
+    {
         if (gbNetNonBlock(err,s) != GBNET_OK)
             return GBNET_ERR;
     }
-    if (connect(s, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
+    if (connect(s, (struct sockaddr*)&sa, sizeof(sa)) == -1)
+    {
         if (errno == EINPROGRESS && ( flags & GBNET_CONNECT_NONBLOCK ) )
             return s;
 
@@ -718,11 +777,13 @@ int gbNetUnixGenericConnect(char *err, char *path, int flags)
 
     sa.sun_family = AF_LOCAL;
     strncpy(sa.sun_path,path,sizeof(sa.sun_path)-1);
-    if (flags & GBNET_CONNECT_NONBLOCK) {
+    if (flags & GBNET_CONNECT_NONBLOCK)
+    {
         if (gbNetNonBlock(err,s) != GBNET_OK)
             return GBNET_ERR;
     }
-    if (connect(s,(struct sockaddr*)&sa,sizeof(sa)) == -1) {
+    if (connect(s,(struct sockaddr*)&sa,sizeof(sa)) == -1)
+    {
         if (errno == EINPROGRESS && ( flags & GBNET_CONNECT_NONBLOCK ) )
             return s;
 
@@ -748,7 +809,8 @@ int gbNetUnixNonBlockConnect(char *err, char *path)
 int gbNetRead(int fd, char *buf, int count)
 {
     int nread, totlen = 0;
-    while(totlen != count) {
+    while(totlen != count)
+    {
         nread = read(fd,buf,count-totlen);
         if (nread == 0) return totlen;
         if (nread == -1) return -1;
@@ -763,7 +825,8 @@ int gbNetRead(int fd, char *buf, int count)
 int gbNetWrite(int fd, char *buf, int count)
 {
     int nwritten, totlen = 0;
-    while(totlen != count) {
+    while(totlen != count)
+    {
         nwritten = write(fd,buf,count-totlen);
         if (nwritten == 0) return totlen;
         if (nwritten == -1) return -1;
@@ -773,8 +836,10 @@ int gbNetWrite(int fd, char *buf, int count)
     return totlen;
 }
 
-static int gbNetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
-    if (bind(s,sa,len) == -1) {
+static int gbNetListen(char *err, int s, struct sockaddr *sa, socklen_t len)
+{
+    if (bind(s,sa,len) == -1)
+    {
         gbNetSetError(err, "bind: %s", strerror(errno));
         close(s);
         return GBNET_ERR;
@@ -783,7 +848,8 @@ static int gbNetListen(char *err, int s, struct sockaddr *sa, socklen_t len) {
     /* Use a backlog of 512 entries. We pass 511 to the listen() call because
      * the kernel does: backlogsize = roundup_pow_of_two(backlogsize + 1);
      * which will thus give us a backlog of 512 entries */
-    if (listen(s, 511) == -1) {
+    if (listen(s, 511) == -1)
+    {
         gbNetSetError(err, "listen: %s", strerror(errno));
         close(s);
         return GBNET_ERR;
@@ -803,7 +869,8 @@ int gbNetTcpServer(char *err, int port, char *bindaddr)
     sa.sin_family = AF_INET;
     sa.sin_port = htons(port);
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bindaddr && inet_aton(bindaddr, &sa.sin_addr) == 0) {
+    if (bindaddr && inet_aton(bindaddr, &sa.sin_addr) == 0)
+    {
         gbNetSetError(err, "invalid bind address");
         close(s);
         return GBNET_ERR;
@@ -831,14 +898,18 @@ int gbNetUnixServer(char *err, char *path, mode_t perm)
     return s;
 }
 
-static int gbNetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len) {
+static int gbNetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len)
+{
     int fd;
-    while(1) {
+    while(1)
+    {
         fd = accept(s,sa,len);
-        if (fd == -1) {
+        if (fd == -1)
+        {
             if (errno == EINTR)
                 continue;
-            else {
+            else
+            {
                 gbNetSetError(err, "accept: %s", strerror(errno));
                 return GBNET_ERR;
             }
@@ -848,7 +919,8 @@ static int gbNetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *
     return fd;
 }
 
-int gbNetTcpAccept(char *err, int s, char *ip, int *port) {
+int gbNetTcpAccept(char *err, int s, char *ip, int *port)
+{
     int fd;
     struct sockaddr_in sa;
     socklen_t salen = sizeof(sa);
@@ -860,7 +932,8 @@ int gbNetTcpAccept(char *err, int s, char *ip, int *port) {
     return fd;
 }
 
-int gbNetUnixAccept(char *err, int s) {
+int gbNetUnixAccept(char *err, int s)
+{
     int fd;
     struct sockaddr_un sa;
     socklen_t salen = sizeof(sa);
@@ -870,11 +943,13 @@ int gbNetUnixAccept(char *err, int s) {
     return fd;
 }
 
-int gbNetPeerToString(int fd, char *ip, int *port) {
+int gbNetPeerToString(int fd, char *ip, int *port)
+{
     struct sockaddr_in sa;
     socklen_t salen = sizeof(sa);
 
-    if (getpeername(fd,(struct sockaddr*)&sa,&salen) == -1) {
+    if (getpeername(fd,(struct sockaddr*)&sa,&salen) == -1)
+    {
         *port = 0;
         ip[0] = '?';
         ip[1] = '\0';
@@ -885,11 +960,13 @@ int gbNetPeerToString(int fd, char *ip, int *port) {
     return 0;
 }
 
-int gbNetSockName(int fd, char *ip, int *port) {
+int gbNetSockName(int fd, char *ip, int *port)
+{
     struct sockaddr_in sa;
     socklen_t salen = sizeof(sa);
 
-    if (getsockname(fd,(struct sockaddr*)&sa,&salen) == -1) {
+    if (getsockname(fd,(struct sockaddr*)&sa,&salen) == -1)
+    {
         *port = 0;
         ip[0] = '?';
         ip[1] = '\0';
@@ -900,238 +977,259 @@ int gbNetSockName(int fd, char *ip, int *port) {
     return 0;
 }
 
-void gbServerFormatUptime( gbServer *server, char *s ){
+void gbServerFormatUptime( gbServer *server, char *s )
+{
 
-	int uptime = difftime( server->stats.time, server->stats.started );
-	int days = 0,
-		hours = 0,
-		minutes = 0,
-		seconds = 0;
+    int uptime = difftime( server->stats.time, server->stats.started );
+    int days = 0,
+        hours = 0,
+        minutes = 0,
+        seconds = 0;
 
-	if( uptime >= 86400 )
-	{
-		days = (int)( uptime / 86400 );
-		uptime %= 86400;
-	}
+    if( uptime >= 86400 )
+    {
+        days = (int)( uptime / 86400 );
+        uptime %= 86400;
+    }
 
-	if( uptime >= 3600 )
-	{
-		hours = (int)( uptime / 3600 );
-		uptime %= 3600;
-	}
+    if( uptime >= 3600 )
+    {
+        hours = (int)( uptime / 3600 );
+        uptime %= 3600;
+    }
 
-	if( uptime >= 60 )
-	{
-		minutes = (int)( uptime / 60 );
-		uptime %= 60;
-	}
+    if( uptime >= 60 )
+    {
+        minutes = (int)( uptime / 60 );
+        uptime %= 60;
+    }
 
-	seconds = uptime;
+    seconds = uptime;
 
-	sprintf( s, "%dd %dh %dm %ds", days, hours, minutes, seconds );
+    sprintf( s, "%dd %dh %dm %ds", days, hours, minutes, seconds );
 }
 
-gbClient* gbClientCreate( int fd, gbServer *server  ){
-	gbClient *client = (gbClient *)zmalloc( sizeof( gbClient ) );
+gbClient* gbClientCreate( int fd, gbServer *server  )
+{
+    gbClient *client = (gbClient *)zmalloc( sizeof( gbClient ) );
 
-	client->fd 			= fd;
-	client->buffer 		= NULL;
-	client->buffer_size = 0;
-	client->status		= STATUS_WAITING_SIZE;
-	client->read 		= 0;
-	client->wrote 		= 0;
-	client->server 		= server;
-	client->shutdown 	= 0;
+    client->fd 			= fd;
+    client->buffer 		= NULL;
+    client->buffer_size = 0;
+    client->status		= STATUS_WAITING_SIZE;
+    client->read 		= 0;
+    client->wrote 		= 0;
+    client->server 		= server;
+    client->shutdown 	= 0;
 
     ll_append( server->clients, client );
 
-	++server->stats.nclients;
+    ++server->stats.nclients;
 
-	return client;
+    return client;
 }
 
-void gbClientReset( gbClient *client ){
+void gbClientReset( gbClient *client )
+{
     if( client->buffer != NULL )
         zfree( client->buffer );
 
     client->buffer      = NULL;
-	client->buffer_size = 0;
-	client->status		= STATUS_WAITING_SIZE;
-	client->read 		= 0;
-	client->wrote 		= 0;
-	client->shutdown 	= 0;
+    client->buffer_size = 0;
+    client->status		= STATUS_WAITING_SIZE;
+    client->read 		= 0;
+    client->wrote 		= 0;
+    client->shutdown 	= 0;
 }
 
-void gbClientDestroy( gbClient *client ){
-	gbServer *server = client->server;
+void gbClientDestroy( gbClient *client )
+{
+    gbServer *server = client->server;
 
-	if( client->buffer != NULL ){
-		zfree( client->buffer );
-		client->buffer = NULL;
-	}
+    if( client->buffer != NULL )
+    {
+        zfree( client->buffer );
+        client->buffer = NULL;
+    }
 
-	if (client->fd != -1) {
-		gbDeleteFileEvent( server->events, client->fd, GB_READABLE );
-		gbDeleteFileEvent( server->events, client->fd, GB_WRITABLE );
-		close(client->fd);
-	}
+    if (client->fd != -1)
+    {
+        gbDeleteFileEvent( server->events, client->fd, GB_READABLE );
+        gbDeleteFileEvent( server->events, client->fd, GB_WRITABLE );
+        close(client->fd);
+    }
 
-	ll_item_t *item = NULL;
-	for( item = server->clients->head; item; item = item->next ){
-		if( ll_data( gbClient *, item ) == client )
-		{
+    ll_item_t *item = NULL;
+    for( item = server->clients->head; item; item = item->next )
+    {
+        if( ll_data( gbClient *, item ) == client )
+        {
             // do not free the list item itself
             item->data            = NULL;
             server->clients->free = item;
-			break;
-		}
-	}
+            break;
+        }
+    }
 
-	--server->stats.nclients;
+    --server->stats.nclients;
 
-	zfree( client );
-	client = NULL;
+    zfree( client );
+    client = NULL;
 }
 
-int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, byte_t *reply, uint32_t size, gbFileProc *proc, short shutdown ){
-	if( client->fd <= 0 ) return GB_ERR;
+int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, byte_t *reply, uint32_t size, gbFileProc *proc, short shutdown )
+{
+    if( client->fd <= 0 ) return GB_ERR;
 
-	uint32_t rsize = sizeof( short )  + 		// reply opcode
-				     sizeof( gbItemEncoding ) + // data type
-				     sizeof( uint32_t ) + 	    // data length
-				     size;			  		    // data
+    uint32_t rsize = sizeof( short )  + 		// reply opcode
+        sizeof( gbItemEncoding ) + // data type
+        sizeof( uint32_t ) + 	    // data length
+        size;			  		    // data
 
-	// realloc only if needed
-	if( rsize > client->buffer_size ){
+    // realloc only if needed
+    if( rsize > client->buffer_size )
+    {
         client->buffer = (byte_t *)zrealloc( client->buffer, rsize );
     }
 
-	client->buffer_size = rsize;
-	client->read  		= 0;
-	client->wrote 		= 0;
-	client->shutdown 	= shutdown;
+    client->buffer_size = rsize;
+    client->read  		= 0;
+    client->wrote 		= 0;
+    client->shutdown 	= shutdown;
 
-	memcpy( client->buffer, 				  					          					  
+    memcpy( client->buffer, 				  					          					  
             memrev16ifbe(&code), 	 
             sizeof( short ) );
 
-	memcpy( client->buffer + sizeof( short ),					          					  
+    memcpy( client->buffer + sizeof( short ),					          					  
             &encoding, 
             sizeof( gbItemEncoding ) );
 
-	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ),  				     
+    memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ),  				     
             memrev32ifbe(&size), 	 
             sizeof( uint32_t ) );
 
-	memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ) + sizeof( uint32_t ), 
+    memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ) + sizeof( uint32_t ), 
             reply, 	 
             size );
-	
+
     return gbCreateFileEvent( client->server->events, client->fd, GB_WRITABLE, proc, client );
 }
 
-int gbClientEnqueueCode( gbClient *client, short code, gbFileProc proc, short shutdown ){
-	byte_t zero = 0x00;
+int gbClientEnqueueCode( gbClient *client, short code, gbFileProc proc, short shutdown )
+{
+    byte_t zero = 0x00;
 
-	return gbClientEnqueueData( client, code, GB_ENC_PLAIN, &zero, 1, proc, shutdown );
+    return gbClientEnqueueData( client, code, GB_ENC_PLAIN, &zero, 1, proc, shutdown );
 }
 
-int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc *proc, short shutdown ){
-	if( item->encoding == GB_ENC_PLAIN ){
-		return gbClientEnqueueData( client, code, GB_ENC_PLAIN, item->data, item->size, proc, shutdown );
-	}
-	else if( item->encoding == GB_ENC_LZF ){
-		size_t declen = lzf_decompress
-		(
-			item->data,
-			item->size,
-			client->server->lzf_buffer,
-			client->server->limits.maxrequestsize
-		);
+int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc *proc, short shutdown )
+{
+    if( item->encoding == GB_ENC_PLAIN )
+    {
+        return gbClientEnqueueData( client, code, GB_ENC_PLAIN, item->data, item->size, proc, shutdown );
+    }
+    else if( item->encoding == GB_ENC_LZF )
+    {
+        size_t declen = lzf_decompress
+            (
+             item->data,
+             item->size,
+             client->server->lzf_buffer,
+             client->server->limits.maxrequestsize
+            );
 
-		return gbClientEnqueueData( client, code, GB_ENC_PLAIN, client->server->lzf_buffer, declen, proc, shutdown );
-	}
-	else if( item->encoding == GB_ENC_NUMBER ){
-		long num = (long)item->data;
-        #if __x86_64__ || __ppc64__
+        return gbClientEnqueueData( client, code, GB_ENC_PLAIN, client->server->lzf_buffer, declen, proc, shutdown );
+    }
+    else if( item->encoding == GB_ENC_NUMBER )
+    {
+        long num = (long)item->data;
+#if __x86_64__ || __ppc64__
         byte_t *v = (byte_t *)memrev64ifbe(&num);
-        #else
+#else
         byte_t *v = (byte_t *)memrev32ifbe(&num);
-        #endif	
-		
+#endif	
+
         return gbClientEnqueueData( client, code, GB_ENC_NUMBER, v, item->size, proc, shutdown );
-	}
-	else
-		return GBNET_ERR;
+    }
+    else
+        return GBNET_ERR;
 }
 
-int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc *proc, short shutdown ){
-	gbServer *server = client->server;
-	gbItem *item = NULL;
-	uint32_t sz = sizeof(uint32_t),
-		     vsize = 0,
-		     space = server->limits.maxresponsesize;
-	byte_t *data = server->m_buffer,
-		   *p = data,
-		   *v = NULL;
-	gbItemEncoding encoding;
-	long num;
+int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc *proc, short shutdown )
+{
+    gbServer *server = client->server;
+    gbItem *item = NULL;
+    uint32_t sz = sizeof(uint32_t),
+             vsize = 0,
+             space = server->limits.maxresponsesize;
+    byte_t *data = server->m_buffer,
+           *p = data,
+           *v = NULL;
+    gbItemEncoding encoding;
+    long num;
 
-#define CHECK_SPACE(needed) if( needed > space ){ \
-						gbLog( WARNING, "Max response size reached." ); \
-						return GBNET_ERR; \
-					}
+#define CHECK_SPACE(needed) if( needed > space )
+    { \
+        gbLog( WARNING, "Max response size reached." ); \
+            return GBNET_ERR; \
+    }
 
 #define SAFE_MEMCPY( p, data, size ) CHECK_SPACE(size); memcpy( p, data, size ); p += size; space -= size
 
-	SAFE_MEMCPY( p, memrev32ifbe(&elements), sz );
+    SAFE_MEMCPY( p, memrev32ifbe(&elements), sz );
 
-	ll_foreach_2( server->m_keys, server->m_values, ki, vi ){
-		// handle expired/nulled items
-		if( vi->data != NULL ){
-			item 	 = vi->data;
-			encoding = item->encoding;
+    ll_foreach_2( server->m_keys, server->m_values, ki, vi )
+    {
+        // handle expired/nulled items
+        if( vi->data != NULL )
+        {
+            item 	 = vi->data;
+            encoding = item->encoding;
 
-			// write key size + key
-			sz = strlen( ki->data );
+            // write key size + key
+            sz = strlen( ki->data );
 
-			SAFE_MEMCPY( p, memrev32ifbe(&sz), sizeof(uint32_t) );
-			SAFE_MEMCPY( p, ki->data, sz );
+            SAFE_MEMCPY( p, memrev32ifbe(&sz), sizeof(uint32_t) );
+            SAFE_MEMCPY( p, ki->data, sz );
 
-			// write value size + value
-			if( encoding == GB_ENC_PLAIN ){
-				vsize = item->size;
-				v	  = item->data;
-			}
-			else if( encoding == GB_ENC_LZF ){
-				encoding = GB_ENC_PLAIN;
-				vsize = lzf_decompress
-				(
-					item->data,
-					item->size,
-					client->server->lzf_buffer,
-					client->server->limits.maxrequestsize
-				);
+            // write value size + value
+            if( encoding == GB_ENC_PLAIN )
+            {
+                vsize = item->size;
+                v	  = item->data;
+            }
+            else if( encoding == GB_ENC_LZF )
+            {
+                encoding = GB_ENC_PLAIN;
+                vsize = lzf_decompress
+                    (
+                     item->data,
+                     item->size,
+                     client->server->lzf_buffer,
+                     client->server->limits.maxrequestsize
+                    );
 
-				v = server->lzf_buffer;
-			}
-			else if( item->encoding == GB_ENC_NUMBER ){
-				num = (long)item->data;
-                #if __x86_64__ || __ppc64__
+                v = server->lzf_buffer;
+            }
+            else if( item->encoding == GB_ENC_NUMBER )
+            {
+                num = (long)item->data;
+#if __x86_64__ || __ppc64__
                 v = (byte_t *)memrev64ifbe(&num);
-                #else
+#else
                 v = (byte_t *)memrev32ifbe(&num);
-                #endif	
-				vsize = item->size;
-			}
+#endif	
+                vsize = item->size;
+            }
 
-			SAFE_MEMCPY( p, &encoding,            sizeof( gbItemEncoding ) );
-			SAFE_MEMCPY( p, memrev32ifbe(&vsize), sizeof( uint32_t ) );
-			SAFE_MEMCPY( p, v, 		              vsize );
-		}
-	}
+            SAFE_MEMCPY( p, &encoding,            sizeof( gbItemEncoding ) );
+            SAFE_MEMCPY( p, memrev32ifbe(&vsize), sizeof( uint32_t ) );
+            SAFE_MEMCPY( p, v, 		              vsize );
+        }
+    }
 
-	int ret = gbClientEnqueueData( client, REPL_KVAL, GB_ENC_PLAIN, data, p - data, proc, shutdown );
+    int ret = gbClientEnqueueData( client, REPL_KVAL, GB_ENC_PLAIN, data, p - data, proc, shutdown );
 
-	return ret;
+    return ret;
 }

@@ -248,7 +248,7 @@ int main( int argc, char **argv)
 	server.m_buffer	   = zcalloc( server.limits.maxresponsesize );
 	server.shutdown	   = 0;
 
-	at_init_tree( server.tree );
+	tr_init_tree( server.tree );
 
 	char reqsize[0xFF] = {0},
 		 maxmem[0xFF] = {0},

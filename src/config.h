@@ -29,13 +29,13 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#include "atree.h"
+#include "trie.h"
 #include <getopt.h>
 
-void 		  gbConfigLoad( atree_t *config, char *filename );
-void          gbConfigMerge( atree_t *config, char *skip, struct option *options, int argc, char **argv );
-int  		  gbConfigReadInt( atree_t *config, const char *key, int def );
-unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long def );
-const char *  gbConfigReadString( atree_t *config, const char *key, const char *def );
+void 		  gbConfigLoad( trie_t *config, char *filename );
+void          gbConfigMerge( trie_t *config, char *skip, struct option *options, int argc, char **argv );
+int  		  gbConfigReadInt( trie_t *config, const char *key, int def );
+unsigned long gbConfigReadSize( trie_t *config, const char *key, unsigned long def );
+const char *  gbConfigReadString( trie_t *config, const char *key, const char *def );
 
 #endif

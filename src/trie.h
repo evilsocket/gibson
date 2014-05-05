@@ -26,36 +26,49 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SERVER_H__
-#define __SERVER_H__
+#ifndef _TRIE_H_
+#	define _TRIE_H_
 
-#include "configure.h"
-#include <stdio.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <getopt.h>
-#if HAVE_BACKTRACE
-#include <execinfo.h>
-#endif
-#include "log.h"
-#include "net.h"
-#include "trie.h"
-#include "query.h"
-#include "config.h"
-#include "default.h"
+#include <stdlib.h>
+#include <string.h>
+#include "llist.h"
 
-void gbMemFormat( unsigned long used, char *buffer, size_t size );
-void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask );
-void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask );
-void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask);
-void gbMemoryFreeHandler( tnode_t *elem, size_t level, void *data );
-int  gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data);
-void gbDaemonize();
-void gbProcessInit();
-void gbServerDestroy( gbServer *server );
-void gbOOM(size_t size);
+typedef struct _trie
+{
+	// The byte value of this node.
+	unsigned char value;
+	// Data of the node (end marker of a chain).
+	void*   	  data;
+	// Number of children ( base 0 ).
+	unsigned char n_nodes;
+    // Last matched node index ( move to front policy ).
+    unsigned char last;
+	// Child nodes dynamic array.
+	struct _trie *nodes;
+}
+__attribute__((packed)) trie_t;
+
+typedef trie_t tnode_t;
+
+typedef void (*tr_recurse_handler)(tnode_t *, size_t, void *);
+
+#define tr_init_tree( t )    (t).n_nodes = 0; \
+						     (t).data    = 0; \
+                             (t).last    = 0; \
+						     (t).nodes   = NULL
+
+#define tr_init_node( l, k ) l = (trie_t *)zcalloc( sizeof(trie_t) ); \
+						     l->value = k[0]
+
+#define tr_clear tr_free
+
+void   *tr_insert( trie_t *at, unsigned char *key, int len, void *value );
+trie_t *tr_find_node( trie_t *at, unsigned char *key, int len );
+void   *tr_find( trie_t *at, unsigned char *key, int len );
+void    tr_recurse( trie_t *at, tr_recurse_handler handler, void *data, size_t level );
+size_t  tr_search( trie_t *at, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **values );
+size_t  tr_search_nodes( trie_t *at, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **nodes );
+void   *tr_remove( trie_t *at, unsigned char *key, int len );
+void    tr_free( trie_t *at );
 
 #endif

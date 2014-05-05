@@ -31,164 +31,181 @@
 #include <time.h>
 #include "config.h"
 
-void gbConfigLoad( atree_t *config, char *filename ){
-	FILE *fp = fopen( filename, "rt" );
+void gbConfigLoad( trie_t *config, char *filename )
+{
+    FILE *fp = fopen( filename, "rt" );
 
-	if( fp ){
-		at_init_tree( *config );
+    if( fp )
+    {
+        tr_init_tree( *config );
 
-		char line[0xFF] = {0},
-			 key[0xFF]  = {0},
-			 value[0xFF] = {0},
-			*p = NULL,
-			*pd = NULL;
-		size_t lineno = 0;
+        char line[0xFF] = {0},
+             key[0xFF]  = {0},
+             value[0xFF] = {0},
+             *p = NULL,
+             *pd = NULL;
+        size_t lineno = 0;
 
-		while( !feof(fp) ){
-			if( fgets( line, 0xFF, fp ) ){
-				++lineno;
+        while( !feof(fp) )
+        {
+            if( fgets( line, 0xFF, fp ) )
+            {
+                ++lineno;
 
-				// skip comments
-				if( line[0] == '#' )
-					continue;
+                // skip comments
+                if( line[0] == '#' )
+                    continue;
 
-				p = &line[0];
+                p = &line[0];
 
-				// eat spaces
-				while( isspace( *p ) && *p ) ++p;
+                // eat spaces
+                while( isspace( *p ) && *p ) ++p;
 
-				// skip empty lines
-				if( *p == 0x00 )
-					continue;
+                // skip empty lines
+                if( *p == 0x00 )
+                    continue;
 
-				memset( key,   0x00, 0xFF );
-				memset( value, 0x00, 0xFF );
+                memset( key,   0x00, 0xFF );
+                memset( value, 0x00, 0xFF );
 
-				// read key
-				pd = &key[0];
-				while( !isspace( *p ) && *p ) *pd++ = *p++;
+                // read key
+                pd = &key[0];
+                while( !isspace( *p ) && *p ) *pd++ = *p++;
 
-				// eat spaces
-				while( isspace( *p ) && *p ) ++p;
+                // eat spaces
+                while( isspace( *p ) && *p ) ++p;
 
-				if( *p == 0x00 ){
-					fclose( fp );
-					printf( "Error on line %zu of %s, unexpected end of line.\n", lineno, filename );
-					exit( 1 );
-				}
+                if( *p == 0x00 )
+                {
+                    fclose( fp );
+                    printf( "Error on line %zu of %s, unexpected end of line.\n", lineno, filename );
+                    exit( 1 );
+                }
 
-				// read value
-				pd = &value[0];
-				while( !isspace( *p ) && *p ) *pd++ = *p++;
+                // read value
+                pd = &value[0];
+                while( !isspace( *p ) && *p ) *pd++ = *p++;
 
-				at_insert( config, (unsigned char *)key, strlen(key), zstrdup( value ) );
-			}
-		}
+                tr_insert( config, (unsigned char *)key, strlen(key), zstrdup( value ) );
+            }
+        }
 
-		fclose ( fp );
-	}
-	else{
-		perror( filename );
-		exit( 1 );
-	}
+        fclose ( fp );
+    }
+    else
+    {
+        perror( filename );
+        exit( 1 );
+    }
 }
 
-void gbConfigMerge( atree_t *config, char *skip, struct option *options, int argc, char **argv ){
+void gbConfigMerge( trie_t *config, char *skip, struct option *options, int argc, char **argv )
+{
     int c = 0, oindex = 0;
     char *key;
 
-    while( ( c = getopt_long( argc, argv, skip, options, &oindex ) ) != -1 ){
-        if( c && strchr( skip, c ) ){
+    while( ( c = getopt_long( argc, argv, skip, options, &oindex ) ) != -1 )
+    {
+        if( c && strchr( skip, c ) )
+        {
             continue;
         }
-        else if( oindex >= 0 && optarg != NULL ){
+        else if( oindex >= 0 && optarg != NULL )
+        {
             key = (char *)options[oindex].name;
 
-            at_insert( config, (unsigned char *)key, strlen(key), zstrdup(optarg) ); 
+            tr_insert( config, (unsigned char *)key, strlen(key), zstrdup(optarg) ); 
         }
     } 
 }
 
-int gbConfigReadInt( atree_t *config, const char *key, int def ){
-	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
-	if( value ){
-	    char * p;
-	    long l = strtol( value, &p, 10 );
+int gbConfigReadInt( trie_t *config, const char *key, int def )
+{
+    char *value = tr_find( config, (unsigned char *)key, strlen( key ) );
+    if( value )
+    {
+        char * p;
+        long l = strtol( value, &p, 10 );
 
-	    return ( *p == '\0' ? (int)l : def );
-	}
+        return ( *p == '\0' ? (int)l : def );
+    }
 
-	return def;
+    return def;
 }
 
-unsigned long gbConfigReadSize( atree_t *config, const char *key, unsigned long def ){
-	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
-	if( value ){
-		size_t len = strlen(value);
-		char unit = value[len - 1];
-		long mul = 0;
+unsigned long gbConfigReadSize( trie_t *config, const char *key, unsigned long def )
+{
+    char *value = tr_find( config, (unsigned char *)key, strlen( key ) );
+    if( value )
+    {
+        size_t len = strlen(value);
+        char unit = value[len - 1];
+        long mul = 0;
 
-		if( unit == 'B' || unit == 'b' )
-			mul = 1;
+        if( unit == 'B' || unit == 'b' )
+            mul = 1;
 
-		else if( unit == 'K' || unit == 'k' )
-			mul = 1024;
+        else if( unit == 'K' || unit == 'k' )
+            mul = 1024;
 
-		else if( unit == 'M' || unit == 'm' )
-			mul = 1024 * 1024;
+        else if( unit == 'M' || unit == 'm' )
+            mul = 1024 * 1024;
 
-		else if( unit == 'G' || unit == 'g' )
-			mul = 1024 * 1024 * 1024;
+        else if( unit == 'G' || unit == 'g' )
+            mul = 1024 * 1024 * 1024;
 
-		if( mul )
-			value[ len - 1 ] = 0x00;
+        if( mul )
+            value[ len - 1 ] = 0x00;
         else
             mul = 1;
 
-		char * p;
-		long l = strtol( value, &p, 10 );
+        char * p;
+        long l = strtol( value, &p, 10 );
 
-		return ( *p == '\0' ? l * mul : def );
-	}
+        return ( *p == '\0' ? l * mul : def );
+    }
 
-	return def;
+    return def;
 }
 
-time_t gbConfigReadTime( atree_t *config, const char *key, time_t def ){
-    char *value = at_find( config, (unsigned char *)key, strlen( key ) );
-	if( value ){
-		size_t len = strlen(value);
-		char unit = value[len - 1];
-		long mul = 0;
+time_t gbConfigReadTime( trie_t *config, const char *key, time_t def )
+{
+    char *value = tr_find( config, (unsigned char *)key, strlen( key ) );
+    if( value )
+    {
+        size_t len = strlen(value);
+        char unit = value[len - 1];
+        long mul = 0;
 
-		if( unit == 's' || unit == 'S' )
-			mul = 1;
+        if( unit == 's' || unit == 'S' )
+            mul = 1;
 
-		else if( unit == 'm' || unit == 'M' )
-			mul = 60;
+        else if( unit == 'm' || unit == 'M' )
+            mul = 60;
 
-		else if( unit == 'h' || unit == 'H' )
-			mul = 60 * 60;
+        else if( unit == 'h' || unit == 'H' )
+            mul = 60 * 60;
 
-		else if( unit == 'd' || unit == 'd' )
-			mul = 60 * 60 * 24;
+        else if( unit == 'd' || unit == 'd' )
+            mul = 60 * 60 * 24;
 
-		if( mul )
-			value[ len - 1 ] = 0x00;
+        if( mul )
+            value[ len - 1 ] = 0x00;
         else
             mul = 1;
 
-		char * p;
-		time_t l = (time_t)strtol( value, &p, 10 );
+        char * p;
+        time_t l = (time_t)strtol( value, &p, 10 );
 
-		return ( *p == '\0' ? l * mul : def );
-	}
+        return ( *p == '\0' ? l * mul : def );
+    }
 
-	return def;
+    return def;
 }
 
-const char *gbConfigReadString( atree_t *config, const char *key, const char *def ){
-	char *value = at_find( config, (unsigned char *)key, strlen( key ) );
+const char *gbConfigReadString( trie_t *config, const char *key, const char *def )
+{
+    char *value = tr_find( config, (unsigned char *)key, strlen( key ) );
 
-	return value ? value : def;
+    return value ? value : def;
 }
