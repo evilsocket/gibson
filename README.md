@@ -3,7 +3,7 @@ Gibson [![Build Status](https://secure.travis-ci.org/evilsocket/gibson.png)](htt
 
 * To report issues : <http://github.com/evilsocket/gibson/issues>
 * Gibson website   : <http://gibson-db.in> 
-* Documentation    : <http://gibson-db.in/documentation.php> 
+* Documentation    : <http://gibson-db.in/documentation.html> 
 
 **Table of Contents**
 
@@ -12,9 +12,9 @@ Gibson [![Build Status](https://secure.travis-ci.org/evilsocket/gibson.png)](htt
 * [Compilation](#compilation)
 * [Configuration](#configuration)
 * [Using the console client](#using-the-console-client)
-* [Command Reference](http://gibson-db.in/commands.php)
-* [Clients](http://gibson-db.in/clients.php)
-* [Protocol Specifications](http://gibson-db.in/protocol.php)
+* [Command Reference](http://gibson-db.in/commands.html)
+* [Clients](http://gibson-db.in/clients.html)
+* [Protocol Specifications](http://gibson-db.in/protocol.html)
 * [Data Model](#data-model)
 * [License](#license)
 
@@ -219,7 +219,7 @@ Once you are connected, you will see a prompt like this:
 
 Now you can start using the client typing the command you want to execute.
 
-For a complete command list ( and their syntax ), refer to the [protocol specs](http://gibson-db.in/protocol.php) and/or type the command string
+For a complete command list ( and their syntax ), refer to the [protocol specs](http://gibson-db.in/protocol.html) and/or type the command string
 to see its synax, for instance:
 
     127.0.0.1:10128> set
