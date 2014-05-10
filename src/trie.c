@@ -39,18 +39,11 @@ static tnode_t *tr_find_next_node( trie_t *trie, unsigned char value )
 	int n = tr_node_children(trie);
 	trie_t *node = NULL;
 
-    if( n && trie->nodes[trie->last].value == value )
-    {
-        return &trie->nodes[trie->last];
-    }
-
     while( --n >= 0 )
     {
 		node = trie->nodes + n;
 		if( node->value == value )
         {
-            trie->last = n;
-
 			return node;
 		}
 	}

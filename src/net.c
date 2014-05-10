@@ -1169,9 +1169,9 @@ int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc 
     gbItemEncoding encoding;
     long num;
 
-#define CHECK_SPACE(needed) if( needed > space )
+#define CHECK_SPACE(needed) if( needed > space ) \
     { \
-        gbLog( WARNING, "Max response size reached." ); \
+        gbLog( WARNING, "Max response size reached, asked for %u more bytes.", needed ); \
             return GBNET_ERR; \
     }
 

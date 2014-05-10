@@ -1077,37 +1077,37 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
 
 static int gbGetItemMeta( gbServer *server, gbItem *item, byte_t *m, size_t mlen, long *v )
 {
-    if( strncmp( m, "size", min( mlen, 4 ) ) == 0 )
+    if( strncmp( (char *)m, "size", min( mlen, 4 ) ) == 0 )
     {
         *v = item->size;
         return 1;
     }
-    else if( strncmp( m, "encoding", min( mlen, 8 ) ) == 0 )
+    else if( strncmp( (char *)m, "encoding", min( mlen, 8 ) ) == 0 )
     {
         *v = item->encoding;
         return 1;
     }
-    else if( strncmp( m, "access", min( mlen, 6 ) ) == 0 )
+    else if( strncmp( (char *)m, "access", min( mlen, 6 ) ) == 0 )
     {
         *v = item->last_access_time;
         return 1;
     }
-    else if( strncmp( m, "created", min( mlen, 7 ) ) == 0 )
+    else if( strncmp( (char *)m, "created", min( mlen, 7 ) ) == 0 )
     {
         *v = item->time;
         return 1;
     }
-    else if( strncmp( m, "ttl", min( mlen, 3 ) ) == 0 )
+    else if( strncmp( (char *)m, "ttl", min( mlen, 3 ) ) == 0 )
     {
         *v = item->ttl;
         return 1;
     }
-    else if( strncmp( m, "left", min( mlen, 4 ) ) == 0 )
+    else if( strncmp( (char *)m, "left", min( mlen, 4 ) ) == 0 )
     {
         *v = item->ttl <= 0 ? -1 : item->ttl - ( server->stats.time - item->time ); 
         return 1;
     }
-    else if( strncmp( m, "lock", min( mlen, 4 ) ) == 0 )
+    else if( strncmp( (char *)m, "lock", min( mlen, 4 ) ) == 0 )
     {
         *v = item->lock;
         return 1;

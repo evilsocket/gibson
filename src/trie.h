@@ -41,8 +41,6 @@ typedef struct _trie
 	void*   	  data;
 	// Number of children ( base 0 ).
 	unsigned char n_nodes;
-    // Last matched node index ( move to front policy ).
-    unsigned char last;
 	// Child nodes dynamic array.
 	struct _trie *nodes;
 }
@@ -54,7 +52,6 @@ typedef void (*tr_recurse_handler)(tnode_t *, size_t, void *);
 
 #define tr_init_tree( t )    (t).n_nodes = 0; \
 						     (t).data    = 0; \
-                             (t).last    = 0; \
 						     (t).nodes   = NULL
 
 #define tr_init_node( l, k ) l = (trie_t *)zcalloc( sizeof(trie_t) ); \

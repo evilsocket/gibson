@@ -37,5 +37,6 @@ void          gbConfigMerge( trie_t *config, char *skip, struct option *options,
 int  		  gbConfigReadInt( trie_t *config, const char *key, int def );
 unsigned long gbConfigReadSize( trie_t *config, const char *key, unsigned long def );
 const char *  gbConfigReadString( trie_t *config, const char *key, const char *def );
+time_t        gbConfigReadTime( trie_t *config, const char *key, time_t def );
 
 #endif
