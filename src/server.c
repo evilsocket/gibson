@@ -61,8 +61,7 @@ void gbOOM(size_t size)
     gbLog( CRITICAL, "INFO:" );
     gbLog( CRITICAL, "" );
 
-    gbLog( CRITICAL, "  Git Branch      : %s", BUILD_GIT_BRANCH );
-    gbLog( CRITICAL, "  Git HEAD Rev.   : %s", BUILD_GIT_SHA1 );
+    gbLog( CRITICAL, "  Version         : %s", VERSION );
     gbLog( CRITICAL, "  Uptime          : %s", uptime );
     gbLog( CRITICAL, "  Memory Used     : %s/%s", used, max );
     gbLog( CRITICAL, "  Current Items   : %d", server.stats.nitems );
@@ -476,8 +475,7 @@ static void gbSignalHandler(int sig)
         gbLog( CRITICAL, "INFO:" );
         gbLog( CRITICAL, "" );
 
-        gbLog( CRITICAL, "  Git Branch      : %s", BUILD_GIT_BRANCH );
-        gbLog( CRITICAL, "  Git HEAD Rev.   : %s", BUILD_GIT_SHA1 );
+        gbLog( CRITICAL, "  Version         : %s", VERSION );
         gbLog( CRITICAL, "  Uptime          : %s", uptime );
         gbLog( CRITICAL, "  Memory Used     : %s/%s", used, max );
         gbLog( CRITICAL, "  Current Items   : %d", server.stats.nitems );

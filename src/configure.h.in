@@ -2,8 +2,6 @@
 #cmakedefine LICENSE "@LICENSE@"
 #cmakedefine VERSION "@VERSION@"
 #cmakedefine BUILD_DATETIME   "@BUILD_DATETIME@"
-#cmakedefine BUILD_GIT_SHA1   "@BUILD_GIT_SHA1@"
-#cmakedefine BUILD_GIT_BRANCH "@BUILD_GIT_BRANCH@"
 
 #cmakedefine HAVE_JEMALLOC @HAVE_JEMALLOC@
 

@@ -93,7 +93,7 @@ void gbHelpMenu( char **argv, int exitcode ){
     struct option *popt = &long_options[0];
     char s[0xFF];
 
-	printf( "Gibson cache server v%s %s ( built %s )\n", VERSION, BUILD_GIT_BRANCH, BUILD_DATETIME );
+	printf( "Gibson cache server v%s ( built %s )\n", VERSION, BUILD_DATETIME );
     printf( "Released under %s\n\n", LICENSE );
 
 	printf( "Usage: %s [options]\n", argv[0] );
@@ -270,7 +270,7 @@ int main( int argc, char **argv)
     zmem_allocator( allocator, 0xFF );
 
 	gbLog( INFO, "Server starting ..." );
-	gbLog( INFO, "Git Branch       : '%s'", BUILD_GIT_BRANCH );
+	gbLog( INFO, "Version          : '%s'", VERSION );
 	gbLog( INFO, "Multiplexing API : '%s'", GB_MUX_API );
 	gbLog( INFO, "Memory allocator : '%s'", allocator );
 	gbLog( INFO, "Max idle time    : %ds", server.limits.maxidletime );
