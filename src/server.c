@@ -81,7 +81,8 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask )
     assert( privdata != NULL );
 
     gbClient *client = privdata;
-    size_t nwrote = 0, towrite = 0;
+    ssize_t nwrote;
+    size_t towrite = 0;
 
     if( client->status == STATUS_SENDING_REPLY )
     {
@@ -148,7 +149,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask )
     gbClient *client = ( gbClient * )privdata;
     gbServer *server = client->server;
     byte_t   *p = NULL;
-    int nread, toread; 
+    int nread = 0, toread = 0; 
 
     assert( server != NULL );
 
