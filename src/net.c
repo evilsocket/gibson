@@ -1132,12 +1132,12 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
     else if( item->encoding == GB_ENC_LZF )
     {
         size_t declen = lzf_decompress
-            (
-             item->data,
-             item->size,
-             client->server->lzf_buffer,
-             client->server->limits.maxrequestsize
-            );
+        (
+            item->data,
+            item->size,
+            client->server->lzf_buffer,
+            client->server->limits.maxrequestsize
+        );
 
         return gbClientEnqueueData( client, code, GB_ENC_PLAIN, client->server->lzf_buffer, declen, proc, shutdown );
     }

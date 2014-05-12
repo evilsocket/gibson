@@ -340,7 +340,9 @@ static int gbQuerySetHandler( gbClient *client, byte_t *p )
                 item = tr_find( &server->tree, k, klen );
                 // locked item
                 if( item && gbItemIsLocked( item, server, 0 ) )
+                {
                     return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
+                }
 
                 item = gbSingleSet( v, vlen, k, klen, server );
                 if( ttl > 0 )
@@ -348,7 +350,7 @@ static int gbQuerySetHandler( gbClient *client, byte_t *p )
                     item->time = server->stats.time;
                     item->ttl  = min( server->limits.maxitemttl, ttl );
                 }
-
+    
                 return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
             }
             else
