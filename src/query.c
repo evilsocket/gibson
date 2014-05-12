@@ -38,6 +38,10 @@ extern void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int ma
 
 __inline__ __attribute__((always_inline)) unsigned int gbQueryParseLong( byte_t *v, size_t vlen, long *l )
 {
+    assert( v != NULL );
+    assert( vlen > 0 );
+    assert( l != NULL );
+        
     register size_t i;
     register long n = 0;
     register char c = v[0];
@@ -75,6 +79,8 @@ static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding enc
 {
     gbItem *item = ( gbItem * )zmalloc( sizeof( gbItem ) );
 
+    assert( item != NULL );
+
     item->data 	   = data;
     item->size 	   = size;
     item->encoding = encoding;
@@ -88,6 +94,8 @@ static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding enc
 
 static void gbDestroyVolatileItem( gbItem *item )
 {
+    assert( item != NULL );
+
     if( item->encoding != GB_ENC_NUMBER && item->data != NULL )
     {
         zfree( item->data );
@@ -95,18 +103,22 @@ static void gbDestroyVolatileItem( gbItem *item )
     }
 
     zfree( item );
-    item = NULL;
 }
 
 static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl )
 {
+    assert( server != NULL );
+    assert( size == 0 || data != NULL );
+
     gbItem *item = ( gbItem * )zmalloc( sizeof( gbItem ) );
+
+    assert( item != NULL );
 
     item->data 	           = data;
     item->size 	           = size;
     item->encoding         = encoding;
     item->time             = 
-        item->last_access_time = server->stats.time;
+    item->last_access_time = server->stats.time;
     item->ttl	           = ttl;
     item->lock	           = 0;
 
@@ -130,6 +142,9 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
 
 void gbDestroyItem( gbServer *server, gbItem *item )
 {
+    assert( server != NULL );
+    assert( item != NULL );
+
     if( item->encoding == GB_ENC_LZF )
     {
         --server->stats.ncompressed;
@@ -142,7 +157,6 @@ void gbDestroyItem( gbServer *server, gbItem *item )
     }
 
     zfree( item );
-    item = NULL;
 
     server->stats.memused = zmem_used();	
     server->stats.sizeavg = server->stats.nitems == 1 ? 0 : server->stats.memused / --server->stats.nitems;
@@ -150,12 +164,19 @@ void gbDestroyItem( gbServer *server, gbItem *item )
 
 static int gbItemIsLocked( gbItem *item, gbServer *server, time_t eta )
 {
+    assert( item != NULL );
+    assert( server != NULL );
+    
     eta = eta == 0 ? server->stats.time - item->time : eta;
     return ( item->lock == -1 || eta < item->lock );
 }
 
 static int gbIsNodeStillValid( tnode_t *node, gbItem *item, gbServer *server, int remove )
 {
+    assert( node != NULL );
+    assert( item != NULL );
+    assert( server != NULL );
+
     register time_t eta = server->stats.time - item->time,
              ttl = item->ttl;
 
@@ -176,6 +197,11 @@ static int gbIsNodeStillValid( tnode_t *node, gbItem *item, gbServer *server, in
 
 static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *key, size_t klen, int remove )
 {
+    assert( item != NULL );
+    assert( server != NULL );
+    assert( key != NULL );
+    assert( klen > 0 );
+            
     register time_t eta = server->stats.time - item->time,
              ttl = item->ttl;
 
@@ -196,6 +222,11 @@ static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *ke
 
 static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen )
 {
+    assert( server != NULL );
+    assert( buffer != NULL );
+    assert( klen != NULL );
+    assert( key != NULL );
+
     register byte_t *p = buffer;
     register size_t i = 0, end;
 
@@ -212,6 +243,8 @@ static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_
     // if the value should be parsed ...
     if( value )
     {
+        assert( vlen != NULL );
+
         *value = p;
         *vlen  = size - *klen - 1;
         *vlen  = min( *vlen, server->limits.maxvaluesize );
@@ -230,6 +263,12 @@ static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_
 
 static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **ttl, byte_t **key, byte_t **value, size_t *ttllen, size_t *klen, size_t *vlen )
 {
+    assert( server != NULL );
+    assert( buffer != NULL );
+    assert( size > 0 );
+    assert( klen != NULL );
+    assert( key != NULL );
+    
     register byte_t *p = buffer;
     register size_t i = 0, end;
 
@@ -256,6 +295,8 @@ static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, by
     // finally parse the value if needed
     if( value )
     {
+        assert( vlen != NULL );
+        
         *value = p;
         *vlen  = size - *ttllen - *klen - 2;
         *vlen  = min( *vlen, server->limits.maxvaluesize );
@@ -277,6 +318,12 @@ static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, by
 
 static gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbServer *server )
 {
+    assert( v != NULL );
+    assert( vlen > 0 );
+    assert( k != NULL );
+    assert( klen > 0 );
+    assert( server != NULL );
+
     gbItemEncoding encoding = GB_ENC_PLAIN;
     void *data = v;
     size_t comprlen = vlen, needcompr = vlen - 4; // compress at least of 4 bytes
@@ -323,6 +370,9 @@ static gbItem *gbSingleSet( byte_t *v, size_t vlen, byte_t *k, size_t klen, gbSe
 
 static int gbQuerySetHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *t = NULL,
            *k = NULL,
            *v = NULL;
@@ -365,6 +415,9 @@ static int gbQuerySetHandler( gbClient *client, byte_t *p )
 
 static int gbQueryMultiSetHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *expr = NULL,
            *v = NULL;
     size_t exprlen = 0, vlen = 0;
@@ -416,6 +469,9 @@ static int gbQueryMultiSetHandler( gbClient *client, byte_t *p )
 
 static int gbQueryTtlHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *k = NULL,
            *v = NULL;
     size_t klen = 0, vlen = 0;
@@ -448,6 +504,9 @@ static int gbQueryTtlHandler( gbClient *client, byte_t *p )
 
 static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *expr = NULL,
            *v = NULL;
     size_t exprlen = 0, vlen = 0;
@@ -501,6 +560,9 @@ static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p )
 
 static int gbQueryGetHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *k = NULL;
     size_t klen = 0;
     gbServer *server = client->server;
@@ -529,6 +591,9 @@ static int gbQueryGetHandler( gbClient *client, byte_t *p )
 
 static int gbQueryMultiGetHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *expr = NULL;
     size_t exprlen = 0;
     gbServer *server = client->server;
@@ -592,6 +657,9 @@ static int gbQueryMultiGetHandler( gbClient *client, byte_t *p )
 
 static int gbQueryDelHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *k = NULL;
     size_t klen = 0;
     gbServer *server = client->server;
@@ -626,6 +694,9 @@ static int gbQueryDelHandler( gbClient *client, byte_t *p )
 
 static int gbQueryMultiDelHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *expr = NULL;
     size_t exprlen = 0;
     gbServer *server = client->server;
@@ -677,6 +748,9 @@ static int gbQueryMultiDelHandler( gbClient *client, byte_t *p )
 
 static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *k = NULL;
     size_t klen = 0;
     gbServer *server = client->server;
@@ -744,6 +818,9 @@ static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta )
 
 static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *expr = NULL;
     size_t exprlen = 0;
     gbServer *server = client->server;
@@ -817,6 +894,9 @@ static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 
 static int gbQueryLockHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *k = NULL,
            *v = NULL;
     size_t klen = 0, vlen = 0;
@@ -856,6 +936,9 @@ static int gbQueryLockHandler( gbClient *client, byte_t *p )
 
 static int gbQueryMultiLockHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *expr = NULL,
            *v = NULL;
     size_t exprlen = 0, vlen = 0;
@@ -908,6 +991,9 @@ static int gbQueryMultiLockHandler( gbClient *client, byte_t *p )
 
 static int gbQueryUnlockHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *k = NULL;
     size_t klen = 0;
     gbServer *server = client->server;
@@ -933,6 +1019,9 @@ static int gbQueryUnlockHandler( gbClient *client, byte_t *p )
 
 static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *expr = NULL;
     size_t exprlen = 0;
     gbServer *server = client->server;
@@ -976,6 +1065,9 @@ static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p )
 
 static int gbQueryCountHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *expr = NULL;
     size_t exprlen = 0;
     gbServer *server = client->server;
@@ -1012,6 +1104,9 @@ static int gbQueryCountHandler( gbClient *client, byte_t *p )
 
 static int gbQueryStatsHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     gbServer *server = client->server;
     size_t elems = 0;
     char s[0xFF] = {0};
@@ -1079,6 +1174,12 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
 
 static int gbGetItemMeta( gbServer *server, gbItem *item, byte_t *m, size_t mlen, long *v )
 {
+    assert( server != NULL );
+    assert( item != NULL );
+    assert( m != NULL );
+    assert( mlen > 0 );
+    assert( v != NULL );
+
     if( strncmp( (char *)m, "size", min( mlen, 4 ) ) == 0 )
     {
         *v = item->size;
@@ -1120,6 +1221,9 @@ static int gbGetItemMeta( gbServer *server, gbItem *item, byte_t *m, size_t mlen
 
 static int gbQueryMetaHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *k = NULL, *m = NULL;
     size_t klen = 0, mlen = 0;
     gbServer *server = client->server;
@@ -1156,6 +1260,9 @@ static int gbQueryMetaHandler( gbClient *client, byte_t *p )
 
 static int gbQueryKeysHandler( gbClient *client, byte_t *p )
 {
+    assert( client != NULL );
+    assert( p != NULL );
+
     byte_t *expr = NULL;
     size_t exprlen = 0;
     gbServer *server = client->server;
@@ -1205,6 +1312,9 @@ static int gbQueryKeysHandler( gbClient *client, byte_t *p )
 
 int gbProcessQuery( gbClient *client )
 {
+    assert( client != NULL );
+    assert( client->buffer_size >= sizeof(short) );
+
     short  op = *(short *)&client->buffer[0];
     byte_t *p =  client->buffer + sizeof(short);
 

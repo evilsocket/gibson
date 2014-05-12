@@ -28,8 +28,13 @@
  */
 #include "llist.h"
 
-llist_t *ll_prealloc( size_t elements ){
+llist_t *ll_prealloc( size_t elements )
+{
+    assert( elements > 0 );
+
 	llist_t *list = ll_create();
+
+    assert( list != NULL );
 
 	while( elements-- )
 		ll_append( list, NULL );
@@ -40,22 +45,33 @@ llist_t *ll_prealloc( size_t elements ){
 }
 
 // this is the real append routine which creates new items and append them to the list 
-static void ll_append_new( llist_t *ll, void *data ){
+static void ll_append_new( llist_t *ll, void *data )
+{
+    assert( ll != NULL );
+
 	ll_item_t *item = (ll_item_t *)zcalloc( sizeof(ll_item_t) );
+
+    assert( item != NULL );
 
 	item->data = data;
 
-	if( ll->head == NULL ){
+	if( ll->head == NULL )
+    {
 		ll->head = item;
 	}
-	else{
+	else
+    {
 		ll->tail->next = item;
 	}
+
 	ll->tail = item;
 }
 
 // search for a free slot to put our data, if none is found create and append a new one
-void ll_append( llist_t *ll, void *data ){
+void ll_append( llist_t *ll, void *data )
+{
+    assert( ll != NULL );
+
 	ll_item_t *item;
     // since we update the free slot pointer, this should be done in O(1)
 	for( item = ll->free; item; item = item->next ){
@@ -82,14 +98,18 @@ void ll_append( llist_t *ll, void *data ){
 }
 
 // mark every slot as free
-void ll_reset( llist_t *ll ){
+void ll_reset( llist_t *ll )
+{
+    assert( ll != NULL );
+
 	ll_foreach( ll, i ){
 		i->data = NULL;
 	}
     ll->free = ll->head;
 }
 
-void ll_clear( llist_t *ll ){
+void ll_clear( llist_t *ll )
+{
 	ll_item_t *item = ll ? ll->head : NULL,
 			  *next;
 

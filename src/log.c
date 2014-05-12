@@ -27,6 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "log.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
@@ -38,7 +39,10 @@ static gbLogLevel __log_level     = DEBUG;
 static int		  __log_flushrate = 1;
 static int		  __log_counter   = 0;
 
-void gbLogInit( const char *filename, gbLogLevel level, unsigned int flushrate ) {
+void gbLogInit( const char *filename, gbLogLevel level, unsigned int flushrate ) 
+{
+    assert( filename != NULL );
+    
 	__log_fp = fopen( filename, "a+t" );
 	if( __log_fp == NULL ){
 		printf( "ERROR: Unable to open logfile %s!\n", filename );
@@ -50,7 +54,11 @@ void gbLogInit( const char *filename, gbLogLevel level, unsigned int flushrate )
 }
 
 
-void gbLog( gbLogLevel level, const char *format, ... ){
+void gbLog( gbLogLevel level, const char *format, ... )
+{
+    assert( format != NULL );
+    assert( __log_fp != NULL );
+
 	char 	buffer[0xFF] 	= {0},
 			timestamp[0xFF] = {0},
 		   *slevel = "???";
@@ -58,7 +66,8 @@ void gbLog( gbLogLevel level, const char *format, ... ){
 	time_t 		rawtime  = 0;
   	struct tm * timeinfo = NULL;
 
-	if( level >= __log_level ){
+	if( level >= __log_level )
+    {
 		va_start( ap, format );
 			vsnprintf( buffer, 0xFF, format, ap );
 		va_end(ap);
@@ -84,21 +93,28 @@ void gbLog( gbLogLevel level, const char *format, ... ){
     }
 }
 
-void gbLogDumpBuffer( gbLogLevel level, unsigned char *buffer, unsigned int size ){
+void gbLogDumpBuffer( gbLogLevel level, unsigned char *buffer, unsigned int size )
+{
+    assert( buffer != NULL );
+    assert( size > 0 );
+
 	char *logline = alloca( size * 3 ),
 		*p = &logline[0];
 	unsigned char byte;
 	unsigned int i;
 	unsigned char prev_was_print = 1;
 
-	for( i = 0; i < size; i++ ){
+	for( i = 0; i < size; i++ )
+    {
 		byte = buffer[i];
-		if( isprint(byte) ){
+		if( isprint(byte) )
+        {
 			sprintf( p, "%s%c", prev_was_print ? "" : " ", byte );
 			p += prev_was_print ? 1 : 2;
 			prev_was_print = 1;
 		}
-		else {
+		else 
+        {
 			sprintf( p, " %02X", byte );
 			p += 3;
 			prev_was_print = 0;
@@ -108,7 +124,8 @@ void gbLogDumpBuffer( gbLogLevel level, unsigned char *buffer, unsigned int size
 	gbLog( level, "%s", logline );
 }
 
-void gbLogFinalize(){
+void gbLogFinalize()
+{
 	if( __log_fp ){
 		fflush(__log_fp);
 		fclose(__log_fp);

@@ -30,6 +30,8 @@
 
 static size_t tr_node_children( trie_t *trie )
 {
+    assert( trie != NULL );
+
     return trie->nodes == NULL ? 0 : ( trie->n_nodes + 1 );
 }
 
@@ -38,6 +40,8 @@ static tnode_t *tr_find_next_node( trie_t *trie, unsigned char value )
 {
 	int n = tr_node_children(trie);
 	trie_t *node = NULL;
+
+    assert( n == 0 || trie->nodes != NULL );
 
     while( --n >= 0 )
     {
@@ -53,6 +57,10 @@ static tnode_t *tr_find_next_node( trie_t *trie, unsigned char value )
 
 void *tr_insert( trie_t *trie, unsigned char *key, int len, void *value )
 {
+    assert( trie != NULL );
+    assert( key != NULL );
+    assert( len > 0 );
+
 	tnode_t *parent = trie, *node = NULL;
 	size_t i;
 	char v;
@@ -72,8 +80,11 @@ void *tr_insert( trie_t *trie, unsigned char *key, int len, void *value )
 			 * will be quick-sorted on every reallocation, so the search with
 			 * tr_find_next_node would be O(log N) instead of O(N).
 			 */
-			current_size    = tr_node_children( parent );
-			parent->nodes   = zrealloc( parent->nodes, sizeof(tnode_t) * ( current_size + 1 ) );
+			current_size  = tr_node_children( parent );
+			parent->nodes = zrealloc( parent->nodes, sizeof(tnode_t) * ( current_size + 1 ) );
+
+            assert( parent->nodes != NULL );
+
 			parent->n_nodes = current_size;
             node		    = parent->nodes + current_size;
 
@@ -82,6 +93,8 @@ void *tr_insert( trie_t *trie, unsigned char *key, int len, void *value )
 			node->nodes   = NULL;
 			node->n_nodes = 0;
 		}
+
+        assert( node != NULL );
 
 		parent = node;
 	}
@@ -94,6 +107,10 @@ void *tr_insert( trie_t *trie, unsigned char *key, int len, void *value )
 
 trie_t *tr_find_node( trie_t *trie, unsigned char *key, int len )
 {
+    assert( trie != NULL );
+    assert( key != NULL );
+    assert( len > 0 );
+
 	tnode_t *node = trie;
 	int i = 0;
 
@@ -109,6 +126,10 @@ trie_t *tr_find_node( trie_t *trie, unsigned char *key, int len )
 
 void *tr_find( trie_t *trie, unsigned char *key, int len )
 {
+    assert( trie != NULL );
+    assert( key != NULL );
+    assert( len > 0 );
+
 	tnode_t *node = tr_find_node( trie, key, len );
 	/*
 	 * End of the chain, if e_data is NULL this chain is not complete,
@@ -119,7 +140,12 @@ void *tr_find( trie_t *trie, unsigned char *key, int len )
 
 void tr_recurse( trie_t *trie, tr_recurse_handler handler, void *data, size_t level ) 
 {
+    assert( trie != NULL );
+    assert( handler != NULL );
+
 	size_t i, nnodes = tr_node_children(trie);
+
+    assert( nnodes == 0 || trie->nodes != NULL );
 
 	handler( trie, level, data );
 
@@ -139,6 +165,9 @@ struct tr_search_data
 
 static void tr_search_recursive_handler(tnode_t *node, size_t level, void *data)
 {
+    assert( node != NULL );
+    assert( data != NULL );
+
 	struct tr_search_data *search = data;
 
 	search->current[ level ] = node->value;
@@ -149,10 +178,15 @@ static void tr_search_recursive_handler(tnode_t *node, size_t level, void *data)
 		++search->total;
 		search->current[ level + 1 ] = '\0';
 
+        assert( search->keys != NULL );
+        assert( *search->keys != NULL );
+        
 		ll_append( *search->keys, zstrdup( search->current ) );
 
         if( search->values != NULL )
         {
+            assert( *search->values != NULL );
+
 		    ll_append( *search->values, node->data );
         }
 	}
@@ -160,6 +194,12 @@ static void tr_search_recursive_handler(tnode_t *node, size_t level, void *data)
 
 size_t tr_search( trie_t *trie, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **values ) 
 {
+    assert( trie != NULL );
+    assert( prefix != NULL );
+    assert( len > 0 );
+    assert( len < maxkeylen );
+    assert( keys != NULL );
+
 	struct tr_search_data searchdata;
 
 	searchdata.keys    = keys;
@@ -189,6 +229,9 @@ struct tr_search_nodes_data
 
 static void tr_search_nodes_recursive_handler(tnode_t *node, size_t level, void *data)
 {
+    assert( node != NULL );
+    assert( data != NULL );
+
 	struct tr_search_nodes_data *search = data;
 
 	search->current[ level ] = node->value;
@@ -199,6 +242,11 @@ static void tr_search_nodes_recursive_handler(tnode_t *node, size_t level, void 
 		++search->total;
 		search->current[ level + 1 ] = '\0';
 
+        assert( search->keys != NULL );
+        assert( search->nodes != NULL );
+        assert( *search->keys != NULL );
+        assert( *search->nodes != NULL );
+
 		ll_append( *search->keys,  zstrdup( search->current ) );
 		ll_append( *search->nodes, node );
 	}
@@ -206,6 +254,11 @@ static void tr_search_nodes_recursive_handler(tnode_t *node, size_t level, void 
 
 size_t tr_search_nodes( trie_t *trie, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **nodes )
 {
+    assert( trie != NULL );
+    assert( prefix != NULL );
+    assert( len > 0 );
+    assert( len < maxkeylen );
+
 	struct tr_search_nodes_data searchdata;
 
 	searchdata.keys    = keys;
@@ -227,6 +280,10 @@ size_t tr_search_nodes( trie_t *trie, unsigned char *prefix, int len, int maxkey
 
 void *tr_remove( trie_t *trie, unsigned char *key, int len )
 {
+    assert( trie != NULL );
+    assert( key != NULL );
+    assert( len > 0 );
+
 	tnode_t *node = trie;
 	int i = 0;
 
@@ -257,25 +314,23 @@ void *tr_remove( trie_t *trie, unsigned char *key, int len )
 
 void tr_free( trie_t *trie )
 {
+    assert( trie != NULL );
+
 	int i, nnodes = tr_node_children(trie);
-	/*
-	 * Better be safe than sorry ;)
-	 */
+
+    assert( nnodes == 0 || trie->nodes != NULL );
+
+	// Better be safe than sorry ;)
 	if( nnodes )
     {
-		/*
-		 * First of all, loop all the sub links.
-		 */
-		for( i = 0; i < nnodes; ++i ){
-			/*
-			 * Free this node children.
-			 */
+		// First of all, loop all the sub links.
+		for( i = 0; i < nnodes; ++i )
+        {
+			// Free this node children.
 			tr_free( trie->nodes + i );
 		}
 
-		/*
-		 * Free the node itself.
-		 */
+	    // Free the node itself.
 		zfree( trie->nodes );
 		trie->nodes = NULL;
 	}

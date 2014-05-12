@@ -61,7 +61,10 @@ class Mget extends BaseUnit
 
     public function clean(){
         $this->client->mdel('f');
-        $this->client->mdel( $this->hash );
+        if( $this->hash )
+        {
+            $this->client->mdel( $this->hash );
+        }
     }
 }
 

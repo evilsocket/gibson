@@ -32,15 +32,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
-/* This function provide us access to the original libc free(). This is useful
- * for instance to free results obtained by backtrace_symbols(). We need
- * to define this function before including zmalloc.h that may shadow the
- * free implementation if we use jemalloc or another non standard allocator. */
-void zlibc_free(void *ptr) {
-    free(ptr);
-}
-
 #include "config.h"
 #include "zmem.h"
 #include <string.h>
@@ -90,7 +81,19 @@ void zlibc_free(void *ptr) {
 #define zmem_real_ptr(p) ((char *)(p) + ZMEM_PREFIX_SIZE)
 
 
+/* This function provide us access to the original libc free(). This is useful
+ * for instance to free results obtained by backtrace_symbols(). We need
+ * to define this function before including zmalloc.h that may shadow the
+ * free implementation if we use jemalloc or another non standard allocator. */
+void zlibc_free(void *ptr) {
+    assert( ptr != NULL );
+
+    free(ptr);
+}
+
 void zmem_allocator( char *buffer, size_t size ){
+    assert( buffer != NULL );
+
 #if HAVE_JEMALLOC == 1
 	const char *p;
 	size_t s = sizeof(p);
@@ -171,6 +174,8 @@ static void zmalloc_default_oom(size_t size) {
 static void (*zmalloc_oom_handler)(size_t) = zmalloc_default_oom;
 
 void *zmalloc(size_t size) {
+    assert( size > 0 );
+
     void *ptr = malloc(size+ZMEM_PREFIX_SIZE);
 
     if (!ptr) zmalloc_oom_handler(size);
@@ -185,6 +190,8 @@ void *zmalloc(size_t size) {
 }
 
 void *zcalloc(size_t size) {
+    assert( size > 0 );
+
     void *ptr = calloc(1, size+ZMEM_PREFIX_SIZE);
 
     if (!ptr) zmalloc_oom_handler(size);
@@ -199,6 +206,8 @@ void *zcalloc(size_t size) {
 }
 
 void *zrealloc(void *ptr, size_t size) {
+    assert( size > 0 );
+
 #ifndef HAVE_MALLOC_SIZE
     void *realptr;
 #endif
@@ -232,6 +241,8 @@ void *zrealloc(void *ptr, size_t size) {
  * information as the first bytes of every allocation. */
 #ifndef HAVE_MALLOC_SIZE
 size_t zmalloc_size(void *ptr) {
+    assert( ptr != NULL );
+
     void *realptr = zmem_head_ptr(ptr);
     size_t size   = zmem_read_prefix(realptr);
     // assume at least that all the allocations are padded at sizeof(long) by the underlying allocator.
@@ -243,6 +254,9 @@ size_t zmalloc_size(void *ptr) {
 #endif
 
 void *zmemdup(void *ptr, size_t size){
+    assert( ptr != NULL );
+    assert( size > 0 );
+
 	unsigned char *dup = zmalloc( size );
 
 	memcpy( dup, ptr, size );
@@ -269,6 +283,8 @@ void zfree(void *ptr) {
 }
 
 char *zstrdup(const char *s) {
+    assert( s != NULL );
+
     size_t l = strlen(s)+1;
     char *p = zmalloc(l);
     memcpy(p,s,l);

@@ -33,6 +33,9 @@
 
 void gbConfigLoad( trie_t *config, char *filename )
 {
+    assert( config != NULL );
+    assert( filename != NULL );
+
     FILE *fp = fopen( filename, "rt" );
 
     if( fp )
@@ -101,6 +104,10 @@ void gbConfigLoad( trie_t *config, char *filename )
 
 void gbConfigMerge( trie_t *config, char *skip, struct option *options, int argc, char **argv )
 {
+    assert( config != NULL );
+    assert( skip != NULL );
+    assert( options != NULL );
+    
     int c = 0, oindex = 0;
     char *key;
 
@@ -121,6 +128,9 @@ void gbConfigMerge( trie_t *config, char *skip, struct option *options, int argc
 
 int gbConfigReadInt( trie_t *config, const char *key, int def )
 {
+    assert( config != NULL );
+    assert( key != NULL );
+    
     char *value = tr_find( config, (unsigned char *)key, strlen( key ) );
     if( value )
     {
@@ -135,6 +145,9 @@ int gbConfigReadInt( trie_t *config, const char *key, int def )
 
 unsigned long gbConfigReadSize( trie_t *config, const char *key, unsigned long def )
 {
+    assert( config != NULL );
+    assert( key != NULL );
+
     char *value = tr_find( config, (unsigned char *)key, strlen( key ) );
     if( value )
     {
@@ -170,6 +183,9 @@ unsigned long gbConfigReadSize( trie_t *config, const char *key, unsigned long d
 
 time_t gbConfigReadTime( trie_t *config, const char *key, time_t def )
 {
+    assert( config != NULL );
+    assert( key != NULL );
+
     char *value = tr_find( config, (unsigned char *)key, strlen( key ) );
     if( value )
     {
@@ -205,6 +221,9 @@ time_t gbConfigReadTime( trie_t *config, const char *key, time_t def )
 
 const char *gbConfigReadString( trie_t *config, const char *key, const char *def )
 {
+    assert( config != NULL );
+    assert( key != NULL );
+
     char *value = tr_find( config, (unsigned char *)key, strlen( key ) );
 
     return value ? value : def;

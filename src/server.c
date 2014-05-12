@@ -32,6 +32,9 @@ extern gbServer server;
 
 void gbMemFormat( unsigned long used, char *buffer, size_t size )
 {
+    assert( buffer != NULL );
+    assert( size > 0 );
+
     memset( buffer, 0x00, size );
     char *suffix[] = { "B", "KB", "MB", "GB", "TB" };
     size_t i = 0;
@@ -74,15 +77,21 @@ void gbOOM(size_t size)
 
 void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask )
 {
+    assert( el != NULL );
+    assert( privdata != NULL );
+
     gbClient *client = privdata;
     size_t nwrote = 0, towrite = 0;
 
     if( client->status == STATUS_SENDING_REPLY )
     {
         towrite = client->buffer_size - client->wrote;
-        nwrote  = write( client->fd, client->buffer + client->wrote, towrite );
 
-        if (nwrote == -1)
+        assert( towrite >= 0 );
+
+        nwrote = write( client->fd, client->buffer + client->wrote, towrite );
+
+        if(nwrote == -1)
         {
             if (errno == EAGAIN)
             {
@@ -95,7 +104,7 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask )
                 return;
             }
         }
-        else if (nwrote == 0)
+        else if(nwrote == 0)
         {
             gbLog( DEBUG, "Client closed connection.");
             gbClientDestroy(client);
@@ -122,7 +131,10 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask )
 
         }
     }
-    else {
+    else 
+    {
+        assert(0);
+
         gbLog( WARNING, "Unexpected status %d for client while sending response.", client->status );
         gbClientDestroy(client);
     }
@@ -130,10 +142,15 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask )
 
 void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask )
 {
+    assert( el != NULL );
+    assert( privdata != NULL );
+
     gbClient *client = ( gbClient * )privdata;
     gbServer *server = client->server;
     byte_t   *p = NULL;
-    int nread, toread;
+    int nread, toread; 
+
+    assert( server != NULL );
 
     // we're still readying the buffer size from the socket
     if( client->status == STATUS_WAITING_SIZE )
@@ -145,7 +162,8 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask )
             p = (byte_t *)( &client->buffer_size + client->read );
         }
         // we're done, start reading the buffer
-        else {
+        else
+        {
             client->read   = 0;
             client->status = STATUS_WAITING_BUFFER;
             // make sure the buffer is not too big or too small ( must be at least 2 bytes to contain the opcode )
@@ -157,7 +175,11 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask )
             }
             // allocate buffer for the incoming request
             else
+            {
                 client->buffer = zmalloc( client->buffer_size );
+
+                assert( client->buffer != NULL );
+            }
         }
     }
 
@@ -170,7 +192,12 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask )
             p = client->buffer + client->read;
         }
         // nothing left to read
-        else {
+        else
+        {
+            // we should never have more incoming bytes than specified by the protocol
+            // but since it's handled anyway, just assert this in the debug build
+            assert( toread == 0 );
+
             client->read   = 0;
             client->status = STATUS_SENDING_REPLY;
         }
@@ -226,6 +253,9 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask )
 
 void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask)
 {
+    assert( e != NULL );
+    assert( privdata != NULL );
+
     int client_port = 0, client_fd;
     char client_ip[128] = {0};
     gbServer *server = (gbServer *)privdata;
@@ -258,6 +288,8 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask)
 
         gbClient *client = gbClientCreate(client_fd,server);
 
+        assert( client != NULL );
+
         if( gbCreateFileEvent( e, client_fd, GB_READABLE, gbReadQueryHandler, client ) == GB_ERR )
         {
             gbLog( WARNING, "Unable to wait for client readable state." );
@@ -267,13 +299,18 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask)
         }
     }
     else
+    {
         gbLog( WARNING, "Accept error: %s ( %d )", server->error, errno );
+    }
 }
 
 #define GB_DEL_ITEM(s,n,i) (n)->data = NULL; gbDestroyItem( (s), (i) )
 
 void gbMemoryFreeHandler( tnode_t *node, size_t level, void *data )
 {
+    assert( node != NULL );
+    assert( data != NULL );
+
     gbServer *server = data;
     gbItem	 *item = node->data;
     time_t	  eta = item ? ( server->stats.time - item->last_access_time ) : 0;
@@ -289,6 +326,9 @@ void gbMemoryFreeHandler( tnode_t *node, size_t level, void *data )
 
 void gbHandleDeadTTLHandler( tnode_t *node, size_t level, void *data )
 {
+    assert( node != NULL );
+    assert( data != NULL );
+
     gbServer *server = data;
     gbItem	 *item = node->data;
     time_t	  eta = item ? ( server->stats.time - item->time ) : 0;
@@ -306,6 +346,9 @@ void gbHandleDeadTTLHandler( tnode_t *node, size_t level, void *data )
 
 int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
 {
+    assert( eventLoop != NULL );
+    assert( data != NULL );
+
     gbServer *server = data;
     time_t now = time(NULL);
     char used[0xFF] = {0},
@@ -509,7 +552,7 @@ void gbProcessInit()
     // ignore SIGHUP and SIGPIPE since we're gonna handle dead clients
     signal(SIGHUP, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
-
+    
     // set SIGTERM and SIGSEGV custom handler
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
@@ -519,7 +562,6 @@ void gbProcessInit()
     sigaction( SIGSEGV, &act, NULL );
     sigaction( SIGILL,  &act, NULL );
     sigaction( SIGFPE,  &act, NULL );
-    sigaction( SIGABRT, &act, NULL );
 
     FILE *fp = fopen(server.pidfile,"w+t");
     if (fp)
@@ -533,6 +575,8 @@ void gbProcessInit()
 
 void gbObjectDestroyHandler( tnode_t *elem, size_t level, void *data )
 {
+    assert( elem != NULL );
+
     gbItem *item = elem->data;
     if( item )
         gbDestroyItem( data, item );
@@ -540,6 +584,8 @@ void gbObjectDestroyHandler( tnode_t *elem, size_t level, void *data )
 
 void gbConfigDestroyHandler( tnode_t *elem, size_t level, void *data )
 {
+    assert( elem != NULL );
+
     char *item = elem->data;
     if( item )
         zfree( item );
@@ -547,10 +593,19 @@ void gbConfigDestroyHandler( tnode_t *elem, size_t level, void *data )
 
 void gbServerDestroy( gbServer *server )
 {
+    assert( server != NULL );
+    assert( server->m_keys != NULL );
+    assert( server->m_values != NULL );
+    assert( server->m_buffer != NULL );
+    assert( server->lzf_buffer != NULL );
+    assert( server->events != NULL );
+
     if( server->clients )
     {
         ll_foreach( server->clients, citem )
         {
+            assert( citem != NULL );
+
             gbClient *client = citem->data;
             if( client )
             {

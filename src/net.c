@@ -79,6 +79,8 @@
 
 gbEventLoop *gbCreateEventLoop(int setsize)
 {
+    assert( setsize > 0 );
+
     gbEventLoop *eventLoop;
     int i;
 
@@ -101,17 +103,23 @@ gbEventLoop *gbCreateEventLoop(int setsize)
     return eventLoop;
 
 err:
+
     if (eventLoop)
     {
         zfree(eventLoop->events);
         zfree(eventLoop->fired);
         zfree(eventLoop);
     }
+
+    assert(0);
+
     return NULL;
 }
 
 int gbGetSetSize(gbEventLoop *eventLoop)
 {
+    assert( eventLoop != NULL );
+
     return eventLoop->setsize;
 }
 
@@ -124,6 +132,9 @@ int gbGetSetSize(gbEventLoop *eventLoop)
  * Otherwise GB_OK is returned and the operation is successful. */
 int gbResizeSetSize(gbEventLoop *eventLoop, int setsize)
 {
+    assert( eventLoop != NULL );
+    assert( setsize != 0 );
+        
     int i;
 
     if( setsize == eventLoop->setsize )
@@ -137,6 +148,9 @@ int gbResizeSetSize(gbEventLoop *eventLoop, int setsize)
     eventLoop->fired   = zrealloc( eventLoop->fired, sizeof(gbFiredEvent) * setsize );
     eventLoop->setsize = setsize;
 
+    assert( eventLoop->events != NULL );
+    assert( eventLoop->fired != NULL );
+
     /* Make sure that if we created new slots, they are initialized with
      * an AE_NONE mask. */
     for (i = eventLoop->maxfd+1; i < setsize; i++)
@@ -147,6 +161,10 @@ int gbResizeSetSize(gbEventLoop *eventLoop, int setsize)
 
 void gbDeleteEventLoop(gbEventLoop *eventLoop)
 {
+    assert( eventLoop != NULL );
+    assert( eventLoop->events != NULL );
+    assert( eventLoop->fired != NULL );
+
     aeApiFree(eventLoop);
     zfree(eventLoop->events);
     zfree(eventLoop->fired);
@@ -155,11 +173,15 @@ void gbDeleteEventLoop(gbEventLoop *eventLoop)
 
 void gbStopEventLoop(gbEventLoop *eventLoop)
 {
+    assert( eventLoop != NULL );
+
     eventLoop->stop = 1;
 }
 
 int gbCreateFileEvent(gbEventLoop *eventLoop, int fd, int mask, gbFileProc *proc, void *clientData)
 {
+    assert( eventLoop != NULL );
+
     if (fd >= eventLoop->setsize)
     {
         errno = ERANGE;
@@ -180,6 +202,8 @@ int gbCreateFileEvent(gbEventLoop *eventLoop, int fd, int mask, gbFileProc *proc
 
 void gbDeleteFileEvent(gbEventLoop *eventLoop, int fd, int mask)
 {
+    assert( eventLoop != NULL );
+
     if (fd >= eventLoop->setsize) return;
     gbFileEvent *fe = &eventLoop->events[fd];
 
@@ -199,6 +223,8 @@ void gbDeleteFileEvent(gbEventLoop *eventLoop, int fd, int mask)
 
 int gbGetFileEvents(gbEventLoop *eventLoop, int fd)
 {
+    assert( eventLoop != NULL );
+
     if (fd >= eventLoop->setsize) return 0;
     gbFileEvent *fe = &eventLoop->events[fd];
 
@@ -207,6 +233,9 @@ int gbGetFileEvents(gbEventLoop *eventLoop, int fd)
 
 static void gbGetTime(long *seconds, long *milliseconds)
 {
+    assert( seconds != NULL );
+    assert( milliseconds != NULL );
+
     /*
      * On FreeBSD calling gettimeofday() causes all the cores on a multicore
      * system to be synchronized. On a heavily loaded system with a
@@ -236,6 +265,9 @@ static void gbGetTime(long *seconds, long *milliseconds)
 
 static void gbAddMillisecondsToNow(long long milliseconds, long *sec, long *ms)
 {
+    assert( sec != NULL );
+    assert( ms != NULL );
+
     long cur_sec, cur_ms, when_sec, when_ms;
 
     gbGetTime(&cur_sec, &cur_ms);
@@ -254,6 +286,8 @@ long long gbCreateTimeEvent(gbEventLoop *eventLoop, long long milliseconds,
         gbTimeProc *proc, void *clientData,
         gbEventFinalizerProc *finalizerProc)
 {
+    assert( eventLoop != NULL );
+
     long long id = eventLoop->timeEventNextId++;
     gbTimeEvent *te;
 
@@ -271,6 +305,8 @@ long long gbCreateTimeEvent(gbEventLoop *eventLoop, long long milliseconds,
 
 int gbDeleteTimeEvent(gbEventLoop *eventLoop, long long id)
 {
+    assert( eventLoop != NULL );
+
     gbTimeEvent *te, *prev = NULL;
 
     te = eventLoop->timeEventHead;
@@ -300,6 +336,8 @@ int gbDeleteTimeEvent(gbEventLoop *eventLoop, long long id)
  */
 static gbTimeEvent *aeSearchNearestTimer(gbEventLoop *eventLoop)
 {
+    assert( eventLoop != NULL );
+
     gbTimeEvent *te = eventLoop->timeEventHead;
     gbTimeEvent *nearest = te;
 
@@ -320,6 +358,8 @@ static gbTimeEvent *aeSearchNearestTimer(gbEventLoop *eventLoop)
 /* Process time events */
 static int processTimeEvents(gbEventLoop *eventLoop)
 {
+    assert( eventLoop != NULL );
+
     int processed = 0;
     gbTimeEvent *te;
     long long maxId;
@@ -411,6 +451,8 @@ static int processTimeEvents(gbEventLoop *eventLoop)
  * The function returns the number of events processed. */
 int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 {
+    assert( eventLoop != NULL );
+
     int processed = 0, 
         time_events = ( flags & GB_TIME_EVENTS ),
         file_events = ( flags & GB_FILE_EVENTS ),
@@ -534,6 +576,8 @@ int gbWaitEvents(int fd, int mask, long long milliseconds)
 
 void gbEventLoopMain(gbEventLoop *eventLoop)
 {
+    assert( eventLoop != NULL );
+
     eventLoop->stop = 0;
     while (!eventLoop->stop)
     {
@@ -550,6 +594,8 @@ char *gbGetEventApiName(void)
 
 void gbSetBeforeSleepProc(gbEventLoop *eventLoop, gbBeforeSleepProc *beforesleep)
 {
+    assert( eventLoop != NULL );
+
     eventLoop->beforesleep = beforesleep;
 }
 
@@ -838,6 +884,8 @@ int gbNetWrite(int fd, char *buf, int count)
 
 static int gbNetListen(char *err, int s, struct sockaddr *sa, socklen_t len)
 {
+    assert( sa != NULL );
+
     if (bind(s,sa,len) == -1)
     {
         gbNetSetError(err, "bind: %s", strerror(errno));
@@ -859,6 +907,8 @@ static int gbNetListen(char *err, int s, struct sockaddr *sa, socklen_t len)
 
 int gbNetTcpServer(char *err, int port, char *bindaddr)
 {
+    assert( bindaddr != NULL );
+
     int s;
     struct sockaddr_in sa;
 
@@ -882,6 +932,8 @@ int gbNetTcpServer(char *err, int port, char *bindaddr)
 
 int gbNetUnixServer(char *err, char *path, mode_t perm)
 {
+    assert( path != NULL );
+
     int s;
     struct sockaddr_un sa;
 
@@ -900,6 +952,9 @@ int gbNetUnixServer(char *err, char *path, mode_t perm)
 
 static int gbNetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len)
 {
+    assert( sa != NULL );
+    assert( len != NULL );
+
     int fd;
     while(1)
     {
@@ -979,6 +1034,8 @@ int gbNetSockName(int fd, char *ip, int *port)
 
 void gbServerFormatUptime( gbServer *server, char *s )
 {
+    assert( server != NULL );
+    assert( s != NULL );
 
     int uptime = difftime( server->stats.time, server->stats.started );
     int days = 0,
@@ -1011,7 +1068,11 @@ void gbServerFormatUptime( gbServer *server, char *s )
 
 gbClient* gbClientCreate( int fd, gbServer *server  )
 {
+    assert( server != NULL );
+
     gbClient *client = (gbClient *)zmalloc( sizeof( gbClient ) );
+
+    assert( client != NULL );
 
     client->fd 			= fd;
     client->buffer 		= NULL;
@@ -1031,8 +1092,12 @@ gbClient* gbClientCreate( int fd, gbServer *server  )
 
 void gbClientReset( gbClient *client )
 {
+    assert( client != NULL );
+
     if( client->buffer != NULL )
+    {
         zfree( client->buffer );
+    }
 
     client->buffer      = NULL;
     client->buffer_size = 0;
@@ -1044,6 +1109,9 @@ void gbClientReset( gbClient *client )
 
 void gbClientDestroy( gbClient *client )
 {
+    assert( client != NULL );
+    assert( client->server != NULL );
+
     gbServer *server = client->server;
 
     if( client->buffer != NULL )
@@ -1054,6 +1122,8 @@ void gbClientDestroy( gbClient *client )
 
     if (client->fd != -1)
     {
+        assert( server->events != NULL );
+
         gbDeleteFileEvent( server->events, client->fd, GB_READABLE );
         gbDeleteFileEvent( server->events, client->fd, GB_WRITABLE );
         close(client->fd);
@@ -1074,17 +1144,20 @@ void gbClientDestroy( gbClient *client )
     --server->stats.nclients;
 
     zfree( client );
-    client = NULL;
 }
 
 int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, byte_t *reply, uint32_t size, gbFileProc *proc, short shutdown )
 {
+    assert( client != NULL );
+    assert( reply != NULL );
+    assert( size > 0 );
+
     if( client->fd <= 0 ) return GB_ERR;
 
-    uint32_t rsize = sizeof( short )  + 		// reply opcode
-        sizeof( gbItemEncoding ) + // data type
-        sizeof( uint32_t ) + 	    // data length
-        size;			  		    // data
+    uint32_t rsize = sizeof( short )  + // reply opcode
+        sizeof( gbItemEncoding ) +      // data type
+        sizeof( uint32_t ) + 	        // data length
+        size;			  		        // data
 
     // realloc only if needed
     if( rsize > client->buffer_size )
@@ -1092,6 +1165,8 @@ int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, 
         client->buffer = (byte_t *)zrealloc( client->buffer, rsize );
     }
 
+    assert( client->buffer != NULL );
+    
     client->buffer_size = rsize;
     client->read  		= 0;
     client->wrote 		= 0;
@@ -1118,6 +1193,8 @@ int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, 
 
 int gbClientEnqueueCode( gbClient *client, short code, gbFileProc proc, short shutdown )
 {
+    assert( client != NULL );
+
     byte_t zero = 0x00;
 
     return gbClientEnqueueData( client, code, GB_ENC_PLAIN, &zero, 1, proc, shutdown );
@@ -1125,6 +1202,11 @@ int gbClientEnqueueCode( gbClient *client, short code, gbFileProc proc, short sh
 
 int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc *proc, short shutdown )
 {
+    assert( client != NULL );
+    assert( item != NULL );
+    assert( item->data != NULL || item->encoding == GB_ENC_NUMBER );
+    assert( item->size > 0 );
+
     if( item->encoding == GB_ENC_PLAIN )
     {
         return gbClientEnqueueData( client, code, GB_ENC_PLAIN, item->data, item->size, proc, shutdown );
@@ -1138,6 +1220,8 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
             client->server->lzf_buffer,
             client->server->limits.maxrequestsize
         );
+
+        assert( declen > item->size );
 
         return gbClientEnqueueData( client, code, GB_ENC_PLAIN, client->server->lzf_buffer, declen, proc, shutdown );
     }
@@ -1158,6 +1242,11 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
 
 int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc *proc, short shutdown )
 {
+    assert( client != NULL );
+    assert( client->server != NULL );
+    assert( elements > 0 );
+    assert( client->server->m_buffer != NULL );
+
     gbServer *server = client->server;
     gbItem *item = NULL;
     uint32_t sz = sizeof(uint32_t),
@@ -1189,6 +1278,8 @@ int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc 
 
             // write key size + key
             sz = strlen( ki->data );
+
+            assert( sz > 0 );
 
             SAFE_MEMCPY( p, memrev32ifbe(&sz), sizeof(uint32_t) );
             SAFE_MEMCPY( p, ki->data, sz );
@@ -1222,6 +1313,9 @@ int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc 
 #endif	
                 vsize = item->size;
             }
+
+            assert( v != NULL );
+            assert( vsize > 0 );
 
             SAFE_MEMCPY( p, &encoding,            sizeof( gbItemEncoding ) );
             SAFE_MEMCPY( p, memrev32ifbe(&vsize), sizeof( uint32_t ) );

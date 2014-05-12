@@ -46,6 +46,7 @@
 #endif
 
 #include <stdlib.h>
+#include <assert.h>
 
 
 void   zmem_allocator( char *buffer, size_t size );

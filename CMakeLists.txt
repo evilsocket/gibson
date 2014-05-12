@@ -17,7 +17,7 @@ if (WITH_DEBUG)
 else (WITH_DEBUG)
 	message(STATUS "Configuring for release")
 	set( CMAKE_BUILD_TYPE Release )
-	set( OPTIMIZATION "-g -O3" )
+    set( OPTIMIZATION "-g -O3 -DNDEBUG" )
 endif (WITH_DEBUG)
 
 set( COMMON_FLAGS "-Wall ${OPTIMIZATION}" )
