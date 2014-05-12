@@ -110,15 +110,18 @@ void ll_reset( llist_t *ll )
 
 void ll_clear( llist_t *ll )
 {
-	ll_item_t *item = ll ? ll->head : NULL,
-			  *next;
+    if( ll )
+    {
+        ll_item_t *item = ll->head,
+                  *next;
 
-	while(item){
-		next = item->next;
-		zfree(item);
-		item = next;
-	}
+        while(item){
+            next = item->next;
+            zfree(item);
+            item = next;
+        }
 
-	ll_init(ll);
+        ll_init(ll);
+    }
 }
 
