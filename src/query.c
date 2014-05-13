@@ -75,9 +75,13 @@ __inline__ __attribute__((always_inline)) unsigned int gbQueryParseLong( byte_t 
     return 1;
 }
 
-static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding encoding )
+static gbItem *gbCreateVolatileItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding )
 {
-    gbItem *item = ( gbItem * )zmalloc( sizeof( gbItem ) );
+    assert( server != NULL );
+    
+    gbItem *item = ( gbItem * )opool_alloc_object( &server->item_pool );
+
+    assert( item != NULL );
 
     assert( item != NULL );
 
@@ -92,8 +96,9 @@ static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding enc
     return item;
 }
 
-static void gbDestroyVolatileItem( gbItem *item )
+static void gbDestroyVolatileItem( gbServer *server, gbItem *item )
 {
+    assert( server != NULL );
     assert( item != NULL );
 
     if( item->encoding != GB_ENC_NUMBER && item->data != NULL )
@@ -102,7 +107,7 @@ static void gbDestroyVolatileItem( gbItem *item )
         item->data = NULL;
     }
 
-    zfree( item );
+    opool_free_object( &server->item_pool, item );
 }
 
 static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl )
@@ -110,7 +115,7 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
     assert( server != NULL );
     assert( size == 0 || data != NULL );
 
-    gbItem *item = ( gbItem * )zmalloc( sizeof( gbItem ) );
+    gbItem *item = ( gbItem * )opool_alloc_object( &server->item_pool );
 
     assert( item != NULL );
 
@@ -156,7 +161,7 @@ void gbDestroyItem( gbServer *server, gbItem *item )
         item->data = NULL;
     }
 
-    zfree( item );
+    opool_free_object( &server->item_pool, item );
 
     server->stats.memused = zmem_used();	
     server->stats.nitems -= 1;
@@ -1114,11 +1119,11 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
 
 #define APPEND_LONG_STAT( key, value ) ++elems; \
     ll_append( server->m_keys, key ); \
-    ll_append( server->m_values, gbCreateVolatileItem( (void *)(long)value, sizeof(long), GB_ENC_NUMBER ) )
+    ll_append( server->m_values, gbCreateVolatileItem( server, (void *)(long)value, sizeof(long), GB_ENC_NUMBER ) )
 
 #define APPEND_STRING_STAT( key, value ) ++elems; \
     ll_append( server->m_keys, key ); \
-    ll_append( server->m_values, gbCreateVolatileItem( zstrdup(value), strlen(value), GB_ENC_PLAIN ) )
+    ll_append( server->m_values, gbCreateVolatileItem( server, zstrdup(value), strlen(value), GB_ENC_PLAIN ) )
 
 #define APPEND_FLOtr_STAT( key, value ) memset( s, 0x00, 0xFF ); \
     sprintf( s, "%f", (value) ); \
@@ -1160,7 +1165,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
     {
         if( vi->data != NULL )
         {
-            gbDestroyVolatileItem( vi->data );
+            gbDestroyVolatileItem( server, vi->data );
             vi->data = NULL;
         }
 
@@ -1285,7 +1290,7 @@ static int gbQueryKeysHandler( gbClient *client, byte_t *p )
                 sprintf( index, "%lu", i );
                 ll_append( server->m_keys, zstrdup(index) );
                 // convert strings to gbItems
-                key->data = gbCreateVolatileItem( key->data, strlen(key->data), GB_ENC_PLAIN );
+                key->data = gbCreateVolatileItem( server, key->data, strlen(key->data), GB_ENC_PLAIN );
             }
 
             int ret = gbClientEnqueueKeyValueSet( client, found, gbWriteReplyHandler, 0 );
@@ -1293,7 +1298,7 @@ static int gbQueryKeysHandler( gbClient *client, byte_t *p )
             ll_foreach_2( server->m_keys, server->m_values, ki, vi )
             {
                 // free volatile item
-                gbDestroyVolatileItem( vi->data );
+                gbDestroyVolatileItem( server, vi->data );
                 // free zstrdup'ed key
                 zfree( ki->data );
                 ki->data = NULL;

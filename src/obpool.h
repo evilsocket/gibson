@@ -34,28 +34,43 @@
 
 typedef struct _opool_block
 {
+    // block memory
     void                *memory;
+    // number of objects stored in this block
     size_t               capacity;
+    // pointer to next block or NULL if this is the last one
     struct _opool_block *next;
 }
 opool_block_t;
 
-typedef union
+// this structure is used as a "header" inside free 
+// objects to make them point to the previous free
+// object and have a memory unpexpensive free stack
+typedef struct
 {
-    uintptr_t      address;
     opool_block_t *next;
 }
 opool_header_t;
 
 typedef struct
 {
+    // pointer to the current used memory
     void          *memory;
+    // pointer to the first free object
     void          *first_free;
+    // total objects used inside the current block
     size_t         used;
+    // current block capacity in objects
     size_t         capacity;
+    // total number of objects allocated inside blocks
+    size_t         total_capacity;
+    // size in bytes of a single object in the pool
     size_t         object_size;
+    // first allocated block
     opool_block_t  first_block;
+    // pointer to the last allocated block
     opool_block_t *last_block;
+    // maximum objects that can be stored in a block
     size_t         max_block_size;
 }
 opool_t;

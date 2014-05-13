@@ -62,15 +62,16 @@ void opool_create( opool_t *pool, size_t object_size, size_t initial_capacity, s
     assert( initial_capacity > 0 );
     assert( max_block_size > ( object_size * initial_capacity ) );
 
-    pool->first_free = NULL;
-    pool->used = 0;
-    pool->object_size = object_size;
-    pool->capacity = initial_capacity;
+    pool->first_free     = NULL;
+    pool->used           = 0;
+    pool->object_size    = object_size;
+    pool->capacity       = initial_capacity;
+    pool->total_capacity = initial_capacity;
     pool->max_block_size = max_block_size;
 
     opool_alloc_block( &pool->first_block, object_size, initial_capacity );
     
-    pool->memory = pool->first_block.memory;
+    pool->memory     = pool->first_block.memory;
     pool->last_block = &pool->first_block;
 }
 
@@ -109,10 +110,11 @@ void *opool_alloc_object( opool_t *pool )
             opool_alloc_block( new_block, pool->object_size, new_capacity );
 
             pool->last_block->next = new_block;
-            pool->last_block = new_block;
-            pool->memory = new_block->memory;
-            pool->used = 0;
-            pool->capacity = new_capacity;
+            pool->last_block       = new_block;
+            pool->memory           = new_block->memory;
+            pool->used             = 0;
+            pool->capacity         = new_capacity;
+            pool->total_capacity  += new_capacity;
         }
         
         obj = (uint8_t *)pool->memory;
@@ -160,9 +162,10 @@ void opool_destroy( opool_t *pool )
         block = next;
     }
 
-    pool->first_free = NULL;
-    pool->used = 0;
-    pool->capacity = 0;
-    pool->memory = NULL;
-    pool->last_block = NULL;
+    pool->first_free     = NULL;
+    pool->used           = 0;
+    pool->capacity       = 0;
+    pool->memory         = NULL;
+    pool->last_block     = NULL;
+    pool->total_capacity = 0;
 }
