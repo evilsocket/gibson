@@ -1137,24 +1137,29 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
     APPEND_STRING_STAT( "server_allocator", "malloc" );
 #endif
     APPEND_STRING_STAT( "server_arch", (sizeof(long) == 8) ? "64" : "32" );
-    APPEND_LONG_STAT( "server_started",         server->stats.started );
-    APPEND_LONG_STAT( "server_time",            server->stats.time );
-    APPEND_LONG_STAT( "first_item_seen",        server->stats.firstin );
-    APPEND_LONG_STAT( "last_item_seen",         server->stats.lastin );
-    APPEND_LONG_STAT( "total_items",            server->stats.nitems );
-    APPEND_LONG_STAT( "total_compressed_items", server->stats.ncompressed );
-    APPEND_LONG_STAT( "total_clients",          server->stats.nclients );
-    APPEND_LONG_STAT( "total_cron_done",        server->stats.crondone );
-    APPEND_LONG_STAT( "total_connections",      server->stats.connections );
-    APPEND_LONG_STAT( "total_requests",         server->stats.requests );
-    APPEND_LONG_STAT( "memory_available",       server->stats.memavail );
-    APPEND_LONG_STAT( "memory_usable",          server->limits.maxmem );
-    APPEND_LONG_STAT( "memory_used",            server->stats.memused );
-    APPEND_LONG_STAT( "memory_peak", 			server->stats.mempeak );
-    APPEND_FLOtr_STAT( "memory_fragmentation",  zmem_fragmentation_ratio() );
-    APPEND_LONG_STAT( "item_size_avg",          server->stats.sizeavg );
-    APPEND_LONG_STAT( "compr_rate_avg",         server->stats.compravg );
-    APPEND_FLOtr_STAT( "reqs_per_client_avg",   server->stats.requests / (double)server->stats.connections );
+    APPEND_LONG_STAT( "server_started",             server->stats.started );
+    APPEND_LONG_STAT( "server_time",                server->stats.time );
+    APPEND_LONG_STAT( "first_item_seen",            server->stats.firstin );
+    APPEND_LONG_STAT( "last_item_seen",             server->stats.lastin );
+    APPEND_LONG_STAT( "total_items",                server->stats.nitems );
+    APPEND_LONG_STAT( "total_compressed_items",     server->stats.ncompressed );
+    APPEND_LONG_STAT( "total_clients",              server->stats.nclients );
+    APPEND_LONG_STAT( "total_cron_done",            server->stats.crondone );
+    APPEND_LONG_STAT( "total_connections",          server->stats.connections );
+    APPEND_LONG_STAT( "total_requests",             server->stats.requests );
+    APPEND_LONG_STAT( "item_pool_current_used",     server->item_pool.used );
+    APPEND_LONG_STAT( "item_pool_current_capacity", server->item_pool.capacity );
+    APPEND_LONG_STAT( "item_pool_total_capacity",   server->item_pool.total_capacity );
+    APPEND_LONG_STAT( "item_pool_object_size",      server->item_pool.object_size );
+    APPEND_LONG_STAT( "item_pool_max_block_size",   server->item_pool.max_block_size );
+    APPEND_LONG_STAT( "memory_available",           server->stats.memavail );
+    APPEND_LONG_STAT( "memory_usable",              server->limits.maxmem );
+    APPEND_LONG_STAT( "memory_used",                server->stats.memused );
+    APPEND_LONG_STAT( "memory_peak", 			    server->stats.mempeak );
+    APPEND_FLOtr_STAT( "memory_fragmentation",      zmem_fragmentation_ratio() );
+    APPEND_LONG_STAT( "item_size_avg",              server->stats.sizeavg );
+    APPEND_LONG_STAT( "compr_rate_avg",             server->stats.compravg );
+    APPEND_FLOtr_STAT( "reqs_per_client_avg",       server->stats.requests / (double)server->stats.connections );
 
 #undef APPEND_LONG_STAT
 #undef APPEND_STRING_STAT
