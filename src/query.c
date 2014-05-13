@@ -159,7 +159,8 @@ void gbDestroyItem( gbServer *server, gbItem *item )
     zfree( item );
 
     server->stats.memused = zmem_used();	
-    server->stats.sizeavg = server->stats.nitems == 1 ? 0 : server->stats.memused / --server->stats.nitems;
+    server->stats.nitems -= 1;
+    server->stats.sizeavg = server->stats.nitems == 0 ? 0 : server->stats.memused / server->stats.nitems;
 }
 
 static int gbItemIsLocked( gbItem *item, gbServer *server, time_t eta )
