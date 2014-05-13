@@ -148,7 +148,7 @@ void opool_destroy( opool_t *pool )
 {
     assert( pool != NULL );
 
-    opool_block_t *next, *block = &pool->first_block;
+    opool_block_t *next, *block = pool->first_block.next;
 
     while(block)
     {
