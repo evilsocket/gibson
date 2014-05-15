@@ -61,6 +61,9 @@ set( AUTHOR "Simone Margaritelli <http://gibson-db.in>" )
 set( LICENSE "BSD License" )
 set( VERSION "${BUILD_GIT_TAG}" )
 
+set( TESTS_FOLDER "tests" )
+set( TESTS_REPO "https://github.com/evilsocket/ruby-gibson.git" )
+
 # this is needed for Mac OS X compilation compatibility
 include_directories("${PROJECT_SOURCE_DIR}/src")
 
@@ -104,15 +107,27 @@ install( FILES debian/etc/init.d/${PROJECT} DESTINATION /etc/init.d/
 		 WORLD_EXECUTE
 )
 
-# tests
-find_program( PHP_FOUND NAMES php )	
-if ( NOT PHP_FOUND )
-	message( STATUS "-- Could not find php, tests disabled")
-else ( NOT PHP_FOUND )
-	message( "-- Found php : ${PHP_FOUND}\n-- Run 'make test' to execute testsuite" )
-	
-	add_custom_target( test COMMAND ./tests/run.php )
-endif ( NOT PHP_FOUND )
+## tests
+
+# check if ruby is installed
+find_program( RUBY_BIN NAMES ruby )
+
+if ( NOT RUBY_BIN )
+
+    message( STATUS "-- Could not find ruby, tests disabled" )
+
+else ( NOT RUBY_BIN )
+
+    message( "-- Found ruby : ${RUBY_BIN}\n-- Run 'make test' to execute testsuite" )
+
+    if ( NOT IS_DIRECTORY "${TESTS_FOLDER}" )
+        message( STATUS "-- Folder '${TESTS_FOLDER}' not found, cloning ${TESTS_REPO} ..." )
+        
+        EXECUTE_PROCESS(COMMAND ${GIT_COMMAND} clone ${TESTS_REPO} ${TESTS_FOLDER})
+    endif ( NOT IS_DIRECTORY "${TESTS_FOLDER}" )
+
+    add_custom_target( test COMMAND cd ${TESTS_FOLDER} && rake test )
+endif ( NOT RUBY_BIN )
 
 #packaging
 if (UNIX)
