@@ -132,7 +132,7 @@ void *tr_find( trie_t *trie, unsigned char *key, int len )
 
 	tnode_t *node = tr_find_node( trie, key, len );
 	/*
-	 * End of the chain, if e_data is NULL this chain is not complete,
+	 * End of the chain, if data is NULL this chain is not complete,
 	 * therefore 'key' does not map any alive object.
 	 */
 	return ( node ? node->data : NULL );
