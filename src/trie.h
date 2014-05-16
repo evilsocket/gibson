@@ -50,14 +50,10 @@ typedef trie_t tnode_t;
 
 typedef void (*tr_recurse_handler)(tnode_t *, size_t, void *);
 
-#define tr_init_tree( t )    (t).n_nodes = 0; \
-						     (t).data    = 0; \
-						     (t).nodes   = NULL
-
-#define tr_init_node( l, k ) l = (trie_t *)zcalloc( sizeof(trie_t) ); \
-						     l->value = k[0]
-
-#define tr_clear tr_free
+#define tr_init_tree( t ) \
+    (t).n_nodes = 0; \
+    (t).data    = 0; \
+	(t).nodes   = NULL
 
 void   *tr_insert( trie_t *at, unsigned char *key, int len, void *value );
 trie_t *tr_find_node( trie_t *at, unsigned char *key, int len );
