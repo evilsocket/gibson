@@ -44,10 +44,7 @@ endif (WITH_JEMALLOC)
 
 
 # configure variables
-set( GIT_COMMAND "git" )
-
 EXECUTE_PROCESS(COMMAND "date" "+%m/%d/%Y %H:%M:%S" OUTPUT_VARIABLE BUILD_DATETIME OUTPUT_STRIP_TRAILING_WHITESPACE)
-EXECUTE_PROCESS(COMMAND ${GIT_COMMAND} describe --always --tag OUTPUT_VARIABLE BUILD_GIT_TAG OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE TAGEXIT)
 
 if (PREFIX)
     message(STATUS "Using prefix ${PREFIX}")
@@ -59,7 +56,7 @@ endif ()
 set( PROJECT "gibson" )
 set( AUTHOR "Simone Margaritelli <http://gibson-db.in>" )
 set( LICENSE "BSD License" )
-set( VERSION "${BUILD_GIT_TAG}" )
+set( VERSION "1.0.2" )
 
 # this is needed for Mac OS X compilation compatibility
 include_directories("${PROJECT_SOURCE_DIR}/src")
