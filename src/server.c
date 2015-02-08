@@ -623,6 +623,8 @@ void gbServerDestroy( gbServer *server )
     zfree( server->m_buffer );
     zfree( server->lzf_buffer );
 
+    opool_destroy( &server->item_pool );
+
     tr_recurse( &server->tree, gbObjectDestroyHandler,   NULL, 0 );
     tr_recurse( &server->config, gbConfigDestroyHandler, NULL, 0 );
 

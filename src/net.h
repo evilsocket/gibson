@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <sys/stat.h>
+#include "obpool.h"
 #include "trie.h"
 #include "llist.h"
 #include "default.h"
@@ -219,6 +220,8 @@ typedef struct gbServer
 	llist_t *m_values;
 	// buffer used to send multi get responses
 	byte_t *m_buffer;
+    // gbItem object pool allocator
+    opool_t item_pool;
 	// cron timed event id
 	long long cron_id;
 	// data that is not being accessed in the last 'gc_ratio' seconds get deleted if the server needs memory.	

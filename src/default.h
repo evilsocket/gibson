@@ -60,4 +60,7 @@
 #define GB_DEFAULT_MAX_MEM_CRON               15
 #define GB_DEFAULT_EXPIRED_CRON               5
 
+#define GB_DEFAULT_OBJ_POOL_INITIAL_CAPACITY  512
+#define GB_DEFAULT_OBJ_POOL_MAX_BLOCK_SIZE    ( 1024 * 128 )
+
 #endif

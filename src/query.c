@@ -75,9 +75,13 @@ __inline__ __attribute__((always_inline)) unsigned int gbQueryParseLong( byte_t 
     return 1;
 }
 
-static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding encoding )
+static gbItem *gbCreateVolatileItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding )
 {
-    gbItem *item = ( gbItem * )zmalloc( sizeof( gbItem ) );
+    assert( server != NULL );
+    
+    gbItem *item = ( gbItem * )opool_alloc_object( &server->item_pool );
+
+    assert( item != NULL );
 
     assert( item != NULL );
 
@@ -92,8 +96,9 @@ static gbItem *gbCreateVolatileItem( void *data, size_t size, gbItemEncoding enc
     return item;
 }
 
-static void gbDestroyVolatileItem( gbItem *item )
+static void gbDestroyVolatileItem( gbServer *server, gbItem *item )
 {
+    assert( server != NULL );
     assert( item != NULL );
 
     if( item->encoding != GB_ENC_NUMBER && item->data != NULL )
@@ -102,7 +107,7 @@ static void gbDestroyVolatileItem( gbItem *item )
         item->data = NULL;
     }
 
-    zfree( item );
+    opool_free_object( &server->item_pool, item );
 }
 
 static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding, int ttl )
@@ -110,7 +115,7 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
     assert( server != NULL );
     assert( size == 0 || data != NULL );
 
-    gbItem *item = ( gbItem * )zmalloc( sizeof( gbItem ) );
+    gbItem *item = ( gbItem * )opool_alloc_object( &server->item_pool );
 
     assert( item != NULL );
 
@@ -156,7 +161,7 @@ void gbDestroyItem( gbServer *server, gbItem *item )
         item->data = NULL;
     }
 
-    zfree( item );
+    opool_free_object( &server->item_pool, item );
 
     server->stats.memused = zmem_used();	
     server->stats.nitems -= 1;
@@ -1114,11 +1119,11 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
 
 #define APPEND_LONG_STAT( key, value ) ++elems; \
     ll_append( server->m_keys, key ); \
-    ll_append( server->m_values, gbCreateVolatileItem( (void *)(long)value, sizeof(long), GB_ENC_NUMBER ) )
+    ll_append( server->m_values, gbCreateVolatileItem( server, (void *)(long)value, sizeof(long), GB_ENC_NUMBER ) )
 
 #define APPEND_STRING_STAT( key, value ) ++elems; \
     ll_append( server->m_keys, key ); \
-    ll_append( server->m_values, gbCreateVolatileItem( zstrdup(value), strlen(value), GB_ENC_PLAIN ) )
+    ll_append( server->m_values, gbCreateVolatileItem( server, zstrdup(value), strlen(value), GB_ENC_PLAIN ) )
 
 #define APPEND_FLOtr_STAT( key, value ) memset( s, 0x00, 0xFF ); \
     sprintf( s, "%f", (value) ); \
@@ -1132,24 +1137,29 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
     APPEND_STRING_STAT( "server_allocator", "malloc" );
 #endif
     APPEND_STRING_STAT( "server_arch", (sizeof(long) == 8) ? "64" : "32" );
-    APPEND_LONG_STAT( "server_started",         server->stats.started );
-    APPEND_LONG_STAT( "server_time",            server->stats.time );
-    APPEND_LONG_STAT( "first_item_seen",        server->stats.firstin );
-    APPEND_LONG_STAT( "last_item_seen",         server->stats.lastin );
-    APPEND_LONG_STAT( "total_items",            server->stats.nitems );
-    APPEND_LONG_STAT( "total_compressed_items", server->stats.ncompressed );
-    APPEND_LONG_STAT( "total_clients",          server->stats.nclients );
-    APPEND_LONG_STAT( "total_cron_done",        server->stats.crondone );
-    APPEND_LONG_STAT( "total_connections",      server->stats.connections );
-    APPEND_LONG_STAT( "total_requests",         server->stats.requests );
-    APPEND_LONG_STAT( "memory_available",       server->stats.memavail );
-    APPEND_LONG_STAT( "memory_usable",          server->limits.maxmem );
-    APPEND_LONG_STAT( "memory_used",            server->stats.memused );
-    APPEND_LONG_STAT( "memory_peak", 			server->stats.mempeak );
-    APPEND_FLOtr_STAT( "memory_fragmentation",  zmem_fragmentation_ratio() );
-    APPEND_LONG_STAT( "item_size_avg",          server->stats.sizeavg );
-    APPEND_LONG_STAT( "compr_rate_avg",         server->stats.compravg );
-    APPEND_FLOtr_STAT( "reqs_per_client_avg",   server->stats.requests / (double)server->stats.connections );
+    APPEND_LONG_STAT( "server_started",             server->stats.started );
+    APPEND_LONG_STAT( "server_time",                server->stats.time );
+    APPEND_LONG_STAT( "first_item_seen",            server->stats.firstin );
+    APPEND_LONG_STAT( "last_item_seen",             server->stats.lastin );
+    APPEND_LONG_STAT( "total_items",                server->stats.nitems );
+    APPEND_LONG_STAT( "total_compressed_items",     server->stats.ncompressed );
+    APPEND_LONG_STAT( "total_clients",              server->stats.nclients );
+    APPEND_LONG_STAT( "total_cron_done",            server->stats.crondone );
+    APPEND_LONG_STAT( "total_connections",          server->stats.connections );
+    APPEND_LONG_STAT( "total_requests",             server->stats.requests );
+    APPEND_LONG_STAT( "item_pool_current_used",     server->item_pool.used );
+    APPEND_LONG_STAT( "item_pool_current_capacity", server->item_pool.capacity );
+    APPEND_LONG_STAT( "item_pool_total_capacity",   server->item_pool.total_capacity );
+    APPEND_LONG_STAT( "item_pool_object_size",      server->item_pool.object_size );
+    APPEND_LONG_STAT( "item_pool_max_block_size",   server->item_pool.max_block_size );
+    APPEND_LONG_STAT( "memory_available",           server->stats.memavail );
+    APPEND_LONG_STAT( "memory_usable",              server->limits.maxmem );
+    APPEND_LONG_STAT( "memory_used",                server->stats.memused );
+    APPEND_LONG_STAT( "memory_peak", 			    server->stats.mempeak );
+    APPEND_FLOtr_STAT( "memory_fragmentation",      zmem_fragmentation_ratio() );
+    APPEND_LONG_STAT( "item_size_avg",              server->stats.sizeavg );
+    APPEND_LONG_STAT( "compr_rate_avg",             server->stats.compravg );
+    APPEND_FLOtr_STAT( "reqs_per_client_avg",       server->stats.requests / (double)server->stats.connections );
 
 #undef APPEND_LONG_STAT
 #undef APPEND_STRING_STAT
@@ -1160,7 +1170,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
     {
         if( vi->data != NULL )
         {
-            gbDestroyVolatileItem( vi->data );
+            gbDestroyVolatileItem( server, vi->data );
             vi->data = NULL;
         }
 
@@ -1285,7 +1295,7 @@ static int gbQueryKeysHandler( gbClient *client, byte_t *p )
                 sprintf( index, "%lu", i );
                 ll_append( server->m_keys, zstrdup(index) );
                 // convert strings to gbItems
-                key->data = gbCreateVolatileItem( key->data, strlen(key->data), GB_ENC_PLAIN );
+                key->data = gbCreateVolatileItem( server, key->data, strlen(key->data), GB_ENC_PLAIN );
             }
 
             int ret = gbClientEnqueueKeyValueSet( client, found, gbWriteReplyHandler, 0 );
@@ -1293,7 +1303,7 @@ static int gbQueryKeysHandler( gbClient *client, byte_t *p )
             ll_foreach_2( server->m_keys, server->m_values, ki, vi )
             {
                 // free volatile item
-                gbDestroyVolatileItem( vi->data );
+                gbDestroyVolatileItem( server, vi->data );
                 // free zstrdup'ed key
                 zfree( ki->data );
                 ki->data = NULL;
