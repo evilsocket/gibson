@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013, Simone Margaritelli <evilsocket at gmail dot com>
- * Copyright (c) 2009-2013, Salvatore Sanfilippo <antirez at gmail dot com>
+ * Copyright (c) 2011-2015, Salvatore Sanfilippo <antirez at gmail dot com>
  *
  * All rights reserved.
  *

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2013, Salvatore Sanfilippo <antirez at gmail dot com>
+ * Copyright (c) 2006-2015, Salvatore Sanfilippo <antirez at gmail dot com>
  *
  *
  * All rights reserved.
