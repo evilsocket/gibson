@@ -35,7 +35,7 @@ if (WITH_JEMALLOC)
 			message(STATUS "Found jemalloc at ${JEMALLOC_LIB}, but unable to find its API "
 			               "(maybe the library was configured with a non-empty function prefix?)")
 		endif()
-	else() 
+	else()
 		message(STATUS "Can't find jemalloc")
 	endif()
 else (WITH_JEMALLOC)
@@ -56,7 +56,7 @@ endif ()
 set( PROJECT "gibson" )
 set( AUTHOR "Simone Margaritelli <http://gibson-db.in>" )
 set( LICENSE "BSD License" )
-set( VERSION "1.0.2" )
+set( VERSION "1.0.4" )
 
 set( TESTS_FOLDER "tests" )
 set( TESTS_REPO "https://github.com/evilsocket/ruby-gibson.git" )
@@ -70,7 +70,7 @@ file( GLOB HEADERS src/*.h )
 # configure.h generation
 configure_file( src/configure.h.in src/configure.h )
 # generation
-add_executable( ${PROJECT} ${MAIN_SOURCES} ) 
+add_executable( ${PROJECT} ${MAIN_SOURCES} )
 
 # backtrace is available in a separate library under FreeBSD
 if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
@@ -93,14 +93,14 @@ endif ( HAVE_JEMALLOC EQUAL 1 )
 
 install( TARGETS ${PROJECT} DESTINATION ${PREFIX}/bin )
 install( FILES debian/etc/${PROJECT}/${PROJECT}.conf DESTINATION /etc/${PROJECT}/ )
-install( FILES debian/etc/init.d/${PROJECT} DESTINATION /etc/init.d/ 
+install( FILES debian/etc/init.d/${PROJECT} DESTINATION /etc/init.d/
 		 PERMISSIONS
-		 OWNER_READ 
-		 OWNER_WRITE 
+		 OWNER_READ
+		 OWNER_WRITE
 		 OWNER_EXECUTE
-		 GROUP_READ 
-		 GROUP_EXECUTE 
-		 WORLD_READ 
+		 GROUP_READ
+		 GROUP_EXECUTE
+		 WORLD_READ
 		 WORLD_EXECUTE
 )
 
@@ -119,7 +119,7 @@ else ( NOT RUBY_BIN )
 
     if ( NOT IS_DIRECTORY "${TESTS_FOLDER}" )
         message( STATUS "-- Folder '${TESTS_FOLDER}' not found, cloning ${TESTS_REPO} ..." )
-        
+
         EXECUTE_PROCESS(COMMAND ${GIT_COMMAND} clone ${TESTS_REPO} ${TESTS_FOLDER})
     endif ( NOT IS_DIRECTORY "${TESTS_FOLDER}" )
 
@@ -138,7 +138,7 @@ if (UNIX)
     set( CPACK_GENERATOR "DEB;RPM")
     set( CPACK_PACKAGE_NAME "gibson-server" )
     set( CPACK_PACKAGE_VERSION  ${VERSION} )
-    set( CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}" ) 
+    set( CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}" )
     set( CPACK_PACKAGE_DESCRIPTION_SUMMARY "A high performance tree-based cache server.")
     set( CPACK_PACKAGE_DESCRIPTION "A high performance tree-based cache server.")
     set( CPACK_DEBIAN_PACKAGE_SECTION "database" )
