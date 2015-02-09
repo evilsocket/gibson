@@ -41,7 +41,7 @@ __inline__ __attribute__((always_inline)) unsigned int gbQueryParseLong( byte_t 
     assert( v != NULL );
     assert( vlen > 0 );
     assert( l != NULL );
-        
+
     register size_t i;
     register long n = 0;
     register char c = v[0];
@@ -78,7 +78,7 @@ __inline__ __attribute__((always_inline)) unsigned int gbQueryParseLong( byte_t 
 static gbItem *gbCreateVolatileItem( gbServer *server, void *data, size_t size, gbItemEncoding encoding )
 {
     assert( server != NULL );
-    
+
     gbItem *item = ( gbItem * )opool_alloc_object( &server->item_pool );
 
     assert( item != NULL );
@@ -122,7 +122,7 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
     item->data 	           = data;
     item->size 	           = size;
     item->encoding         = encoding;
-    item->time             = 
+    item->time             =
     item->last_access_time = server->stats.time;
     item->ttl	           = ttl;
     item->lock	           = 0;
@@ -136,7 +136,7 @@ static gbItem *gbCreateItem( gbServer *server, void *data, size_t size, gbItemEn
         server->stats.firstin = server->stats.time;
 
     server->stats.lastin  = server->stats.time;
-    server->stats.memused = zmem_used(); 
+    server->stats.memused = zmem_used();
     server->stats.sizeavg = server->stats.memused / ++server->stats.nitems;
 
     if( server->stats.memused > server->stats.mempeak )
@@ -163,7 +163,7 @@ void gbDestroyItem( gbServer *server, gbItem *item )
 
     opool_free_object( &server->item_pool, item );
 
-    server->stats.memused = zmem_used();	
+    server->stats.memused = zmem_used();
     server->stats.nitems -= 1;
     server->stats.sizeavg = server->stats.nitems == 0 ? 0 : server->stats.memused / server->stats.nitems;
 }
@@ -172,7 +172,7 @@ static int gbItemIsLocked( gbItem *item, gbServer *server, time_t eta )
 {
     assert( item != NULL );
     assert( server != NULL );
-    
+
     eta = eta == 0 ? server->stats.time - item->time : eta;
     return ( item->lock == -1 || eta < item->lock );
 }
@@ -207,7 +207,7 @@ static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *ke
     assert( server != NULL );
     assert( key != NULL );
     assert( klen > 0 );
-            
+
     register time_t eta = server->stats.time - item->time,
              ttl = item->ttl;
 
@@ -224,6 +224,57 @@ static int gbIsItemStillValid( gbItem *item, gbServer *server, unsigned char *ke
     }
 
     return 1;
+}
+
+static int gbParseKeyAndOptionalValue( gbServer *server, byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen )
+{
+    assert( server != NULL );
+    assert( buffer != NULL );
+    assert( klen != NULL );
+    assert( key != NULL );
+
+    register byte_t *p = buffer;
+    register size_t i = 0, end;
+
+    // parse the key, the end data is the minimum among total request size and maxkeysize
+    *key = p;
+    end  = min( size, server->limits.maxkeysize );
+    while( *p != ' ' && i++ < end )
+    {
+        ++p;
+    }
+
+    *klen = p++ - *key;
+
+    // if the value should be optionally parsed ...
+    if( value )
+    {
+        assert( vlen != NULL );
+
+        size_t left = size - *klen;
+
+        if( left > 0 )
+        {
+            *value = p;
+            *vlen  = left - 1; // white space
+            *vlen  = min( *vlen, server->limits.maxvaluesize );
+        }
+        else
+        {
+            *value = NULL;
+            *vlen  = 0;
+        }
+    }
+
+    // check if length conditions are verified
+    if( *klen <= 0 )
+        return 0;
+
+    else if( value && vlen <= 0 )
+        return 0;
+
+    else
+        return 1;
 }
 
 static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_t **key, byte_t **value, size_t *klen, size_t *vlen )
@@ -274,7 +325,7 @@ static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, by
     assert( size > 0 );
     assert( klen != NULL );
     assert( key != NULL );
-    
+
     register byte_t *p = buffer;
     register size_t i = 0, end;
 
@@ -302,7 +353,7 @@ static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, by
     if( value )
     {
         assert( vlen != NULL );
-        
+
         *value = p;
         *vlen  = size - *ttllen - *klen - 2;
         *vlen  = min( *vlen, server->limits.maxvaluesize );
@@ -406,7 +457,7 @@ static int gbQuerySetHandler( gbClient *client, byte_t *p )
                     item->time = server->stats.time;
                     item->ttl  = min( server->limits.maxitemttl, ttl );
                 }
-    
+
                 return gbClientEnqueueItem( client, REPL_VAL, item, gbWriteReplyHandler, 0 );
             }
             else
@@ -434,7 +485,7 @@ static int gbQueryMultiSetHandler( gbClient *client, byte_t *p )
     {
         if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen ) )
         {
-            size_t found = tr_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+            size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
             if( found )
             {
                 ll_foreach_2( server->m_keys, server->m_values, ki, vi )
@@ -492,7 +543,7 @@ static int gbQueryTtlHandler( gbClient *client, byte_t *p )
         {
             if( gbQueryParseLong( v, vlen, &ttl ) )
             {
-                item->last_access_time = 
+                item->last_access_time =
                     item->time = server->stats.time;
                 item->ttl  = min( server->limits.maxitemttl, ttl );
 
@@ -524,7 +575,7 @@ static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p )
     {
         if( gbQueryParseLong( v, vlen, &ttl ) )
         {
-            size_t found = tr_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+            size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
             if( found )
             {
                 ll_foreach_2( server->m_keys, server->m_values, ki, vi )
@@ -535,7 +586,7 @@ static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p )
                         --found;
 
                     else {
-                        item->last_access_time = 
+                        item->last_access_time =
                             item->time = server->stats.time;
                         item->ttl  = min( server->limits.maxitemttl, ttl );
                     }
@@ -579,8 +630,8 @@ static int gbQueryGetHandler( gbClient *client, byte_t *p )
     {
         node = tr_find_node( &server->tree, k, klen );
         if( node &&                                               // key exists
-                ( item = node->data ) &&                            // value exists 
-                gbIsNodeStillValid( node, node->data, server, 1 ) ) // item is not expired 
+                ( item = node->data ) &&                            // value exists
+                gbIsNodeStillValid( node, node->data, server, 1 ) ) // item is not expired
         {
             item = node->data;
             item->last_access_time = server->stats.time;
@@ -600,14 +651,24 @@ static int gbQueryMultiGetHandler( gbClient *client, byte_t *p )
     assert( client != NULL );
     assert( p != NULL );
 
-    byte_t *expr = NULL;
-    size_t exprlen = 0;
+    byte_t *expr = NULL, *v = NULL;
+    size_t exprlen = 0, vlen = 0;
     gbServer *server = client->server;
     gbItem *item = NULL;
+    long limit = -1;
 
-    if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
+    if( gbParseKeyAndOptionalValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen ) )
     {
-        size_t found = tr_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+        // check if a limit was given
+        if( v && vlen )
+        {
+            if( !gbQueryParseLong( v, vlen, &limit ) )
+            {
+                return gbClientEnqueueCode( client, REPL_ERR_NAN, gbWriteReplyHandler, 0 );
+            }
+        }
+
+        size_t found = tr_search( &server->tree, expr, exprlen, limit, server->limits.maxkeysize, &server->m_keys, &server->m_values );
         if( found )
         {
             ll_foreach_2( server->m_keys, server->m_values, ki, vi )
@@ -835,7 +896,7 @@ static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 
     if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
     {
-        size_t found = tr_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+        size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
         if( found )
         {
             ll_foreach_2( server->m_keys, server->m_values, ki, vi )
@@ -956,7 +1017,7 @@ static int gbQueryMultiLockHandler( gbClient *client, byte_t *p )
     {
         if( gbQueryParseLong( v, vlen, &locktime ) )
         {
-            size_t found = tr_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+            size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
             if( found )
             {
                 ll_foreach_2( server->m_keys, server->m_values, ki, vi )
@@ -965,7 +1026,7 @@ static int gbQueryMultiLockHandler( gbClient *client, byte_t *p )
 
                     if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) && gbItemIsLocked( item, server, 0 ) == 0 )
                     {
-                        item->last_access_time = 
+                        item->last_access_time =
                             item->time = server->stats.time;
                         item->lock = locktime;
                     }
@@ -1035,7 +1096,7 @@ static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p )
 
     if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
     {
-        size_t found = tr_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+        size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
         if( found )
         {
             ll_foreach_2( server->m_keys, server->m_values, ki, vi )
@@ -1081,7 +1142,7 @@ static int gbQueryCountHandler( gbClient *client, byte_t *p )
 
     if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
     {
-        size_t found = tr_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+        size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
         if( found )
         {
             ll_foreach_2( server->m_keys, server->m_values, ki, vi )
@@ -1174,7 +1235,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
             vi->data = NULL;
         }
 
-        // no need to free ki->data since it's static 
+        // no need to free ki->data since it's static
     }
 
     ll_reset( server->m_keys );
@@ -1218,7 +1279,7 @@ static int gbGetItemMeta( gbServer *server, gbItem *item, byte_t *m, size_t mlen
     }
     else if( strncmp( (char *)m, "left", min( mlen, 4 ) ) == 0 )
     {
-        *v = item->ttl <= 0 ? -1 : item->ttl - ( server->stats.time - item->time ); 
+        *v = item->ttl <= 0 ? -1 : item->ttl - ( server->stats.time - item->time );
         return 1;
     }
     else if( strncmp( (char *)m, "lock", min( mlen, 4 ) ) == 0 )
@@ -1227,7 +1288,7 @@ static int gbGetItemMeta( gbServer *server, gbItem *item, byte_t *m, size_t mlen
         return 1;
     }
 
-    return 0; 
+    return 0;
 }
 
 static int gbQueryMetaHandler( gbClient *client, byte_t *p )
@@ -1281,7 +1342,7 @@ static int gbQueryKeysHandler( gbClient *client, byte_t *p )
 
     if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
     {
-        size_t found = tr_search( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_values, NULL );
+        size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_values, NULL );
         long unsigned int i;
 
         if( found )

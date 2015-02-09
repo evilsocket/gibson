@@ -59,7 +59,7 @@ void   *tr_insert( trie_t *at, unsigned char *key, int len, void *value );
 trie_t *tr_find_node( trie_t *at, unsigned char *key, int len );
 void   *tr_find( trie_t *at, unsigned char *key, int len );
 void    tr_recurse( trie_t *at, tr_recurse_handler handler, void *data, size_t level );
-size_t  tr_search( trie_t *at, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **values );
+size_t  tr_search( trie_t *at, unsigned char *prefix, int len, long limit, int maxkeylen, llist_t **keys, llist_t **values );
 size_t  tr_search_nodes( trie_t *at, unsigned char *prefix, int len, int maxkeylen, llist_t **keys, llist_t **nodes );
 void   *tr_remove( trie_t *at, unsigned char *key, int len );
 void    tr_free( trie_t *at );
