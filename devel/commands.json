@@ -123,7 +123,7 @@
             "MUNLOCK f"
         ],
         "notes": [
-            
+
         ]
     },
     "UNLOCK": {
@@ -143,7 +143,7 @@
             "UNLOCK foo"
         ],
         "notes": [
-            
+
         ]
     },
     "LOCK": {
@@ -168,7 +168,7 @@
             "DEL foo // this will fail since foo is now locked"
         ],
         "notes": [
-            
+
         ]
     },
     "MLOCK": {
@@ -194,7 +194,7 @@
             "DEL foo // this will fail since both foo and fuu are now locked"
         ],
         "notes": [
-            
+
         ]
     },
     "PING": {
@@ -202,7 +202,7 @@
         "syntax": "PING",
         "summary": "Ping the server instance to refresh client last seen timestamp.",
         "args": [
-            
+
         ],
         "example": [ "PING" ],
         "notes": [ "This is useful to keep alive the connection with the server." ]
@@ -238,7 +238,7 @@
             "META foo access // last access time"
         ],
         "notes": [
-            
+
         ]
     },
     "INC": {
@@ -304,13 +304,18 @@
     },
     "MGET": {
         "opcode": 11,
-        "syntax": "MGET <prefix>",
+        "syntax": "MGET <prefix> <limit>",
         "summary": "Get the value for a given prefix.",
         "args": [
             {
                 "name": "prefix",
                 "type": "string",
                 "desc": "The key prefix to use as expression."
+            },
+            {
+                "name": "limit",
+                "type": "integer",
+                "desc": "Optional argument, the maximum number of results to return."
             }
         ],
         "example": [
@@ -327,7 +332,7 @@
         "syntax": "STATS",
         "summary": "Get system stats about the Gibson instance.",
         "args": [
-            
+
         ],
         "example": [ "STATS" ],
         "notes": {
@@ -362,7 +367,7 @@
         "syntax": "QUIT",
         "summary": "Disconnects from the Gibson instance.",
         "args": [
-            
+
         ],
         "example": [ "QUIT" ],
         "notes": [ ]
@@ -383,7 +388,7 @@
             "DEL foo"
         ],
         "notes": [
-            "This operator will fail for LOCKed items." 
+            "This operator will fail for LOCKed items."
         ]
     },
     "MDEL": {
