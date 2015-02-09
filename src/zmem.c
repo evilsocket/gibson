@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013, Simone Margaritelli <evilsocket at gmail dot com>
+ * Copyright (c) 2009-2013, Salvatore Sanfilippo <antirez at gmail dot com>
  *
  * Based on Redis zmalloc library by Salvatore Sanfilippo.
  *
@@ -43,7 +44,7 @@
 	#include <unistd.h>
 	#include <sys/types.h>
 	#include <sys/param.h>
-#endif	
+#endif
 #if defined(BSD)
 	#include <sys/sysctl.h>
 #endif
@@ -102,7 +103,7 @@ void zmem_allocator( char *buffer, size_t size ){
 	snprintf( buffer, size, "jemalloc %s", p );
 #else
     strncpy( buffer, "malloc", size );
-#endif    
+#endif
 }
 
 /* Author:  David Robert Nadeau */
@@ -125,7 +126,7 @@ unsigned long long zmem_available(){
     int mib[2];
     mib[0] = CTL_HW;
 #if defined(HW_MEMSIZE)
-    mib[1] = HW_MEMSIZE;		/* OSX */ 
+    mib[1] = HW_MEMSIZE;		/* OSX */
 #elif defined(HW_PHYSMEM64)
     mib[1] = HW_PHYSMEM64;		/* NetBSD, OpenBSD.*/
 #endif
@@ -246,9 +247,9 @@ size_t zmalloc_size(void *ptr) {
     void *realptr = zmem_head_ptr(ptr);
     size_t size   = zmem_read_prefix(realptr);
     // assume at least that all the allocations are padded at sizeof(long) by the underlying allocator.
-    if( size & SIZE_OF_LONG_MASK ) 
+    if( size & SIZE_OF_LONG_MASK )
         size += sizeof(long) - ( size & SIZE_OF_LONG_MASK );
-    
+
     return size + ZMEM_PREFIX_SIZE;
 }
 #endif

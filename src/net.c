@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013, Simone Margaritelli <evilsocket at gmail dot com>
+ * Copyright (c) 2009-2013, Salvatore Sanfilippo <antirez at gmail dot com>
  *
  * Based on Redis network library by Salvatore Sanfilippo.
  *
@@ -134,7 +135,7 @@ int gbResizeSetSize(gbEventLoop *eventLoop, int setsize)
 {
     assert( eventLoop != NULL );
     assert( setsize != 0 );
-        
+
     int i;
 
     if( setsize == eventLoop->setsize )
@@ -343,7 +344,7 @@ static gbTimeEvent *aeSearchNearestTimer(gbEventLoop *eventLoop)
 
     while(te)
     {
-        if( te->when_sec < nearest->when_sec || 
+        if( te->when_sec < nearest->when_sec ||
                 ( te->when_sec == nearest->when_sec && te->when_ms < nearest->when_ms) )
         {
             nearest = te;
@@ -453,21 +454,21 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 {
     assert( eventLoop != NULL );
 
-    int processed = 0, 
+    int processed = 0,
         time_events = ( flags & GB_TIME_EVENTS ),
         file_events = ( flags & GB_FILE_EVENTS ),
         dont_wait   = ( flags & GB_DONT_WAIT ),
         numevents;
 
     /* Nothing to do? return ASAP */
-    if (!time_events && !file_events) 
+    if (!time_events && !file_events)
         return 0;
 
     /* Note that we want to poll even if there are no
      * file events to process as long as we want to process time
      * events, in order to sleep until the next time event is ready
      * to fire. */
-    if ( eventLoop->maxfd != -1 || ( time_events && !dont_wait ) ) 
+    if ( eventLoop->maxfd != -1 || ( time_events && !dont_wait ) )
     {
         int j;
         gbTimeEvent *shortest = NULL;
@@ -497,7 +498,7 @@ int gbProcessEvents(gbEventLoop *eventLoop, int flags)
 
             if (tvp->tv_sec < 0) tvp->tv_sec = 0;
             if (tvp->tv_usec < 0) tvp->tv_usec = 0;
-        } 
+        }
         // no time events scheduled
         else
         {
@@ -1166,26 +1167,26 @@ int gbClientEnqueueData( gbClient *client, short code, gbItemEncoding encoding, 
     }
 
     assert( client->buffer != NULL );
-    
+
     client->buffer_size = rsize;
     client->read  		= 0;
     client->wrote 		= 0;
     client->shutdown 	= shutdown;
 
-    memcpy( client->buffer, 				  					          					  
-            memrev16ifbe(&code), 	 
+    memcpy( client->buffer,
+            memrev16ifbe(&code),
             sizeof( short ) );
 
-    memcpy( client->buffer + sizeof( short ),					          					  
-            &encoding, 
+    memcpy( client->buffer + sizeof( short ),
+            &encoding,
             sizeof( gbItemEncoding ) );
 
-    memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ),  				     
-            memrev32ifbe(&size), 	 
+    memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ),
+            memrev32ifbe(&size),
             sizeof( uint32_t ) );
 
-    memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ) + sizeof( uint32_t ), 
-            reply, 	 
+    memcpy( client->buffer + sizeof( short ) + sizeof( gbItemEncoding ) + sizeof( uint32_t ),
+            reply,
             size );
 
     return gbCreateFileEvent( client->server->events, client->fd, GB_WRITABLE, proc, client );
@@ -1232,7 +1233,7 @@ int gbClientEnqueueItem( gbClient *client, short code, gbItem *item, gbFileProc 
         byte_t *v = (byte_t *)memrev64ifbe(&num);
 #else
         byte_t *v = (byte_t *)memrev32ifbe(&num);
-#endif	
+#endif
 
         return gbClientEnqueueData( client, code, GB_ENC_NUMBER, v, item->size, proc, shutdown );
     }
@@ -1310,7 +1311,7 @@ int gbClientEnqueueKeyValueSet( gbClient *client, uint32_t elements, gbFileProc 
                 v = (byte_t *)memrev64ifbe(&num);
 #else
                 v = (byte_t *)memrev32ifbe(&num);
-#endif	
+#endif
                 vsize = item->size;
             }
 
