@@ -39,3 +39,5 @@ Documentation on <http://gibson-db.in/documentation/>
 Released under the BSD license.  
 Copyright &copy; 2013, Simone Margaritelli <evilsocket@gmail.com>  
 All rights reserved.
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/evilsocket/gibson/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
