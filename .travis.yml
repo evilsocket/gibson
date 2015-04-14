@@ -2,4 +2,5 @@ language: c
 sudo: false
 compiler:
   - gcc
+  - clang
 script: cmake . && make 
