@@ -1,4 +1,9 @@
-
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "OupXfpWXtWIIr8hzdD+5oAOoaEj5wfr+2NgI3Jtd4KTfUqyVpntUTNyjjL6J6RMb4g967SH2Gvo992j61d1jJfbPBCYi3iDRGO0tNqfKwtj3+xd2HhgSZ1RZe4wGtOS2IF9f4iGGxvXgKN6q3UvckgYe+pbTzXZJLMJReyBbcXM="
+   
 language: c
 cache: ccache
 sudo: false
@@ -6,15 +11,13 @@ compiler:
   - gcc
   - clang
 script: cmake . && make 
+
 addons:
   coverity_scan:
     project:
-      name: evilsocket/gibson
-      version: 1.0
-      description: Gibson Cache Server
-
+      name: "evilsocket/gibson"
+      description: "Build submitted via Travis CI"
     notification_email: evilsocket@gmail.com
-
-    build_command_prepend: cmake .
-    build_command: make
+    build_command_prepend: "cmake ."
+    build_command:   "make -j4"
     branch_pattern: unstable
