@@ -1,3 +1,4 @@
+
 language: c
 cache: ccache
 sudo: false
@@ -5,3 +6,15 @@ compiler:
   - gcc
   - clang
 script: cmake . && make 
+addons:
+  coverity_scan:
+    project:
+      name: evilsocket/gibson
+      version: 1.0
+      description: Gibson Cache Server
+
+    notification_email: evilsocket@gmail.com
+
+    build_command_prepend: cmake .
+    build_command: make
+    branch_pattern: unstable
