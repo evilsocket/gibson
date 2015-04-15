@@ -923,11 +923,8 @@ static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
                     {
                         num += delta;
 
-                        if( item->data != NULL )
-                        {
-                            zfree( item->data );
-                            item->data = NULL;
-                        }
+                        zfree( item->data );
+                        item->data = NULL;
 
                         server->stats.memused = zmem_used();
 
