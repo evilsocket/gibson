@@ -320,7 +320,7 @@ void zmem_set_oom_handler(void (*oom_handler)(size_t)) {
 #include <fcntl.h>
 
 size_t zmem_rss(void) {
-    int page = sysconf(_SC_PAGESIZE);
+    int page = sysconf(_SC_PAGESIZE), rn = 0;
     size_t rss;
     char buf[4096] = {0};
     char filename[256] = {0};
@@ -329,7 +329,9 @@ size_t zmem_rss(void) {
 
     snprintf(filename,256,"/proc/%d/stat",getpid());
     if ((fd = open(filename,O_RDONLY)) == -1) return 0;
-    if (read(fd,buf,4095) <= 0) {
+
+	rn = read(fd,buf,4095);
+	if( rn <= 0) {
         close(fd);
         return 0;
     }
