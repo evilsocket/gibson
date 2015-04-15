@@ -270,7 +270,7 @@ static int gbParseKeyAndOptionalValue( gbServer *server, byte_t *buffer, size_t 
     if( *klen <= 0 )
         return 0;
 
-    else if( value && vlen <= 0 )
+    else if( value && *vlen <= 0 )
         return 0;
 
     else
@@ -311,7 +311,7 @@ static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_
     if( *klen <= 0 )
         return 0;
 
-    else if( value && vlen <= 0 )
+    else if( value && *vlen <= 0 )
         return 0;
 
     else
