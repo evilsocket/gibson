@@ -199,7 +199,7 @@ void *zcalloc(size_t size) {
 		zmalloc_oom_handler(size);
 		return NULL;
 	}
-	
+
 #ifdef HAVE_MALLOC_SIZE
     zmem_incr_mem(zmalloc_size(ptr));
     return ptr;
@@ -232,7 +232,10 @@ void *zrealloc(void *ptr, size_t size) {
     realptr = zmem_head_ptr(ptr);
     oldsize = zmem_read_prefix(realptr);
     newptr  = realloc(realptr,size+ZMEM_PREFIX_SIZE);
-    if (!newptr) zmalloc_oom_handler(size);
+    if (!newptr) {
+		zmalloc_oom_handler(size);
+		return NULL;
+	}
 
     zmem_write_prefix(newptr,size);
     zmem_decr_mem(oldsize);
