@@ -158,7 +158,7 @@ int main( int argc, char **argv)
     gbConfigLoad( &server.config, configuration );
     // perform configuration override from command line
     gbConfigMerge( &server.config, "hc:", long_options, argc, argv );
-    
+
     // start reading configuration
 	gbLogInit
 	(
@@ -183,7 +183,7 @@ int main( int argc, char **argv)
 
 		gbLog( INFO, "Creating tcp server socket on %s:%d ...", address, port );
 
-		strncpy( server.address, address, 0xFF );
+		strncpy( server.address, address, 0xFE );
 
 		server.type	= TCP;
 		server.port	= port;
@@ -216,7 +216,7 @@ int main( int argc, char **argv)
 	server.stats.ncompressed =
     server.stats.requests    =
     server.stats.connections =
-	server.stats.sizeavg	 = 
+	server.stats.sizeavg	 =
     server.stats.compravg    = 0;
     server.stats.mempeak     =
     server.stats.memused     = zmem_used();
@@ -287,7 +287,7 @@ int main( int argc, char **argv)
 	gbLog( INFO, "Cron period      : %dms", server.cronperiod );
 
 	gbProcessInit();
-	
+
 	/*
 	 * Under FreeBSD events must be created after gbProcessInit since daemonizing
 	 * the process would mess up timers ( see issue #14 ).
