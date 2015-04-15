@@ -951,8 +951,15 @@ int gbNetUnixServer(char *err, char *path, mode_t perm)
     strncpy(sa.sun_path,path,sizeof(sa.sun_path)-1);
     if (gbNetListen(err,s,(struct sockaddr*)&sa,sizeof(sa)) == GBNET_ERR)
         return GBNET_ERR;
-    if (perm)
-        chmod(sa.sun_path, perm);
+
+    if (perm){
+        if( chmod(sa.sun_path, perm) != 0 ){
+            gbNetSetError(err, "chmod: %s", strerror(errno));
+            close(s);
+            return GBNET_ERR;
+        }
+    }
+
     return s;
 }
 
