@@ -827,8 +827,10 @@ int gbNetUnixGenericConnect(char *err, char *path, int flags)
     strncpy(sa.sun_path,path,sizeof(sa.sun_path)-1);
     if (flags & GBNET_CONNECT_NONBLOCK)
     {
-        if (gbNetNonBlock(err,s) != GBNET_OK)
+        if (gbNetNonBlock(err,s) != GBNET_OK) {
+            close(s);
             return GBNET_ERR;
+        }
     }
     if (connect(s,(struct sockaddr*)&sa,sizeof(sa)) == -1)
     {
