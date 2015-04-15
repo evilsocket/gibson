@@ -195,7 +195,11 @@ void *zcalloc(size_t size) {
 
     void *ptr = calloc(1, size+ZMEM_PREFIX_SIZE);
 
-    if (!ptr) zmalloc_oom_handler(size);
+    if (!ptr) {
+		zmalloc_oom_handler(size);
+		return NULL;
+	}
+	
 #ifdef HAVE_MALLOC_SIZE
     zmem_incr_mem(zmalloc_size(ptr));
     return ptr;
