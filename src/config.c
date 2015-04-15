@@ -107,7 +107,7 @@ void gbConfigMerge( trie_t *config, char *skip, struct option *options, int argc
     assert( config != NULL );
     assert( skip != NULL );
     assert( options != NULL );
-    
+
     int c = 0, oindex = 0;
     char *key;
 
@@ -121,16 +121,16 @@ void gbConfigMerge( trie_t *config, char *skip, struct option *options, int argc
         {
             key = (char *)options[oindex].name;
 
-            tr_insert( config, (unsigned char *)key, strlen(key), zstrdup(optarg) ); 
+            tr_insert( config, (unsigned char *)key, strlen(key), zstrdup(optarg) );
         }
-    } 
+    }
 }
 
 int gbConfigReadInt( trie_t *config, const char *key, int def )
 {
     assert( config != NULL );
     assert( key != NULL );
-    
+
     char *value = tr_find( config, (unsigned char *)key, strlen( key ) );
     if( value )
     {
@@ -202,7 +202,7 @@ time_t gbConfigReadTime( trie_t *config, const char *key, time_t def )
         else if( unit == 'h' || unit == 'H' )
             mul = 60 * 60;
 
-        else if( unit == 'd' || unit == 'd' )
+        else if( unit == 'd' || unit == 'D' )
             mul = 60 * 60 * 24;
 
         if( mul )
