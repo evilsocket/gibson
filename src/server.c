@@ -45,7 +45,7 @@ void gbMemFormat( unsigned long used, char *buffer, size_t size )
         d /= 1024.0;
     }
 
-    sprintf( buffer, "%.1f%s", d, suffix[i] );
+    sprintf( buffer, "%.1f%s", d, suffix[i >= 5 ? 4 : i] );
 }
 
 void gbOOM(size_t size)
