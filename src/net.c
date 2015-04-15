@@ -767,7 +767,7 @@ static int gbNetCreateSocket(char *err, int domain)
 static int gbNetTcpGenericConnect(char *err, char *addr, int port, int flags)
 {
     int s;
-    struct sockaddr_in sa;
+    struct sockaddr_in sa = {0};
 
     if ((s = gbNetCreateSocket(err,AF_INET)) == GBNET_ERR)
         return GBNET_ERR;
