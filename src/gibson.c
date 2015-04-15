@@ -171,7 +171,7 @@ int main( int argc, char **argv)
 	if( sock != NULL ){
 		gbLog( INFO, "Creating unix server socket on %s ...", sock );
 
-		strncpy( server.address, sock, 0xFF );
+		strncpy( server.address, sock, 0xFE );
 		unlink( server.address );
 
 		server.type	= UNIX;
