@@ -757,6 +757,7 @@ static int gbNetCreateSocket(char *err, int domain)
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1)
     {
         gbNetSetError(err, "setsockopt SO_REUSEADDR: %s", strerror(errno));
+        close(s);
         return GBNET_ERR;
     }
     return s;
