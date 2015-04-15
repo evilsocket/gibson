@@ -311,8 +311,8 @@ void zmem_set_oom_handler(void (*oom_handler)(size_t)) {
 size_t zmem_rss(void) {
     int page = sysconf(_SC_PAGESIZE);
     size_t rss;
-    char buf[4096];
-    char filename[256];
+    char buf[4096] = {0};
+    char filename[256] = {0};
     int fd, count;
     char *p, *x;
 
