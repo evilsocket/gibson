@@ -132,7 +132,7 @@ void gbWriteReplyHandler( gbEventLoop *el, int fd, void *privdata, int mask )
 
         }
     }
-    else 
+    else
     {
         assert(0);
 
@@ -149,7 +149,7 @@ void gbReadQueryHandler( gbEventLoop *el, int fd, void *privdata, int mask )
     gbClient *client = ( gbClient * )privdata;
     gbServer *server = client->server;
     byte_t   *p = NULL;
-    int nread = 0, toread = 0; 
+    int nread = 0, toread = 0;
 
     assert( server != NULL );
 
@@ -274,6 +274,7 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask)
     else if( server->stats.nclients >= server->limits.maxclients )
     {
         close(client_fd);
+        client_fd = -1;
         gbLog( WARNING, "Dropping connection, current clients = %d, max = %d.", server->stats.nclients, server->limits.maxclients );
     }
 
@@ -283,7 +284,7 @@ void gbAcceptHandler(gbEventLoop *e, int fd, void *privdata, int mask)
     {
         gbNetNonBlock(NULL,client_fd);
         gbNetEnableTcpNoDelay(NULL,client_fd);
-        gbNetKeepAlive(NULL,client_fd,server->limits.maxidletime);        
+        gbNetKeepAlive(NULL,client_fd,server->limits.maxidletime);
 
         ++server->stats.connections;
 
@@ -381,7 +382,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
             gbMemFormat( mem_freed, freed, 0xFF );
 
             gbLog( INFO, "Freed %s of expired data ( %lu items ).", freed, items_freed );
-        } 
+        }
         else if( items_freed > 0 )
         {
             gbLog( INFO, "Freed %lu expired items.", items_freed );
@@ -415,7 +416,7 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
                 gbMemFormat( mem_freed, freed, 0xFF );
 
                 gbLog( INFO, "Freed %s of expired data ( %lu items ).", freed, items_freed );
-            } 
+            }
             else if( items_freed > 0 )
             {
                 gbLog( INFO, "Freed %lu expired items.", items_freed );
@@ -553,7 +554,7 @@ void gbProcessInit()
     // ignore SIGHUP and SIGPIPE since we're gonna handle dead clients
     signal(SIGHUP, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
-    
+
     // set SIGTERM and SIGSEGV custom handler
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
