@@ -337,7 +337,7 @@ size_t zmem_rss(void) {
     }
     close(fd);
 
-	buf[rn + 1] = 0x00;
+	buf[rn] = 0x00;
 
     p = buf;
     count = 23; /* RSS is the 24th field in /proc/<pid>/stat */
