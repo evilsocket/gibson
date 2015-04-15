@@ -366,7 +366,7 @@ static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, by
     else if( *klen <= 0 )
         return 0;
 
-    else if( value && vlen <= 0 )
+    else if( value && *vlen <= 0 )
         return 0;
 
     else
