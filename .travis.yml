@@ -6,7 +6,7 @@ env:
    
 language: c
 cache: ccache
-sudo: false
+#sudo: false
 compiler:
   - gcc
   - clang
