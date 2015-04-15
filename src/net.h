@@ -191,7 +191,7 @@ typedef struct gbServer
 	// the main event loop structure
 	gbEventLoop *events;
 	// error buffer
-	char 	 error[0xFF];
+	char 	 error[0xFFFF];
 	// tcp port to use
 	int 	 port;
 	// tcp address or unix socket path to use
