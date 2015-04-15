@@ -790,8 +790,10 @@ static int gbNetTcpGenericConnect(char *err, char *addr, int port, int flags)
     }
     if (flags & GBNET_CONNECT_NONBLOCK)
     {
-        if (gbNetNonBlock(err,s) != GBNET_OK)
+        if (gbNetNonBlock(err,s) != GBNET_OK) {
+            close(s);
             return GBNET_ERR;
+        }
     }
     if (connect(s, (struct sockaddr*)&sa, sizeof(sa)) == -1)
     {
