@@ -257,6 +257,7 @@ static int gbParseKeyAndOptionalValue( gbServer *server, byte_t *buffer, size_t 
         {
             *value = p;
             *vlen  = left - 1; // white space
+
             *vlen  = min( *vlen, server->limits.maxvaluesize );
         }
         else
@@ -270,7 +271,7 @@ static int gbParseKeyAndOptionalValue( gbServer *server, byte_t *buffer, size_t 
     if( *klen <= 0 )
         return 0;
 
-    else if( value && *vlen <= 0 )
+    else if( value && *value && *vlen <= 0 )
         return 0;
 
     else
@@ -311,7 +312,7 @@ static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_
     if( *klen <= 0 )
         return 0;
 
-    else if( value && *vlen <= 0 )
+    else if( value && *value && *vlen <= 0 )
         return 0;
 
     else
@@ -366,7 +367,7 @@ static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, by
     else if( *klen <= 0 )
         return 0;
 
-    else if( value && *vlen <= 0 )
+    else if( value && *value && *vlen <= 0 )
         return 0;
 
     else
