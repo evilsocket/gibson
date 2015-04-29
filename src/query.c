@@ -239,8 +239,7 @@ static int gbParseKeyAndOptionalValue( gbServer *server, byte_t *buffer, size_t 
     // parse the key, the end data is the minimum among total request size and maxkeysize
     *key = p;
     end  = min( size, server->limits.maxkeysize );
-    while( *p != ' ' && i++ < end )
-    {
+    while( i++ < end && *p != ' ' ){
         ++p;
     }
 
@@ -291,8 +290,7 @@ static int gbParseKeyValue( gbServer *server, byte_t *buffer, size_t size, byte_
     // parse the key, the end data is the minimum among total request size and maxkeysize
     *key = p;
     end  = min( size, server->limits.maxkeysize );
-    while( *p != ' ' && i++ < end )
-    {
+    while( i++ < end && *p != ' ' ){
         ++p;
     }
 
@@ -333,7 +331,7 @@ static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, by
     // parse the ttl value
     *ttl = p;
     end = min( size, server->limits.maxkeysize );
-    while( *p != ' ' && i++ < end )
+    while( i++ < end && *p != ' ' )
     {
         ++p;
     }
@@ -343,7 +341,7 @@ static int gbParseTtlKeyValue( gbServer *server, byte_t *buffer, size_t size, by
     // parse the key
     *key = p;
     end = min( size, server->limits.maxkeysize );
-    while( *p != ' ' && i++ < end )
+    while( i++ < end && *p != ' ' )
     {
         ++p;
     }
