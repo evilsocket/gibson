@@ -56,7 +56,7 @@ endif ()
 set( PROJECT "gibson" )
 set( AUTHOR "Simone Margaritelli <http://gibson-db.in>" )
 set( LICENSE "BSD License" )
-set( VERSION "1.0.4" )
+set( VERSION "1.2.0" )
 
 set( TESTS_FOLDER "tests" )
 set( TESTS_REPO "https://github.com/evilsocket/ruby-gibson.git" )
