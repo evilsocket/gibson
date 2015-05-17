@@ -105,7 +105,7 @@ void *opool_alloc_object( opool_t *pool )
             new_block = (opool_block_t *)zmalloc( sizeof(opool_block_t) );
 
             assert( new_block != NULL );
-            assert( new_capacity > pool->used );
+            // assert( new_capacity > pool->used );
 
             opool_alloc_block( new_block, pool->object_size, new_capacity );
 
