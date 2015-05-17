@@ -1090,6 +1090,7 @@ static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p )
     if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
     {
         size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+        
         if( found )
         {
             ll_foreach_2( server->m_keys, server->m_values, ki, vi )
@@ -1123,6 +1124,26 @@ static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p )
         return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
+static int gbCountCallback( void *ctx, unsigned char *key, void *data ) {
+    assert( ctx != NULL );
+    assert( key != NULL );
+    assert( data != NULL );
+
+    gbServer *server = (gbServer *)ctx;
+    gbItem *item = (gbItem *)data;
+
+    if( !item || !gbIsItemStillValid( item, server, key, strlen(key), 1 ) ){
+        return 0;
+    }
+    else {
+        item->last_access_time = server->stats.time;
+
+        return 1;
+    }
+
+    return 1;
+}
+
 static int gbQueryCountHandler( gbClient *client, byte_t *p )
 {
     assert( client != NULL );
@@ -1135,26 +1156,7 @@ static int gbQueryCountHandler( gbClient *client, byte_t *p )
 
     if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
     {
-        size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-        if( found )
-        {
-            ll_foreach_2( server->m_keys, server->m_values, ki, vi )
-            {
-                item = vi->data;
-
-                if( !item || !gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) )
-                    --found;
-                else
-                    item->last_access_time = server->stats.time;
-
-                // free allocated key
-                zfree( ki->data );
-                ki->data = NULL;
-            }
-
-            ll_reset( server->m_keys );
-            ll_reset( server->m_values );
-        }
+        size_t found = tr_count( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, gbCountCallback, server );
 
         return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
     }
@@ -1179,7 +1181,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
     ll_append( server->m_keys, key ); \
     ll_append( server->m_values, gbCreateVolatileItem( server, zstrdup(value), strlen(value), GB_ENC_PLAIN ) )
 
-#define APPEND_FLOtr_STAT( key, value ) memset( s, 0x00, 0xFF ); \
+#define APPEND_FLOAT_STAT( key, value ) memset( s, 0x00, 0xFF ); \
     sprintf( s, "%f", (value) ); \
     APPEND_STRING_STAT( key, s )
 
@@ -1190,6 +1192,7 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
 #else
     APPEND_STRING_STAT( "server_allocator", "malloc" );
 #endif
+
     APPEND_STRING_STAT( "server_arch", (sizeof(long) == 8) ? "64" : "32" );
     APPEND_LONG_STAT( "server_started",             server->stats.started );
     APPEND_LONG_STAT( "server_time",                server->stats.time );
@@ -1210,10 +1213,10 @@ static int gbQueryStatsHandler( gbClient *client, byte_t *p )
     APPEND_LONG_STAT( "memory_usable",              server->limits.maxmem );
     APPEND_LONG_STAT( "memory_used",                server->stats.memused );
     APPEND_LONG_STAT( "memory_peak", 			    server->stats.mempeak );
-    APPEND_FLOtr_STAT( "memory_fragmentation",      zmem_fragmentation_ratio() );
+    APPEND_FLOAT_STAT( "memory_fragmentation",      zmem_fragmentation_ratio() );
     APPEND_LONG_STAT( "item_size_avg",              server->stats.sizeavg );
     APPEND_LONG_STAT( "compr_rate_avg",             server->stats.compravg );
-    APPEND_FLOtr_STAT( "reqs_per_client_avg",       server->stats.requests / (double)server->stats.connections );
+    APPEND_FLOAT_STAT( "reqs_per_client_avg",       server->stats.requests / (double)server->stats.connections );
 
 #undef APPEND_LONG_STAT
 #undef APPEND_STRING_STAT
