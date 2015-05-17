@@ -364,8 +364,10 @@ int gbServerCronHandler(struct gbEventLoop *eventLoop, long long id, void *data)
     server->stats.time = now;
 
     // shutdown requested
-    if( server->shutdown )
+    if( server->shutdown ){
         gbServerDestroy( server );
+        return 0;
+    }
 
     CRON_EVERY( server->expired_cron )
     {
@@ -602,6 +604,9 @@ void gbServerDestroy( gbServer *server )
     assert( server->lzf_buffer != NULL );
     assert( server->events != NULL );
 
+    tr_recurse( &server->tree, gbObjectDestroyHandler,   server, 0 );
+    tr_recurse( &server->config, gbConfigDestroyHandler, server, 0 );
+
     if( server->clients )
     {
         ll_foreach( server->clients, citem )
@@ -625,9 +630,6 @@ void gbServerDestroy( gbServer *server )
     zfree( server->lzf_buffer );
 
     opool_destroy( &server->item_pool );
-
-    tr_recurse( &server->tree, gbObjectDestroyHandler,   NULL, 0 );
-    tr_recurse( &server->config, gbConfigDestroyHandler, NULL, 0 );
 
     tr_free( &server->tree );
     tr_free( &server->config );
