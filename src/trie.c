@@ -145,7 +145,9 @@ struct tr_search_data
     char    *current;
     size_t   total;
     long     limit;
-    tr_count_handler count_callback;
+    tr_count_handler  count_callback;
+    tr_search_handler search_callback;
+    tr_search_handler search_nodes_callback;
     void    *ctx;
 };
 
@@ -187,8 +189,16 @@ static void tr_search_recursive_handler(tnode_t *node, size_t level, void *data)
     {
 		search->current[ level + 1 ] = '\0';
 
+        // use the count callback
+        if( search->count_callback != NULL ) {
+            search->total += search->count_callback( search->ctx, search->current, node->data );
+        }
+        // use the search callback
+        else if( search->search_callback != NULL ) {
+            search->total += search->search_callback( search->ctx, search->current, node->data );
+        }
         // append items to provided lists
-        if( search->keys != NULL && *search->keys != NULL ){
+        else {
             ++search->total;
 
             ll_append( *search->keys, zstrdup( search->current ) );
@@ -199,12 +209,6 @@ static void tr_search_recursive_handler(tnode_t *node, size_t level, void *data)
 
                 ll_append( *search->values, node->data );
             }
-        }
-        // use the count callback
-        else {
-            assert( search->count_callback != NULL );
-
-            search->total += search->count_callback( search->ctx, search->current, node->data );
         }
 	}
 }
@@ -236,6 +240,33 @@ size_t tr_search( trie_t *trie, unsigned char *prefix, int len, long limit, int 
 
 	return searchdata.total;
 }
+
+size_t tr_search_callback( trie_t *trie, unsigned char *prefix, int len, long limit, int maxkeylen, tr_search_handler callback, void *ctx ) {
+    assert( trie != NULL );
+    assert( prefix != NULL );
+    assert( len > 0 );
+    assert( len < maxkeylen );
+
+    struct tr_search_data searchdata = {0};
+
+	searchdata.current = alloca( maxkeylen );
+	searchdata.total   = 0;
+    searchdata.search_callback = callback;
+    searchdata.ctx     = ctx;
+    searchdata.limit   = limit;
+
+	tnode_t *start = tr_find_node( trie, prefix, len );
+
+	if( start )
+    {
+		strncpy( searchdata.current, (char *)prefix, len );
+
+		tr_recurse( start, tr_search_recursive_handler, &searchdata, len - 1 );
+	}
+
+	return searchdata.total;
+}
+
 
 size_t tr_count( trie_t *trie, unsigned char *prefix, int len, long limit, int maxkeylen, tr_count_handler callback, void *ctx ) {
     assert( trie != NULL );
@@ -277,16 +308,23 @@ static void tr_search_nodes_recursive_handler(tnode_t *node, size_t level, void 
 	// found a value
 	if( node->data != NULL )
     {
-		++search->total;
 		search->current[ level + 1 ] = '\0';
 
-        assert( search->keys != NULL );
-        assert( search->values != NULL );
-        assert( *search->keys != NULL );
-        assert( *search->values != NULL );
+        // use the search nodes callback
+        if( search->search_nodes_callback != NULL ) {
+            search->total += search->search_nodes_callback( search->ctx, search->current, node );
+        }
+        else {
+            ++search->total;
 
-		ll_append( *search->keys,   zstrdup( search->current ) );
-		ll_append( *search->values, node );
+            assert( search->keys != NULL );
+            assert( search->values != NULL );
+            assert( *search->keys != NULL );
+            assert( *search->values != NULL );
+
+    		ll_append( *search->keys,   zstrdup( search->current ) );
+    		ll_append( *search->values, node );
+        }
 	}
 }
 
@@ -301,6 +339,31 @@ size_t tr_search_nodes( trie_t *trie, unsigned char *prefix, int len, int maxkey
 
 	searchdata.keys    = keys;
 	searchdata.values  = nodes;
+	searchdata.current = alloca( maxkeylen );
+	searchdata.total   = 0;
+
+	tnode_t *start = tr_find_node( trie, prefix, len );
+
+	if( start )
+    {
+		strncpy( searchdata.current, (char *)prefix, len );
+
+		tr_recurse( start, tr_search_nodes_recursive_handler, &searchdata, len - 1 );
+	}
+
+	return searchdata.total;
+}
+
+size_t tr_search_nodes_callback( trie_t *trie, unsigned char *prefix, int len, int maxkeylen, tr_search_handler callback, void *ctx ) {
+    assert( trie != NULL );
+    assert( prefix != NULL );
+    assert( len > 0 );
+    assert( len < maxkeylen );
+
+	struct tr_search_data searchdata = {0};
+
+	searchdata.search_nodes_callback = callback;
+    searchdata.ctx     = ctx;
 	searchdata.current = alloca( maxkeylen );
 	searchdata.total   = 0;
 

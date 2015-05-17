@@ -469,6 +469,39 @@ static int gbQuerySetHandler( gbClient *client, byte_t *p )
         return gbClientEnqueueCode( client, REPL_ERR_MEM, gbWriteReplyHandler, 0 );
 }
 
+typedef struct {
+    gbServer *server;
+    byte_t *value;
+    size_t vlen;
+}
+multi_set_ctx_t;
+
+static int gbMultiSetCallback( void *ctx, unsigned char *key, void *data ) {
+    assert( ctx != NULL );
+    assert( key != NULL );
+    assert( data != NULL );
+
+    multi_set_ctx_t *setctx = (multi_set_ctx_t *)ctx;
+
+    gbServer *server = setctx->server;
+    gbItem *item = (gbItem *)data;
+    size_t keylen = strlen(key);
+
+    if( !item ){
+        return 0;
+    }
+    else if( gbItemIsLocked( item, server, 0 ) ){
+        return 0;
+    }
+    else if( gbIsItemStillValid( item, server, key, keylen, 1 ) == 0 ){
+        return 0;
+    }
+
+    gbSingleSet( setctx->value, setctx->vlen, key, keylen, server );
+
+    return 1;
+}
+
 static int gbQueryMultiSetHandler( gbClient *client, byte_t *p )
 {
     assert( client != NULL );
@@ -484,35 +517,15 @@ static int gbQueryMultiSetHandler( gbClient *client, byte_t *p )
     {
         if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, &v, &exprlen, &vlen ) )
         {
-            size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+            multi_set_ctx_t ctx = {0};
+
+            ctx.server = server;
+            ctx.value  = v;
+            ctx.vlen   = vlen;
+
+            size_t found = tr_search_callback( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, gbMultiSetCallback, &ctx );
             if( found )
-            {
-                ll_foreach_2( server->m_keys, server->m_values, ki, vi )
-                {
-                    item = vi->data;
-
-                    if( gbItemIsLocked( item, server, 0 ) )
-                        --found;
-
-                    else if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) == 0 )
-                        --found;
-
-                    else
-                        gbSingleSet( v, vlen, ki->data, strlen(ki->data), server );
-
-                    // free allocated key
-                    zfree( ki->data );
-                    ki->data = NULL;
-                }
-
-                ll_reset( server->m_keys );
-                ll_reset( server->m_values );
-
-                if( found )
-                    return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
-                else
-                    return gbClientEnqueueCode( client, REPL_ERR_LOCKED, gbWriteReplyHandler, 0 );
-            }
+                return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
             else
                 return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
         }
@@ -543,7 +556,7 @@ static int gbQueryTtlHandler( gbClient *client, byte_t *p )
             if( gbQueryParseLong( v, vlen, &ttl ) )
             {
                 item->last_access_time =
-                    item->time = server->stats.time;
+                item->time = server->stats.time;
                 item->ttl  = min( server->limits.maxitemttl, ttl );
 
                 return gbClientEnqueueCode( client, REPL_OK, gbWriteReplyHandler, 0 );
@@ -556,6 +569,34 @@ static int gbQueryTtlHandler( gbClient *client, byte_t *p )
     }
     else
         return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
+}
+
+typedef struct {
+    gbServer *server;
+    long ttl;
+}
+multi_ttl_ctx_t;
+
+static int gbMultiTtlCallback( void *ctx, unsigned char *key, void *data ) {
+    assert( ctx != NULL );
+    assert( key != NULL );
+    assert( data != NULL );
+
+    multi_ttl_ctx_t *ttlctx = (multi_ttl_ctx_t *)ctx;
+
+    gbServer *server = (gbServer *)ttlctx->server;
+    gbItem *item = (gbItem *)data;
+    size_t keylen = strlen(key);
+
+    if( gbIsItemStillValid( item, server, key, keylen, 1 ) == 0 ) {
+        return 0;
+    }
+
+    item->last_access_time =
+    item->time = server->stats.time;
+    item->ttl  = min( server->limits.maxitemttl, ttlctx->ttl );
+
+    return 1;
 }
 
 static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p )
@@ -574,36 +615,12 @@ static int gbQueryMultiTtlHandler( gbClient *client, byte_t *p )
     {
         if( gbQueryParseLong( v, vlen, &ttl ) )
         {
-            size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+            multi_ttl_ctx_t ctx = { server, ttl };
+
+            size_t found = tr_search_callback( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, gbMultiTtlCallback, &ctx );
             if( found )
-            {
-                ll_foreach_2( server->m_keys, server->m_values, ki, vi )
-                {
-                    item = vi->data;
+                return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
 
-                    if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) == 0 )
-                        --found;
-
-                    else {
-                        item->last_access_time =
-                            item->time = server->stats.time;
-                        item->ttl  = min( server->limits.maxitemttl, ttl );
-                    }
-
-                    // free allocated key
-                    zfree( ki->data );
-                    ki->data = NULL;
-                }
-
-                ll_reset( server->m_keys );
-                ll_reset( server->m_values );
-
-                if( found )
-                    return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
-
-                else
-                    return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
-            }
             else
                 return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
         }
@@ -758,6 +775,30 @@ static int gbQueryDelHandler( gbClient *client, byte_t *p )
         return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
+static int gbMultiDelCallback( void *ctx, unsigned char *key, void *data ) {
+    assert( ctx != NULL );
+    assert( key != NULL );
+    assert( data != NULL );
+
+    gbServer *server = (gbServer *)ctx;
+    tnode_t *node = (tnode_t *)data;
+    gbItem *item = (gbItem *)node->data;
+    size_t keylen = strlen(key);
+
+    // locked item
+    if( !item || gbItemIsLocked( item, server, 0 ) ){
+        return 0;
+    }
+    else if( gbIsNodeStillValid( node, item, server, 1 ) ){
+        node->data = NULL;
+        gbDestroyItem( server, item );
+
+        return 1;
+    }
+
+    return 0;
+}
+
 static int gbQueryMultiDelHandler( gbClient *client, byte_t *p )
 {
     assert( client != NULL );
@@ -770,41 +811,10 @@ static int gbQueryMultiDelHandler( gbClient *client, byte_t *p )
 
     if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
     {
-        size_t found = tr_search_nodes( &server->tree, expr, exprlen, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+        size_t found = tr_search_nodes_callback( &server->tree, expr, exprlen, server->limits.maxkeysize, gbMultiDelCallback, server );
         if( found )
-        {
-            ll_foreach_2( server->m_keys, server->m_values, ki, vi )
-            {
-                tnode_t *node = vi->data;
-
-                if( node && node->data )
-                {
-                    item = node->data;
-
-                    // locked item
-                    if( gbItemIsLocked( item, server, 0 ))
-                    {
-                        --found;
-                    }
-                    else if( gbIsNodeStillValid( node, item, server, 1 ) )
-                    {
-                        node->data = NULL;
-                        gbDestroyItem( server, item );
-                    }
-                    else
-                        --found;
-                }
-
-                // free allocated key
-                zfree( ki->data );
-                ki->data = NULL;
-            }
-
-            ll_reset( server->m_keys );
-            ll_reset( server->m_values );
-
             return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
-        }
+        
         else
             return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
     }
@@ -879,6 +889,56 @@ static int gbQueryIncDecHandler( gbClient *client, byte_t *p, short delta )
         return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
+typedef struct {
+    gbServer *server;
+    short delta;
+}
+multi_inc_ctx_t;
+
+static int gbMultiIncDecCallback( void *ctx, unsigned char *key, void *data ) {
+    assert( ctx != NULL );
+    assert( key != NULL );
+    assert( data != NULL );
+
+    multi_inc_ctx_t *incctx = (multi_inc_ctx_t *)ctx;
+
+    gbServer *server = (gbServer *)incctx->server;
+    gbItem *item = (gbItem *)data;
+    size_t keylen = strlen(key);
+    long num = 0;
+
+    if( !item || gbItemIsLocked( item, server, 0 ) ){
+        return 0;
+    }
+    if( gbIsItemStillValid( item, server, key, keylen, 1 ) == 0 ) {
+        return 0;
+    }
+
+    item->last_access_time = server->stats.time;
+
+    if( item->encoding == GB_ENC_NUMBER ) {
+        item->data = (void *)( (long)item->data + incctx->delta );
+    }
+    else if( item->encoding == GB_ENC_PLAIN ) {
+        if( gbQueryParseLong( item->data, item->size, &num ) ) {
+            num += incctx->delta;
+
+            zfree( item->data );
+            item->data = NULL;
+
+            server->stats.memused = zmem_used();
+
+            item->encoding = GB_ENC_NUMBER;
+            item->data	   = (void *)num;
+            item->size	   = sizeof(long);
+        }
+        else
+            return 0;
+    }
+
+    return 1;
+}
+
 static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 {
     assert( client != NULL );
@@ -892,59 +952,11 @@ static int gbQueryMultiIncDecHandler( gbClient *client, byte_t *p, short delta )
 
     if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
     {
-        size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+        multi_inc_ctx_t ctx = { server, delta };
+
+        size_t found = tr_search_callback( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, gbMultiIncDecCallback, &ctx );
         if( found )
-        {
-            ll_foreach_2( server->m_keys, server->m_values, ki, vi )
-            {
-                item = vi->data;
-                item->last_access_time = server->stats.time;
-
-                if( gbItemIsLocked( item, server, 0 ) )
-                {
-                    --found;
-                }
-                if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) == 0 )
-                {
-                    --found;
-                }
-                else if( item->encoding == GB_ENC_NUMBER )
-                {
-                    item->data = (void *)( (long)item->data + delta );
-                }
-                else if( item->encoding == GB_ENC_PLAIN )
-                {
-
-                    if( gbQueryParseLong( item->data, item->size, &num ) )
-                    {
-                        num += delta;
-
-                        zfree( item->data );
-                        item->data = NULL;
-
-                        server->stats.memused = zmem_used();
-
-                        item->encoding = GB_ENC_NUMBER;
-                        item->data	   = (void *)num;
-                        item->size	   = sizeof(long);
-                    }
-                    else
-                        --found;
-                }
-
-                // free allocated key
-                zfree( ki->data );
-                ki->data = NULL;
-            }
-
-            ll_reset( server->m_keys );
-            ll_reset( server->m_values );
-
-            if( found )
-                return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
-            else
-                return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
-        }
+            return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
         else
             return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
     }
@@ -994,6 +1006,35 @@ static int gbQueryLockHandler( gbClient *client, byte_t *p )
         return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
+typedef struct {
+    gbServer *server;
+    long locktime;
+}
+multi_lock_ctx_t;
+
+static int gbMultiLockCallback( void *ctx, unsigned char *key, void *data ) {
+    assert( ctx != NULL );
+    assert( key != NULL );
+    assert( data != NULL );
+
+    multi_lock_ctx_t *mlockctx = (multi_lock_ctx_t *)ctx;
+
+    gbServer *server = (gbServer *)mlockctx->server;
+    gbItem *item = (gbItem *)data;
+    size_t keylen = strlen(key);
+
+    if( gbIsItemStillValid( item, server, key, keylen, 1 ) && gbItemIsLocked( item, server, 0 ) == 0 )
+    {
+        item->last_access_time =
+        item->time = server->stats.time;
+        item->lock = mlockctx->locktime;
+
+        return 1;
+    }
+
+    return 0;
+}
+
 static int gbQueryMultiLockHandler( gbClient *client, byte_t *p )
 {
     assert( client != NULL );
@@ -1010,35 +1051,11 @@ static int gbQueryMultiLockHandler( gbClient *client, byte_t *p )
     {
         if( gbQueryParseLong( v, vlen, &locktime ) )
         {
-            size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
+            multi_lock_ctx_t ctx = { server, locktime };
+
+            size_t found = tr_search_callback( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, gbMultiLockCallback, &ctx );
             if( found )
-            {
-                ll_foreach_2( server->m_keys, server->m_values, ki, vi )
-                {
-                    item = vi->data;
-
-                    if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) && gbItemIsLocked( item, server, 0 ) == 0 )
-                    {
-                        item->last_access_time =
-                            item->time = server->stats.time;
-                        item->lock = locktime;
-                    }
-                    else
-                        --found;
-
-                    // free allocated key
-                    zfree( ki->data );
-                    ki->data = NULL;
-                }
-
-                ll_reset( server->m_keys );
-                ll_reset( server->m_values );
-
-                if( found )
-                    return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
-                else
-                    return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
-            }
+                return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
             else
                 return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
         }
@@ -1077,6 +1094,25 @@ static int gbQueryUnlockHandler( gbClient *client, byte_t *p )
         return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
 }
 
+static int gbMultiUnlockCallback( void *ctx, unsigned char *key, void *data ) {
+    assert( ctx != NULL );
+    assert( key != NULL );
+    assert( data != NULL );
+
+    gbServer *server = (gbServer *)ctx;
+    gbItem *item = (gbItem *)data;
+
+    if( item && gbIsItemStillValid( item, server, key, strlen(key), 1 ) )
+    {
+        item->lock = 0;
+        item->last_access_time = server->stats.time;
+
+        return 1;
+    }
+
+    return 0;
+}
+
 static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p )
 {
     assert( client != NULL );
@@ -1089,36 +1125,12 @@ static int gbQueryMultiUnlockHandler( gbClient *client, byte_t *p )
 
     if( gbParseKeyValue( server, p, client->buffer_size - sizeof(short), &expr, NULL, &exprlen, NULL ) )
     {
-        size_t found = tr_search( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, &server->m_keys, &server->m_values );
-        
+        size_t found = tr_search_callback( &server->tree, expr, exprlen, -1, server->limits.maxkeysize, gbMultiUnlockCallback, server );
+
         if( found )
-        {
-            ll_foreach_2( server->m_keys, server->m_values, ki, vi )
-            {
-                item = vi->data;
-
-                if( gbIsItemStillValid( item, server, ki->data, strlen(ki->data), 1 ) )
-                {
-                    item->lock = 0;
-                    item->last_access_time = server->stats.time;
-                }
-
-                else
-                    --found;
-
-                // free allocated key
-                zfree( ki->data );
-                ki->data = NULL;
-            }
-
-            ll_reset( server->m_keys );
-            ll_reset( server->m_values );
-
-            if( found )
-                return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
-        }
-
-        return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
+            return gbClientEnqueueData( client, REPL_VAL, GB_ENC_NUMBER, (byte_t *)&found, sizeof(size_t), gbWriteReplyHandler, 0 );
+        else
+            return gbClientEnqueueCode( client, REPL_ERR_NOT_FOUND, gbWriteReplyHandler, 0 );
     }
     else
         return gbClientEnqueueCode( client, REPL_ERR, gbWriteReplyHandler, 0 );
