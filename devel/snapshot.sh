@@ -18,4 +18,4 @@ gdb -ex "set pagination 0" -ex "thread apply all bt" --batch -p $GIBSON
 
 echo ""
 echo "## NETWORK:"
-netstat -nap | grep gibson
+netstat -nap | grep $GIBSON
