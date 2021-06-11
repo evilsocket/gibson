@@ -10,12 +10,12 @@ Gibson [![Build Status](https://secure.travis-ci.org/evilsocket/gibson.png)](htt
 Gibson is a high efficiency, tree based memory cache server.
 Normal key-value stores ( memcache, Redis, etc ) uses a hash table as their main data structure, so every key is hashed with a specific algorithm and the resulting hash is used to identify the given value in memory. This approach, although very fast, doesn't allow the user to execute globbing expressions/selections on a given (multiple) keyset, thus resulting on a pure one-by-one access paradigm.
 Gibson is different, it uses a special tree based structure allowing the user to perform operations on multiple key sets using a prefix expression achieving the same performance grades in the worst case, even better on an average case.
-Unlike many other server applications, it's not multithreaded, but it uses multiplexing taking advantace of an event-driven network layer ( just like Node.js, or Nginx using libevent and so on ) which provides higher performances even on low cost hardware.
+Unlike many other server applications, it's not multithreaded, but it uses multiplexing taking advantage of an event-driven network layer ( just like Node.js, or Nginx using libevent and so on ) which provides higher performances even on low cost hardware.
 
 **You need Gibson if:**
 
 * You need to cache result sets from heavy queries lowering your main database load and response times.
-* You want to invalidate or rietrive multiple cached itemshierarchically with a single command given their common prefix, in lower than linear time.
+* You want to invalidate or rietrive multiple cached items hierarchically with a single command given their common prefix, in lower than linear time.
 * You need a cache backend which is fast, highly scalable and not redundant as the common key value store.
 
 **You can't use Gibson to:**
